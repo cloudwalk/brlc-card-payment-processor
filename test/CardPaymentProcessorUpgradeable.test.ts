@@ -79,36 +79,22 @@ function checkEquality(
 }
 
 describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
-  const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED =
-    "Initializable: contract is already initialized";
-  const REVERT_MESSAGE_IF_CALLER_IS_NEW_REVOCATION_COUNTER_MAXIMUM_VALUE_IS_ZERO =
-    "CardPaymentProcessor: new value of the revocation counter maximum must be greater than 0";
-  const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED =
-    "Pausable: paused";
-  const REVERT_MESSAGE_IF_PAYMENT_AMOUNT_IS_ZERO =
-    "CardPaymentProcessor: payment amount must be greater than 0";
-  const REVERT_MESSAGE_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY =
-    "CardPaymentProcessor: input array of authorization IDs is empty";
-  const REVERT_MESSAGE_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO =
-    "CardPaymentProcessor: authorization ID must not equal 0";
-  const REVERT_MESSAGE_IF_CASH_OUT_ACCOUNT_IS_ZERO_ADDRESS =
-    "CardPaymentProcessor: cash out account is the zero address";
-  const REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE =
-    "ERC20: transfer amount exceeds balance";
-  const REVERT_MESSAGE_IF_PAYMENT_AUTHORIZATION_ID_ALREADY_EXISTS =
-    "CardPaymentProcessor: payment with the provided authorization ID already exists and was not revoked";
-  const REVERT_MESSAGE_IF_PAYMENT_DOES_NOT_EXIST =
-    "CardPaymentProcessor: payment with the provided authorization ID does not exist";
-  const REVERT_MESSAGE_IF_PAYMENT_IS_CLEARED =
-    "CardPaymentProcessor: payment with the provided authorization ID is cleared";
-  const REVERT_MESSAGE_IF_PAYMENT_IS_UNCLEARED =
-    "CardPaymentProcessor: payment with the provided authorization ID is uncleared";
-  const REVERT_MESSAGE_IF_PARENT_TX_HASH_IS_ZERO =
-    "CardPaymentProcessor: parent transaction hash should not equal 0";
-  const REVERT_MESSAGE_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS =
-    "CardPaymentProcessor: payment with the provided authorization ID has an inappropriate status";
-  const REVERT_MESSAGE_IF_PAYMENT_REVOCATION_COUNTER_HAS_REACHED_MAXIMUM =
-    "CardPaymentProcessor: revocation counter of the payment has reached the configured maximum";
+  const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
+  const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
+  const REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE = "ERC20: transfer amount exceeds balance";
+
+  const REVERT_ERROR_IF_NEW_REVOCATION_COUNTER_MAXIMUM_VALUE_IS_ZERO = "ZeroNewValueOfRevocationCounterMaximum";
+  const REVERT_ERROR_IF_PAYMENT_AMOUNT_IS_ZERO = "ZeroPaymentAmount";
+  const REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO = "ZeroAuthorizationId";
+  const REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS = "PaymentAlreadyExists";
+  const REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST = "PaymentDoesNotExit";
+  const REVERT_ERROR_IF_PAYMENT_IS_CLEARED = "PaymentIsCleared";
+  const REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY = "EmptyInputArrayOfAuthorizationIds";
+  const REVERT_ERROR_IF_PAYMENT_IS_UNCLEARED = "PaymentIsUncleared";
+  const REVERT_ERROR_IF_PARENT_TX_HASH_IS_ZERO = "ZeroParentTransactionHash";
+  const REVERT_ERROR_IF_CASH_OUT_ACCOUNT_IS_ZERO_ADDRESS = "ZeroCashOutAccount";
+  const REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS = "InappropriatePaymentStatus";
+  const REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_MAXIMUM = "RevocationCounterReachedMaximum";
 
   let cardPaymentProcessor: Contract;
   let tokenMock: Contract;
@@ -308,7 +294,10 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
 
     it("Is reverted if the new value is zero", async () => {
       await expect(cardPaymentProcessor.setRevocationCounterMaximum(0))
-        .to.be.revertedWith(REVERT_MESSAGE_IF_CALLER_IS_NEW_REVOCATION_COUNTER_MAXIMUM_VALUE_IS_ZERO);
+        .to.be.revertedWithCustomError(
+          cardPaymentProcessor,
+          REVERT_ERROR_IF_NEW_REVOCATION_COUNTER_MAXIMUM_VALUE_IS_ZERO
+        );
     });
 
     it("Emits the correct event, changes the revocation counter maximum properly", async () => {
@@ -368,7 +357,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         zeroAmount,
         authorizationId,
         correlationId
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_AMOUNT_IS_ZERO);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AMOUNT_IS_ZERO);
     });
 
     it("Is reverted if the payment authorization ID is zero", async () => {
@@ -376,7 +365,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         payment.amount,
         ZERO_BYTES16_STRING,
         correlationId
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if the user has not enough token balance", async () => {
@@ -422,7 +411,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         payment.amount + 1,
         authorizationId,
         otherMakingPaymentCorrelationsId
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_AUTHORIZATION_ID_ALREADY_EXISTS);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
     });
   });
 
@@ -463,13 +452,13 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
     it("Is reverted if the payment authorization ID is zero", async () => {
       await expect(cardPaymentProcessor.connect(admin).clearPayment(
         ZERO_BYTES16_STRING
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if the payment with the provided authorization ID does not exist", async () => {
       await expect(cardPaymentProcessor.connect(admin).clearPayment(
         createBytesString(payment.authorizationId + 1, BYTES16_LENGTH)
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_DOES_NOT_EXIST);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Does not transfer tokens, emits the correct event, changes the state properly", async () => {
@@ -503,7 +492,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       ));
       await expect(cardPaymentProcessor.connect(admin).clearPayment(
         authorizationId
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_IS_CLEARED);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_CLEARED);
     });
   });
 
@@ -563,13 +552,13 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
     it("Is reverted if the payment authorization IDs array is empty", async () => {
       await expect(cardPaymentProcessor.connect(admin).clearPayments(
         []
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY);
     });
 
     it("Is reverted if one of the payment authorization IDs is zero", async () => {
       await expect(cardPaymentProcessor.connect(admin).clearPayments(
         [authorizationIds[0], ZERO_BYTES16_STRING]
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if one of the payments with provided authorization IDs does not exist", async () => {
@@ -578,7 +567,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
           authorizationIds[0],
           createBytesString(payments[payments.length - 1].authorizationId + 1, BYTES16_LENGTH),
         ]
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_DOES_NOT_EXIST);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Is reverted if one of the payments has been already cleared", async () => {
@@ -587,7 +576,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       ));
       await expect(cardPaymentProcessor.connect(admin).clearPayments(
         authorizationIds
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_IS_CLEARED);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_CLEARED);
     });
 
     it("Does not transfer tokens, emits the correct events, changes the state properly", async () => {
@@ -662,13 +651,13 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
     it("Is reverted if the payment authorization ID is zero", async () => {
       await expect(cardPaymentProcessor.connect(admin).unclearPayment(
         ZERO_BYTES16_STRING
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if the payment with the provided authorization ID does not exist", async () => {
       await expect(cardPaymentProcessor.connect(admin).unclearPayment(
         createBytesString(payment.authorizationId + 1, BYTES16_LENGTH)
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_DOES_NOT_EXIST);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Does not transfer tokens, emits the correct event, changes the state properly", async () => {
@@ -702,7 +691,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       ));
       await expect(cardPaymentProcessor.connect(admin).unclearPayment(
         authorizationId
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_IS_UNCLEARED);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_UNCLEARED);
     });
   });
 
@@ -761,13 +750,13 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
     it("Is reverted if the payment authorization IDs array is empty", async () => {
       await expect(cardPaymentProcessor.connect(admin).unclearPayments(
         []
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY);
     });
 
     it("Is reverted if one of the payment authorization IDs is zero", async () => {
       await expect(cardPaymentProcessor.connect(admin).unclearPayments(
         [authorizationIds[0], ZERO_BYTES16_STRING]
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if one of the payments with provided authorization IDs does not exist", async () => {
@@ -776,7 +765,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
           authorizationIds[0],
           createBytesString(payments[payments.length - 1].authorizationId + 1, BYTES16_LENGTH)
         ]
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_DOES_NOT_EXIST);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Is reverted if one of the payments is uncleared", async () => {
@@ -785,7 +774,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       ));
       await expect(cardPaymentProcessor.connect(admin).unclearPayments(
         authorizationIds
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_IS_UNCLEARED);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_UNCLEARED);
     });
 
     it("Does not transfer tokens, emits the correct events, changes the state properly", async () => {
@@ -870,7 +859,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         ZERO_BYTES16_STRING,
         reversingPaymentCorrelationId,
         parentTxHash
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if the parent transaction hash is zero", async () => {
@@ -878,7 +867,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         authorizationId,
         reversingPaymentCorrelationId,
         ZERO_BYTES32_STRING,
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PARENT_TX_HASH_IS_ZERO);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PARENT_TX_HASH_IS_ZERO);
     });
 
     it("Is reverted if the payment with the provided authorization ID does not exist", async () => {
@@ -886,7 +875,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         createBytesString(payment.authorizationId + 1, BYTES16_LENGTH),
         reversingPaymentCorrelationId,
         parentTxHash
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_DOES_NOT_EXIST);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     describe("Transfers tokens as expected, emits the correct event, changes the state properly", async () => {
@@ -983,7 +972,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         ZERO_BYTES16_STRING,
         reversingPaymentCorrelationId,
         parentTxHash
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if the parent transaction hash is zero", async () => {
@@ -991,7 +980,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         authorizationId,
         reversingPaymentCorrelationId,
         ZERO_BYTES32_STRING,
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PARENT_TX_HASH_IS_ZERO);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PARENT_TX_HASH_IS_ZERO);
     });
 
     it("Is reverted if the payment with the provided authorization ID does not exist", async () => {
@@ -999,7 +988,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         createBytesString(payment.authorizationId + 1, BYTES16_LENGTH),
         reversingPaymentCorrelationId,
         parentTxHash
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_DOES_NOT_EXIST);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     describe("Transfers tokens as expected, emits the correct event, changes the state properly", async () => {
@@ -1090,21 +1079,21 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       await expect(cardPaymentProcessor.connect(admin).confirmPayment(
         ZERO_BYTES16_STRING,
         cashOutAccount.address
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if the input cash out account is the zero address", async () => {
       await expect(cardPaymentProcessor.connect(admin).confirmPayment(
         authorizationId,
         ethers.constants.AddressZero
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_CASH_OUT_ACCOUNT_IS_ZERO_ADDRESS);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASH_OUT_ACCOUNT_IS_ZERO_ADDRESS);
     });
 
     it("Is reverted if the payment with the provided authorization ID does not exist", async () => {
       await expect(cardPaymentProcessor.connect(admin).confirmPayment(
         createBytesString(payment.authorizationId + 1, BYTES16_LENGTH),
         cashOutAccount.address
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_DOES_NOT_EXIST);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Is reverted if the payment is uncleared", async () => {
@@ -1114,7 +1103,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       await expect(cardPaymentProcessor.connect(admin).confirmPayment(
         authorizationId,
         cashOutAccount.address
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_IS_UNCLEARED);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_UNCLEARED);
     });
 
     it("Transfers tokens as expected, emits the correct event, changes the state properly", async () => {
@@ -1206,21 +1195,21 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       await expect(cardPaymentProcessor.connect(admin).confirmPayments(
         [],
         cashOutAccount.address
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY);
     });
 
     it("Is reverted if the input cash out account is the zero address", async () => {
       await expect(cardPaymentProcessor.connect(admin).confirmPayments(
         authorizationIds,
         ethers.constants.AddressZero
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_CASH_OUT_ACCOUNT_IS_ZERO_ADDRESS);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASH_OUT_ACCOUNT_IS_ZERO_ADDRESS);
     });
 
     it("Is reverted if one of the payment authorization IDs is zero", async () => {
       await expect(cardPaymentProcessor.connect(admin).confirmPayments(
         [authorizationIds[0], ZERO_BYTES16_STRING],
         cashOutAccount.address
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if one of the payments with provided authorization IDs does not exist", async () => {
@@ -1230,7 +1219,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
           createBytesString(payments[payments.length - 1].authorizationId + 1, BYTES16_LENGTH)
         ],
         cashOutAccount.address
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_DOES_NOT_EXIST);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Is reverted if one of the payments is uncleared", async () => {
@@ -1240,7 +1229,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       await expect(cardPaymentProcessor.connect(admin).confirmPayments(
         authorizationIds,
         cashOutAccount.address
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_IS_UNCLEARED);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_UNCLEARED);
     });
 
     it("Transfer tokens, emits the correct events, changes the state properly", async () => {
@@ -1289,41 +1278,41 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
     async function checkRevertingOfAllPaymentProcessingFunctionsExceptMaking() {
       await expect(cardPaymentProcessor.connect(admin).clearPayment(
         authorizationIds[0],
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
 
       await expect(cardPaymentProcessor.connect(admin).clearPayments(
         authorizationIds,
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
 
       await expect(cardPaymentProcessor.connect(admin).unclearPayment(
         authorizationIds[0],
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
 
       await expect(cardPaymentProcessor.connect(admin).unclearPayments(
         authorizationIds,
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
 
       await expect(cardPaymentProcessor.connect(admin).revokePayment(
         authorizationIds[0],
         someCorrelationId,
         someParentTxHash
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
 
       await expect(cardPaymentProcessor.connect(admin).reversePayment(
         authorizationIds[0],
         someCorrelationId,
         someParentTxHash
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
 
       await expect(cardPaymentProcessor.connect(admin).confirmPayment(
         authorizationIds[0],
         cashOutAccount.address
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
 
       await expect(cardPaymentProcessor.connect(admin).confirmPayments(
         authorizationIds,
         cashOutAccount.address
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
     }
 
     beforeEach(async () => {
@@ -1401,7 +1390,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         payments[0].amount,
         authorizationIds[0],
         createBytesString(payments[0].makingPaymentCorrelationId, BYTES16_LENGTH)
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_AUTHORIZATION_ID_ALREADY_EXISTS);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
 
       await checkRevertingOfAllPaymentProcessingFunctionsExceptMaking();
       await checkCardPaymentProcessorState(payments);
@@ -1417,7 +1406,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         payments[0].amount,
         authorizationIds[0],
         createBytesString(payments[0].makingPaymentCorrelationId, BYTES16_LENGTH)
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_AUTHORIZATION_ID_ALREADY_EXISTS);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
 
       await checkRevertingOfAllPaymentProcessingFunctionsExceptMaking();
       await checkCardPaymentProcessorState(payments);
@@ -1431,7 +1420,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         payments[0].amount,
         authorizationIds[0],
         someCorrelationId
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_AUTHORIZATION_ID_ALREADY_EXISTS);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
     });
 
     it("Making payment function is reverted if the revocation counter has reached the maximum", async () => {
@@ -1455,7 +1444,10 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         payments[0].amount,
         authorizationIds[0],
         someCorrelationId
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_PAYMENT_REVOCATION_COUNTER_HAS_REACHED_MAXIMUM);
+      )).to.be.revertedWithCustomError(
+        cardPaymentProcessor,
+        REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_MAXIMUM
+      );
     });
   });
 });
