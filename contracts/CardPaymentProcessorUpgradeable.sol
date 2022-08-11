@@ -73,9 +73,9 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         uint8 revocationCounter
     );
 
-    event SetRevocationCounterMaximum(
-        uint8 oldValue,
-        uint8 newValue
+    event SetRevocationLimit(
+        uint8 oldLimit,
+        uint8 newLimit
     );
 
     /**
@@ -124,7 +124,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
 
     uint256 private _totalClearedBalance;
     uint256 private _totalUnclearedBalance;
-    uint8 private _revocationCounterMaximum;
+    uint8 private _revocationLimit;
 
     mapping(address => uint256) private _unclearedBalances;
     mapping(address => uint256) private _clearedBalances;
@@ -132,8 +132,8 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
     mapping(bytes32 => bool) private _paymentRevocationFlags;
     mapping(bytes32 => bool) private _paymentReversionFlags;
 
-    /// @dev Zero has been passed when setting the new value of the revocation counter maximum.
-    error ZeroNewValueOfRevocationCounterMaximum();
+    /// @dev Zero has been passed when setting a new revocation limit.
+    error ZeroRevocationLimit();
 
     /// @dev Zero amount of tokens has been passed when making a payment.
     error ZeroPaymentAmount();
@@ -141,29 +141,26 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
     /// @dev Zero authorization ID has been passed as a function argument.
     error ZeroAuthorizationId();
 
-    /// @dev The payment with the provided authorization ID already exists and was not revoked.
+    /// @dev The payment with the provided authorization ID already exists and not revoked.
     error PaymentAlreadyExists();
 
-    /**
-     * @dev Revocation counter of the payment reached the configured maximum and payment cannot be made.
-     * @param configuredRevocationCounterMaximum The configured maximum value.
-     */
-    error RevocationCounterReachedMaximum(uint8 configuredRevocationCounterMaximum);
+    /// @dev Payment with the provided authorization ID is uncleared, but it must be cleared.
+    error PaymentAlreadyUncleared();
 
-    /// @dev The input array of authorization IDs of a function is empty.
-    error EmptyInputArrayOfAuthorizationIds();
+    /// @dev Payment with the provided authorization ID is cleared, but it must be uncleared.
+    error PaymentAlreadyCleared();
 
-    /// @dev Zero cash out account has been passed as a function argument.
-    error ZeroCashOutAccount();
+    /// @dev The payment with the provided authorization ID does not exist.
+    error PaymentDoesNotExit();
+
+    /// @dev Empty array of authorization IDs has been passed as a function argument.
+    error EmptyAuthorizationIdsArray();
 
     /// @dev Zero parent transaction has been passed as a function argument.
     error ZeroParentTransactionHash();
 
-    /// @dev Payment with the provided authorization ID is uncleared, but it should be cleared.
-    error PaymentIsUncleared();
-
-    /// @dev Payment with the provided authorization ID is cleared, but it should be uncleared.
-    error PaymentIsCleared();
+    /// @dev Zero cash out account has been passed as a function argument.
+    error ZeroCashOutAccount();
 
     /**
      * @dev The payment with the provided authorization ID has an inappropriate status.
@@ -171,8 +168,11 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
      */
     error InappropriatePaymentStatus(PaymentStatus currentStatus);
 
-    /// @dev The payment with the provided authorization ID does not exist.
-    error PaymentDoesNotExit();
+    /**
+     * @dev Revocation counter of the payment reached the configured limit.
+     * @param configuredRevocationLimit The configured revocation limit.
+     */
+    error RevocationLimitReached(uint8 configuredRevocationLimit);
 
     function initialize(address token_) public initializer {
         __CardPaymentProcessor_init(token_);
@@ -190,7 +190,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
 
     function __CardPaymentProcessor_init_unchained(address token_) internal onlyInitializing {
         token = token_;
-        _revocationCounterMaximum = type(uint8).max;
+        _revocationLimit = type(uint8).max;
 
         _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
         _setRoleAdmin(EXECUTOR_ROLE, OWNER_ROLE);
@@ -253,34 +253,11 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
     }
 
     /**
-     * @dev Sets a new value for the revocation counter maximum.
-     * Emits a {SetRevocationCounterMaximum} event if the new value differs from the old one.
-     * @param newValue The new value of revocation counter maximum to set.
+     * @dev Returns the limit on the number of payment revocations.
      */
-    function setRevocationCounterMaximum(uint8 newValue) external onlyRole(OWNER_ROLE) {
-        if (newValue == 0) {
-            revert ZeroNewValueOfRevocationCounterMaximum();
-        }
-
-        uint8 oldValue = _revocationCounterMaximum;
-        if (oldValue == newValue) {
-            return;
-        }
-
-        _revocationCounterMaximum = newValue;
-        emit SetRevocationCounterMaximum(
-            oldValue,
-            newValue
-        );
+    function revocationLimit() external virtual view returns (uint8) {
+        return _revocationLimit;
     }
-
-    /**
-     * @dev Returns the value of the revocation counter maximum.
-     */
-    function revocationCounterMaximum() external virtual view returns (uint8) {
-        return _revocationCounterMaximum;
-    }
-
 
     /**
      * @dev Makes a card payment.
@@ -325,8 +302,8 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         }
 
         uint8 revocationCounter = payment.revocationCounter;
-        if (revocationCounter >= _revocationCounterMaximum) {
-            revert RevocationCounterReachedMaximum(_revocationCounterMaximum);
+        if (revocationCounter >= _revocationLimit) {
+            revert RevocationLimitReached(_revocationLimit);
         }
 
         IERC20Upgradeable(token).transferFrom(
@@ -389,7 +366,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
      */
     function clearPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (authorizationIds.length == 0) {
-            revert EmptyInputArrayOfAuthorizationIds();
+            revert EmptyAuthorizationIdsArray();
         }
 
         uint256 totalAmount = 0;
@@ -438,7 +415,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
      */
     function unclearPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (authorizationIds.length == 0) {
-            revert EmptyInputArrayOfAuthorizationIds();
+            revert EmptyAuthorizationIdsArray();
         }
         uint256 totalAmount = 0;
         for (uint256 i = 0; i < authorizationIds.length; i++) {
@@ -446,6 +423,28 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         }
         _totalClearedBalance = _totalClearedBalance - totalAmount;
         _totalUnclearedBalance = _totalUnclearedBalance + totalAmount;
+    }
+
+    /**
+     * @dev Sets a new value for the revocation limit.
+     * Emits a {SetRevocationLimit} event if the new limit differs from the old value.
+     * @param newLimit The new value of revocation limit to set.
+     */
+    function setRevocationLimit(uint8 newLimit) external onlyRole(OWNER_ROLE) {
+        if (newLimit == 0) {
+            revert ZeroRevocationLimit();
+        }
+
+        uint8 oldLimit = _revocationLimit;
+        if (oldLimit == newLimit) {
+            return;
+        }
+
+        _revocationLimit = newLimit;
+        emit SetRevocationLimit(
+            oldLimit,
+            newLimit
+        );
     }
 
     /**
@@ -577,7 +576,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         onlyRole(EXECUTOR_ROLE)
     {
         if (authorizationIds.length == 0) {
-            revert EmptyInputArrayOfAuthorizationIds();
+            revert EmptyAuthorizationIdsArray();
         }
         if (cashOutAccount == address(0)) {
             revert ZeroCashOutAccount();
@@ -749,7 +748,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
             revert PaymentDoesNotExit();
         }
         if (status == PaymentStatus.Uncleared) {
-            revert PaymentIsUncleared();
+            revert PaymentAlreadyUncleared();
         }
         if (status != PaymentStatus.Cleared) {
             revert InappropriatePaymentStatus(status);
@@ -761,7 +760,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
             revert PaymentDoesNotExit();
         }
         if (status == PaymentStatus.Cleared) {
-            revert PaymentIsCleared();
+            revert PaymentAlreadyCleared();
         }
         if (status != PaymentStatus.Uncleared) {
             revert InappropriatePaymentStatus(status);
