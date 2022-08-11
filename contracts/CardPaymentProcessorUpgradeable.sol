@@ -4,13 +4,13 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "./base/PausableExUpgradeable.sol";
+import "./base/PauseControlUpgradeable.sol";
 
 /**
  * @title CardPaymentProcessorUpgradeable contract
  * @dev Wrapper for the card payment operations.
  */
-contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PausableExUpgradeable {
+contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseControlUpgradeable {
 
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
@@ -183,7 +183,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PausableEx
         __Context_init_unchained();
         __ERC165_init_unchained();
         __Pausable_init_unchained();
-        __PausableEx_init_unchained(OWNER_ROLE);
+        __PauseControl_init_unchained(OWNER_ROLE);
 
         __CardPaymentProcessor_init_unchained(token_);
     }
