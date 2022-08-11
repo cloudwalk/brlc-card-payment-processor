@@ -6,12 +6,13 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "./interfaces/ICardPaymentProcessor.sol";
 import "./base/PauseControlUpgradeable.sol";
+import "./CardPaymentProcessorStorage.sol";
 
 /**
  * @title CardPaymentProcessorUpgradeable contract
  * @dev Wrapper for the card payment operations.
  */
-contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseControlUpgradeable, ICardPaymentProcessor {
+contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseControlUpgradeable, CardPaymentProcessorStorage, ICardPaymentProcessor {
 
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
@@ -20,19 +21,6 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         uint8 oldLimit,
         uint8 newLimit
     );
-
-    /// @dev The address of the underlying token contract.
-    address public token;
-
-    uint256 private _totalClearedBalance;
-    uint256 private _totalUnclearedBalance;
-    uint8 private _revocationLimit;
-
-    mapping(address => uint256) private _unclearedBalances;
-    mapping(address => uint256) private _clearedBalances;
-    mapping(bytes16 => CardPaymentProcessor.Payment) private _payments;
-    mapping(bytes32 => bool) private _paymentRevocationFlags;
-    mapping(bytes32 => bool) private _paymentReversionFlags;
 
     /// @dev Zero has been passed when setting a new revocation limit.
     error ZeroRevocationLimit();
@@ -91,7 +79,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
     }
 
     function __CardPaymentProcessor_init_unchained(address token_) internal onlyInitializing {
-        token = token_;
+        _token = token_;
         _revocationLimit = type(uint8).max;
 
         _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
@@ -104,7 +92,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
      * @dev See {ICardPaymentProcessor-underlyingToken}.
      */
     function underlyingToken() external view returns (address) {
-        return token;
+        return _token;
     }
 
     /**
@@ -198,7 +186,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
             revert RevocationLimitReached(_revocationLimit);
         }
 
-        IERC20Upgradeable(token).transferFrom(
+        IERC20Upgradeable(_token).transferFrom(
             sender,
             address(this),
             amount
@@ -364,7 +352,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
 
         uint256 amount = confirmPaymentInternal(authorizationId);
         _totalClearedBalance = _totalClearedBalance - amount;
-        IERC20Upgradeable(token).transfer(cashOutAccount, amount);
+        IERC20Upgradeable(_token).transfer(cashOutAccount, amount);
     }
 
     /**
@@ -396,7 +384,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         }
 
         _totalClearedBalance = _totalClearedBalance - totalAmount;
-        IERC20Upgradeable(token).transfer(cashOutAccount, totalAmount);
+        IERC20Upgradeable(_token).transfer(cashOutAccount, totalAmount);
     }
 
     /**
@@ -543,7 +531,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
             revert InappropriatePaymentStatus(status);
         }
 
-        IERC20Upgradeable(token).transfer(account, amount);
+        IERC20Upgradeable(_token).transfer(account, amount);
 
         if (targetStatus == CardPaymentProcessor.PaymentStatus.Revoked) {
             payment.status = CardPaymentProcessor.PaymentStatus.Revoked;
