@@ -3,6 +3,7 @@
 pragma solidity ^0.8.8;
 
 import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import {ICardPaymentProcessor, CardPaymentProcessor} from "./interfaces/ICardPaymentProcessor.sol";
 import {PauseControlUpgradeable} from "./base/PauseControlUpgradeable.sol";
@@ -16,6 +17,8 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
 
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
+
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     event SetRevocationLimit(
         uint8 oldLimit,
@@ -186,7 +189,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
             revert RevocationLimitReached(_revocationLimit);
         }
 
-        IERC20Upgradeable(_token).transferFrom(
+        IERC20Upgradeable(_token).safeTransferFrom(
             sender,
             address(this),
             amount
@@ -352,7 +355,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
 
         uint256 amount = confirmPaymentInternal(authorizationId);
         _totalClearedBalance = _totalClearedBalance - amount;
-        IERC20Upgradeable(_token).transfer(cashOutAccount, amount);
+        IERC20Upgradeable(_token).safeTransfer(cashOutAccount, amount);
     }
 
     /**
@@ -384,7 +387,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         }
 
         _totalClearedBalance = _totalClearedBalance - totalAmount;
-        IERC20Upgradeable(_token).transfer(cashOutAccount, totalAmount);
+        IERC20Upgradeable(_token).safeTransfer(cashOutAccount, totalAmount);
     }
 
     /**
@@ -531,7 +534,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
             revert InappropriatePaymentStatus(status);
         }
 
-        IERC20Upgradeable(_token).transfer(account, amount);
+        IERC20Upgradeable(_token).safeTransfer(account, amount);
 
         if (targetStatus == CardPaymentProcessor.PaymentStatus.Revoked) {
             payment.status = CardPaymentProcessor.PaymentStatus.Revoked;
