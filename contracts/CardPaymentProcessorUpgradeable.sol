@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.8;
 
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import "./interfaces/ICardPaymentProcessor.sol";
-import "./base/PauseControlUpgradeable.sol";
-import "./CardPaymentProcessorStorage.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import {ICardPaymentProcessor, CardPaymentProcessor} from "./interfaces/ICardPaymentProcessor.sol";
+import {PauseControlUpgradeable} from "./base/PauseControlUpgradeable.sol";
+import {CardPaymentProcessorStorage} from "./CardPaymentProcessorStorage.sol";
 
 /**
  * @title CardPaymentProcessorUpgradeable contract
