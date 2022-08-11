@@ -1,6 +1,6 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
-import '@openzeppelin/hardhat-upgrades';
+import "@openzeppelin/hardhat-upgrades";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -17,6 +17,19 @@ const config: HardhatUserConfig = {
       accounts: {
         mnemonic: "test test test test test test test test test test test junk",
       },
+    },
+    ganache: {
+      url: "http://127.0.0.1:7545",
+      accounts: {
+        mnemonic: "test test test test test test test test test test test junk"
+      }
+    },
+    substrate: {
+      url: "http://127.0.0.1:9933",
+      accounts: {
+        mnemonic: "test test test test test test test test test test test junk",
+      },
+      gas: "auto"
     },
   },
 };
