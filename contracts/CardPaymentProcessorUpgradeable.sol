@@ -30,7 +30,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
 
     mapping(address => uint256) private _unclearedBalances;
     mapping(address => uint256) private _clearedBalances;
-    mapping(bytes16 => Payment) private _payments;
+    mapping(bytes16 => CardPaymentProcessor.Payment) private _payments;
     mapping(bytes32 => bool) private _paymentRevocationFlags;
     mapping(bytes32 => bool) private _paymentReversionFlags;
 
@@ -68,7 +68,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
      * @dev The payment with the provided authorization ID has an inappropriate status.
      * @param currentStatus The current status of payment with the provided authorization ID.
      */
-    error InappropriatePaymentStatus(PaymentStatus currentStatus);
+    error InappropriatePaymentStatus(CardPaymentProcessor.PaymentStatus currentStatus);
 
     /**
      * @dev Revocation counter of the payment reached the configured limit.
@@ -138,7 +138,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
     /**
      * @dev See {ICardPaymentProcessor-paymentFor}.
      */
-    function paymentFor(bytes16 authorizationId) external view returns (Payment memory) {
+    function paymentFor(bytes16 authorizationId) external view returns (CardPaymentProcessor.Payment memory) {
         return _payments[authorizationId];
     }
 
@@ -178,7 +178,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         external
         whenNotPaused
     {
-        Payment storage payment = _payments[authorizationId];
+        CardPaymentProcessor.Payment storage payment = _payments[authorizationId];
         address sender = _msgSender();
 
         if (amount == 0) {
@@ -188,8 +188,8 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
             revert ZeroAuthorizationId();
         }
 
-        PaymentStatus status = payment.status;
-        if (status != PaymentStatus.Nonexistent && status != PaymentStatus.Revoked) {
+        CardPaymentProcessor.PaymentStatus status = payment.status;
+        if (status != CardPaymentProcessor.PaymentStatus.Nonexistent && status != CardPaymentProcessor.PaymentStatus.Revoked) {
             revert PaymentAlreadyExists();
         }
 
@@ -206,7 +206,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
 
         payment.account = sender;
         payment.amount = amount;
-        payment.status = PaymentStatus.Uncleared;
+        payment.status = CardPaymentProcessor.PaymentStatus.Uncleared;
 
         _unclearedBalances[sender] = _unclearedBalances[sender] + amount;
         _totalUnclearedBalance = _totalUnclearedBalance + amount;
@@ -313,7 +313,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
             authorizationId,
             correlationId,
             parentTxHash,
-            PaymentStatus.Reversed
+            CardPaymentProcessor.PaymentStatus.Reversed
         );
     }
 
@@ -338,7 +338,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
             authorizationId,
             correlationId,
             parentTxHash,
-            PaymentStatus.Revoked
+            CardPaymentProcessor.PaymentStatus.Revoked
         );
     }
 
@@ -433,10 +433,10 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
             revert ZeroAuthorizationId();
         }
 
-        Payment storage payment = _payments[authorizationId];
+        CardPaymentProcessor.Payment storage payment = _payments[authorizationId];
 
         checkUnclearedStatus(payment.status);
-        payment.status = PaymentStatus.Cleared;
+        payment.status = CardPaymentProcessor.PaymentStatus.Cleared;
 
         address account = payment.account;
         amount = payment.amount;
@@ -461,10 +461,10 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
             revert ZeroAuthorizationId();
         }
 
-        Payment storage payment = _payments[authorizationId];
+        CardPaymentProcessor.Payment storage payment = _payments[authorizationId];
 
         checkClearedStatus(payment.status);
-        payment.status = PaymentStatus.Uncleared;
+        payment.status = CardPaymentProcessor.PaymentStatus.Uncleared;
 
         address account = payment.account;
         amount = payment.amount;
@@ -489,10 +489,10 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
             revert ZeroAuthorizationId();
         }
 
-        Payment storage payment = _payments[authorizationId];
+        CardPaymentProcessor.Payment storage payment = _payments[authorizationId];
 
         checkClearedStatus(payment.status);
-        payment.status = PaymentStatus.Confirmed;
+        payment.status = CardPaymentProcessor.PaymentStatus.Confirmed;
 
         address account = payment.account;
         amount = payment.amount;
@@ -512,7 +512,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         bytes16 authorizationId,
         bytes16 correlationId,
         bytes32 parentTxHash,
-        PaymentStatus targetStatus
+        CardPaymentProcessor.PaymentStatus targetStatus
     )
         internal
     {
@@ -523,20 +523,20 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
             revert ZeroParentTransactionHash();
         }
 
-        Payment storage payment = _payments[authorizationId];
-        PaymentStatus status = payment.status;
+        CardPaymentProcessor.Payment storage payment = _payments[authorizationId];
+        CardPaymentProcessor.PaymentStatus status = payment.status;
 
-        if (status == PaymentStatus.Nonexistent) {
+        if (status == CardPaymentProcessor.PaymentStatus.Nonexistent) {
             revert PaymentDoesNotExit();
         }
 
         address account = payment.account;
         uint256 amount = payment.amount;
 
-        if (status == PaymentStatus.Uncleared) {
+        if (status == CardPaymentProcessor.PaymentStatus.Uncleared) {
             _unclearedBalances[account] = _unclearedBalances[account] - amount;
             _totalUnclearedBalance = _totalUnclearedBalance - amount;
-        } else if (status == PaymentStatus.Cleared) {
+        } else if (status == CardPaymentProcessor.PaymentStatus.Cleared) {
             _clearedBalances[account] = _clearedBalances[account] - amount;
             _totalClearedBalance = _totalClearedBalance - amount;
         } else {
@@ -545,8 +545,8 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
 
         IERC20Upgradeable(token).transfer(account, amount);
 
-        if (targetStatus == PaymentStatus.Revoked) {
-            payment.status = PaymentStatus.Revoked;
+        if (targetStatus == CardPaymentProcessor.PaymentStatus.Revoked) {
+            payment.status = CardPaymentProcessor.PaymentStatus.Revoked;
             uint8 newRevocationCounter = payment.revocationCounter + 1;
             payment.revocationCounter = newRevocationCounter;
             _paymentRevocationFlags[parentTxHash] = true;
@@ -558,12 +558,12 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
                 amount,
                 _clearedBalances[account],
                 _unclearedBalances[account],
-                status == PaymentStatus.Cleared,
+                status == CardPaymentProcessor.PaymentStatus.Cleared,
                 parentTxHash,
                 newRevocationCounter
             );
         } else {
-            payment.status = PaymentStatus.Reversed;
+            payment.status = CardPaymentProcessor.PaymentStatus.Reversed;
             _paymentReversionFlags[parentTxHash] = true;
 
             emit ReversePayment(
@@ -573,33 +573,33 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
                 amount,
                 _clearedBalances[account],
                 _unclearedBalances[account],
-                status == PaymentStatus.Cleared,
+                status == CardPaymentProcessor.PaymentStatus.Cleared,
                 parentTxHash,
                 payment.revocationCounter
             );
         }
     }
 
-    function checkClearedStatus(PaymentStatus status) internal pure {
-        if (status == PaymentStatus.Nonexistent) {
+    function checkClearedStatus(CardPaymentProcessor.PaymentStatus status) internal pure {
+        if (status == CardPaymentProcessor.PaymentStatus.Nonexistent) {
             revert PaymentDoesNotExit();
         }
-        if (status == PaymentStatus.Uncleared) {
+        if (status == CardPaymentProcessor.PaymentStatus.Uncleared) {
             revert PaymentAlreadyUncleared();
         }
-        if (status != PaymentStatus.Cleared) {
+        if (status != CardPaymentProcessor.PaymentStatus.Cleared) {
             revert InappropriatePaymentStatus(status);
         }
     }
 
-    function checkUnclearedStatus(PaymentStatus status) internal pure {
-        if (status == PaymentStatus.Nonexistent) {
+    function checkUnclearedStatus(CardPaymentProcessor.PaymentStatus status) internal pure {
+        if (status == CardPaymentProcessor.PaymentStatus.Nonexistent) {
             revert PaymentDoesNotExit();
         }
-        if (status == PaymentStatus.Cleared) {
+        if (status == CardPaymentProcessor.PaymentStatus.Cleared) {
             revert PaymentAlreadyCleared();
         }
-        if (status != PaymentStatus.Uncleared) {
+        if (status != CardPaymentProcessor.PaymentStatus.Uncleared) {
             revert InappropriatePaymentStatus(status);
         }
     }

@@ -3,7 +3,49 @@
 pragma solidity ^0.8.4;
 
 /**
- * @dev Interface of an CardPaymentProcessor compliant contract.
+ * @title CardPaymentProcessor library
+ */
+library CardPaymentProcessor {
+    /**
+     * @dev Possible statuses of a payment as an enum.
+     *
+     * The possible values:
+     * - Nonexistent - The payment does not exist (the default value).
+     * - Uncleared --- The status immediately after the payment making.
+     * - Cleared ----- The payment has been cleared and is ready to be confirmed.
+     * - Revoked ----- The payment was revoked due to some technical reason.
+     *                 The related tokens have been transferred back to a customer.
+     *                 The payment can be made again with the same authorizationId.
+     * - Reversed ---- The payment was reversed due to the decision of the off-chain card processing service.
+     *                 The related tokens have been transferred back to a customer.
+     *                 The payment cannot be made again with the same authorizationId.
+     */
+    enum PaymentStatus {
+        Nonexistent, // 0
+        Uncleared,   // 1
+        Cleared,     // 2
+        Revoked,     // 3
+        Reversed,    // 4
+        Confirmed    // 5
+    }
+
+    /**
+     * @dev Structure with data of a single payment.
+     */
+    struct Payment {
+        // Account who made the payment
+        address account;
+        // Amount of tokens in the payment
+        uint256 amount;
+        // Current status of the payment according to the {PaymentStatus} enum
+        PaymentStatus status;
+        // Number of payment revocations
+        uint8 revocationCounter;
+    }
+}
+
+/**
+ * @title CardPaymentProcessor interface
  */
 interface ICardPaymentProcessor {
     /**
@@ -83,48 +125,6 @@ interface ICardPaymentProcessor {
     );
 
     /**
-     * @dev Possible statuses of a payment as an enum.
-     *
-     * The possible values:
-     * - Nonexistent - the payment does not exist (the default value).
-     * - Uncleared --- the status immediately after the payment making.
-     * - Cleared ----- the payment has been cleared and is ready to be confirmed.
-     * - Revoked ----- the payment was revoked due to some technical reason.
-     *                 The related tokens have been transferred back to a customer.
-     *                 The payment can be made again with the same authorizationId.
-     * - Reversed ---- the payment was reversed due to the decision of the off-chain card processing service.
-     *                 The related tokens have been transferred back to a customer.
-     *                 The payment cannot be made again with the same authorizationId.
-     * - Confirmed --- the payment was approved.
-     *                 The related tokens have been transferred to a special cash-out account to further operations.
-     *                 The payment cannot be made again with the same authorizationId.
-     */
-    enum PaymentStatus {
-        Nonexistent, // 0
-        Uncleared, // 1
-        Cleared, // 2
-        Revoked, // 3
-        Reversed, // 4
-        Confirmed // 5
-    }
-
-    /**
-     * @dev Structure with data of a single payment.
-     *
-     * Data fileds:
-     * - account - the account who made the payment.
-     * - amount -- the amount of tokens in the payment.
-     * - status -- the current status of the payment according to the {PaymentStatus} enum.
-     * - revocationCounter -- the number of revocation of the payment.
-     */
-    struct Payment {
-        address account;
-        uint256 amount;
-        PaymentStatus status;
-        uint8 revocationCounter;
-    }
-
-    /**
      * @dev Returns the address of the underlying token.
      */
     function underlyingToken() external view returns (address);
@@ -155,7 +155,7 @@ interface ICardPaymentProcessor {
      * @dev Returns payment data for a card transaction authorization ID.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      */
-    function paymentFor(bytes16 authorizationId) external view returns (Payment memory);
+    function paymentFor(bytes16 authorizationId) external view returns (CardPaymentProcessor.Payment memory);
 
     /**
      * @dev Checks if a payment related to a parent transaction hash has been revoked.
