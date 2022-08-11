@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
@@ -132,6 +132,48 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PausableEx
     mapping(bytes32 => bool) private _paymentRevocationFlags;
     mapping(bytes32 => bool) private _paymentReversionFlags;
 
+    /// @dev Zero has been passed when setting the new value of the revocation counter maximum.
+    error ZeroNewValueOfRevocationCounterMaximum();
+
+    /// @dev Zero amount of tokens has been passed when making a payment.
+    error ZeroPaymentAmount();
+
+    /// @dev Zero authorization ID has been passed as a function argument.
+    error ZeroAuthorizationId();
+
+    /// @dev The payment with the provided authorization ID already exists and was not revoked.
+    error PaymentAlreadyExists();
+
+    /**
+     * @dev Revocation counter of the payment reached the configured maximum and payment cannot be made.
+     * @param configuredRevocationCounterMaximum The configured maximum value.
+     */
+    error RevocationCounterReachedMaximum(uint8 configuredRevocationCounterMaximum);
+
+    /// @dev The input array of authorization IDs of a function is empty.
+    error EmptyInputArrayOfAuthorizationIds();
+
+    /// @dev Zero cash out account has been passed as a function argument.
+    error ZeroCashOutAccount();
+
+    /// @dev Zero parent transaction has been passed as a function argument.
+    error ZeroParentTransactionHash();
+
+    /// @dev Payment with the provided authorization ID is uncleared, but it should be cleared.
+    error PaymentIsUncleared();
+
+    /// @dev Payment with the provided authorization ID is cleared, but it should be uncleared.
+    error PaymentIsCleared();
+
+    /**
+     * @dev The payment with the provided authorization ID has an inappropriate status.
+     * @param currentStatus The current status of payment with the provided authorization ID.
+     */
+    error InappropriatePaymentStatus(PaymentStatus currentStatus);
+
+    /// @dev The payment with the provided authorization ID does not exist.
+    error PaymentDoesNotExit();
+
     function initialize(address token_) public initializer {
         __CardPaymentProcessor_init(token_);
     }
@@ -216,10 +258,9 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PausableEx
      * @param newValue The new value of revocation counter maximum to set.
      */
     function setRevocationCounterMaximum(uint8 newValue) external onlyRole(OWNER_ROLE) {
-        require(
-            newValue > 0,
-            "CardPaymentProcessor: new value of the revocation counter maximum must be greater than 0"
-        );
+        if (newValue == 0) {
+            revert ZeroNewValueOfRevocationCounterMaximum();
+        }
 
         uint8 oldValue = _revocationCounterMaximum;
         if (oldValue == newValue) {
@@ -271,27 +312,22 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PausableEx
         Payment storage payment = _payments[authorizationId];
         address sender = _msgSender();
 
-        require(
-            amount > 0,
-            "CardPaymentProcessor: payment amount must be greater than 0"
-        );
-
-        require(
-            authorizationId != 0,
-            "CardPaymentProcessor: authorization ID must not equal 0"
-        );
+        if (amount == 0) {
+            revert ZeroPaymentAmount();
+        }
+        if (authorizationId == 0) {
+            revert ZeroAuthorizationId();
+        }
 
         PaymentStatus status = payment.status;
-        require(
-            status == PaymentStatus.Nonexistent || status == PaymentStatus.Revoked,
-            "CardPaymentProcessor: payment with the provided authorization ID already exists and was not revoked"
-        );
+        if (status != PaymentStatus.Nonexistent && status != PaymentStatus.Revoked) {
+            revert PaymentAlreadyExists();
+        }
 
         uint8 revocationCounter = payment.revocationCounter;
-        require(
-            revocationCounter < _revocationCounterMaximum,
-            "CardPaymentProcessor: revocation counter of the payment has reached the configured maximum"
-        );
+        if (revocationCounter >= _revocationCounterMaximum) {
+            revert RevocationCounterReachedMaximum(_revocationCounterMaximum);
+        }
 
         IERC20Upgradeable(token).transferFrom(
             sender,
@@ -352,10 +388,9 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PausableEx
      * @param authorizationIds The card transaction authorization IDs from the off-chain card processing backend.
      */
     function clearPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        require(
-            authorizationIds.length != 0,
-            "CardPaymentProcessor: input array of authorization IDs is empty"
-        );
+        if (authorizationIds.length == 0) {
+            revert EmptyInputArrayOfAuthorizationIds();
+        }
 
         uint256 totalAmount = 0;
         for (uint256 i = 0; i < authorizationIds.length; i++) {
@@ -402,10 +437,9 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PausableEx
      * @param authorizationIds The card transaction authorization IDs from the off-chain card processing backend.
      */
     function unclearPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        require(
-            authorizationIds.length != 0,
-            "CardPaymentProcessor: input array of authorization IDs is empty"
-        );
+        if (authorizationIds.length == 0) {
+            revert EmptyInputArrayOfAuthorizationIds();
+        }
         uint256 totalAmount = 0;
         for (uint256 i = 0; i < authorizationIds.length; i++) {
             totalAmount = totalAmount + unclearPaymentInternal(authorizationIds[i]);
@@ -509,10 +543,9 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PausableEx
         whenNotPaused
         onlyRole(EXECUTOR_ROLE)
     {
-        require(
-            cashOutAccount != address(0),
-            "CardPaymentProcessor: cash out account is the zero address"
-        );
+        if (cashOutAccount == address(0)) {
+            revert ZeroCashOutAccount();
+        }
 
         uint256 amount = confirmPaymentInternal(authorizationId);
         _totalClearedBalance = _totalClearedBalance - amount;
@@ -543,14 +576,12 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PausableEx
         whenNotPaused
         onlyRole(EXECUTOR_ROLE)
     {
-        require(
-            authorizationIds.length != 0,
-            "CardPaymentProcessor: input array of authorization IDs is empty"
-        );
-        require(
-            cashOutAccount != address(0),
-            "CardPaymentProcessor: cash out account is the zero address"
-        );
+        if (authorizationIds.length == 0) {
+            revert EmptyInputArrayOfAuthorizationIds();
+        }
+        if (cashOutAccount == address(0)) {
+            revert ZeroCashOutAccount();
+        }
 
         uint256 totalAmount = 0;
         for (uint256 i = 0; i < authorizationIds.length; i++) {
@@ -562,10 +593,9 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PausableEx
     }
 
     function clearPaymentInternal(bytes16 authorizationId) internal returns (uint256 amount) {
-        require(
-            authorizationId != 0,
-            "CardPaymentProcessor: authorization ID must not equal 0"
-        );
+        if (authorizationId == 0) {
+            revert ZeroAuthorizationId();
+        }
 
         Payment storage payment = _payments[authorizationId];
 
@@ -591,10 +621,9 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PausableEx
     }
 
     function unclearPaymentInternal(bytes16 authorizationId) internal returns (uint256 amount) {
-        require(
-            authorizationId != 0,
-            "CardPaymentProcessor: authorization ID must not equal 0"
-        );
+        if (authorizationId == 0) {
+            revert ZeroAuthorizationId();
+        }
 
         Payment storage payment = _payments[authorizationId];
 
@@ -620,10 +649,9 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PausableEx
     }
 
     function confirmPaymentInternal(bytes16 authorizationId) internal returns (uint256 amount) {
-        require(
-            authorizationId != 0,
-            "CardPaymentProcessor: authorization ID must not equal 0"
-        );
+        if (authorizationId == 0) {
+            revert ZeroAuthorizationId();
+        }
 
         Payment storage payment = _payments[authorizationId];
 
@@ -652,22 +680,19 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PausableEx
     )
         internal
     {
-        require(
-            authorizationId != 0,
-            "CardPaymentProcessor: authorization ID must not equal 0"
-        );
-        require(
-            parentTxHash != 0,
-            "CardPaymentProcessor: parent transaction hash should not equal 0"
-        );
+        if (authorizationId == 0) {
+            revert ZeroAuthorizationId();
+        }
+        if (parentTxHash == 0) {
+            revert ZeroParentTransactionHash();
+        }
 
         Payment storage payment = _payments[authorizationId];
         PaymentStatus status = payment.status;
 
-        require(
-            status != PaymentStatus.Nonexistent,
-            "CardPaymentProcessor: payment with the provided authorization ID does not exist"
-        );
+        if (status == PaymentStatus.Nonexistent) {
+            revert PaymentDoesNotExit();
+        }
 
         address account = payment.account;
         uint256 amount = payment.amount;
@@ -679,7 +704,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PausableEx
             _clearedBalances[account] = _clearedBalances[account] - amount;
             _totalClearedBalance = _totalClearedBalance - amount;
         } else {
-            revert("CardPaymentProcessor: payment with the provided authorization ID has an inappropriate status");
+            revert InappropriatePaymentStatus(status);
         }
 
         IERC20Upgradeable(token).transfer(account, amount);
@@ -720,32 +745,26 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PausableEx
     }
 
     function checkClearedStatus(PaymentStatus status) internal pure {
-        require(
-            status != PaymentStatus.Nonexistent,
-            "CardPaymentProcessor: payment with the provided authorization ID does not exist"
-        );
-        require(
-            status != PaymentStatus.Uncleared,
-            "CardPaymentProcessor: payment with the provided authorization ID is uncleared"
-        );
-        require(
-            status == PaymentStatus.Cleared,
-            "CardPaymentProcessor: payment with the provided authorization ID has an inappropriate status"
-        );
+        if (status == PaymentStatus.Nonexistent) {
+            revert PaymentDoesNotExit();
+        }
+        if (status == PaymentStatus.Uncleared) {
+            revert PaymentIsUncleared();
+        }
+        if (status != PaymentStatus.Cleared) {
+            revert InappropriatePaymentStatus(status);
+        }
     }
 
     function checkUnclearedStatus(PaymentStatus status) internal pure {
-        require(
-            status != PaymentStatus.Nonexistent,
-            "CardPaymentProcessor: payment with the provided authorization ID does not exist"
-        );
-        require(
-            status != PaymentStatus.Cleared,
-            "CardPaymentProcessor: payment with the provided authorization ID is cleared"
-        );
-        require(
-            status == PaymentStatus.Uncleared,
-            "CardPaymentProcessor: payment with the provided authorization ID has an inappropriate status"
-        );
+        if (status == PaymentStatus.Nonexistent) {
+            revert PaymentDoesNotExit();
+        }
+        if (status == PaymentStatus.Cleared) {
+            revert PaymentIsCleared();
+        }
+        if (status != PaymentStatus.Uncleared) {
+            revert InappropriatePaymentStatus(status);
+        }
     }
 }
