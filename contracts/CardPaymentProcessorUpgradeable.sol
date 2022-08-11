@@ -4,120 +4,22 @@ pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "./interfaces/ICardPaymentProcessor.sol";
 import "./base/PauseControlUpgradeable.sol";
 
 /**
  * @title CardPaymentProcessorUpgradeable contract
  * @dev Wrapper for the card payment operations.
  */
-contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseControlUpgradeable {
+contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseControlUpgradeable, ICardPaymentProcessor {
 
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
-
-    event MakePayment(
-        bytes16 indexed authorizationId,
-        bytes16 indexed correlationId,
-        address indexed account,
-        uint256 amount,
-        uint8 revocationCounter
-    );
-
-    event ClearPayment(
-        bytes16 indexed authorizationId,
-        address indexed account,
-        uint256 amount,
-        uint256 clearedBalance,
-        uint256 unclearedBalance,
-        uint8 revocationCounter
-    );
-
-    event UnclearPayment(
-        bytes16 indexed authorizationId,
-        address indexed account,
-        uint256 amount,
-        uint256 clearedBalance,
-        uint256 unclearedBalance,
-        uint8 revocationCounter
-    );
-
-    event RevokePayment(
-        bytes16 indexed authorizationId,
-        bytes16 indexed correlationId,
-        address indexed account,
-        uint256 amount,
-        uint256 clearedBalance,
-        uint256 unclearedBalance,
-        bool wasPaymentCleared,
-        bytes32 parentTransactionHash,
-        uint8 revocationCounter
-    );
-
-    event ReversePayment(
-        bytes16 indexed authorizationId,
-        bytes16 indexed correlationId,
-        address indexed account,
-        uint256 amount,
-        uint256 clearedBalance,
-        uint256 unclearedBalance,
-        bool wasPaymentCleared,
-        bytes32 parentTransactionHash,
-        uint8 revocationCounter
-    );
-
-    event ConfirmPayment(
-        bytes16 indexed authorizationId,
-        address indexed account,
-        uint256 amount,
-        uint256 clearedBalance,
-        uint8 revocationCounter
-    );
 
     event SetRevocationLimit(
         uint8 oldLimit,
         uint8 newLimit
     );
-
-    /**
-     * @dev Possible statuses of a payment as an enum
-     *
-     * The possible values:
-     * - Nonexistent -- the payment does not exist (the default value).
-     * - Uncleared -- the status immediately after the payment making.
-     * - Cleared -- the payment has been cleared and is ready to be confirmed.
-     * - Revoked -- the payment was revoked due to some technical reason.
-     *              The related tokens have been transferred back to a customer.
-     *              The payment can be made again with the same authorizationId.
-     * - Reversed -- the payment was reversed due to the decision of the off-chain card processing service.
-     *               The related tokens have been transferred back to a customer.
-     *               The payment cannot be made again with the same authorizationId.
-     * - Confirmed -- the payment was approved.
-     *                The related tokens have been transferred to a special cash-out account to further operations.
-     *                The payment cannot be made again with the same authorizationId.
-     */
-    enum PaymentStatus {
-        Nonexistent, // 0
-        Uncleared,   // 1
-        Cleared,     // 2
-        Revoked,     // 3
-        Reversed,    // 4
-        Confirmed    // 5
-    }
-
-    /**
-     * @dev Structure with the data of a single payment:
-     *
-     * - account -- the account who made the payment;
-     * - amount -- the amount of tokens in the payment;
-     * - status -- the current status of the payment according to the {PaymentStatus} enum;
-     * - revocationCounter -- the number of revocation of the payment.
-     */
-    struct Payment {
-        address account;
-        uint256 amount;
-        PaymentStatus status;
-        uint8 revocationCounter;
-    }
 
     /// @dev The address of the underlying token contract.
     address public token;
@@ -199,84 +101,74 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
     }
 
     /**
-     * @dev Returns the total uncleared amount of tokens locked in the contract.
+     * @dev See {ICardPaymentProcessor-underlyingToken}.
      */
-    function totalUnclearedBalance() external view virtual returns (uint256) {
+    function underlyingToken() external view returns (address) {
+        return token;
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-totalUnclearedBalance}.
+     */
+    function totalUnclearedBalance() external view returns (uint256) {
         return _totalUnclearedBalance;
     }
 
     /**
-     * @dev Returns the total cleared amount of tokens locked in the contract.
+     * @dev See {ICardPaymentProcessor-totalClearedBalance}.
      */
-    function totalClearedBalance() external view virtual returns (uint256) {
+    function totalClearedBalance() external view returns (uint256) {
         return _totalClearedBalance;
     }
 
     /**
-     * @dev Returns the uncleared balance for an account.
-     * @param account The address of the account.
+     * @dev See {ICardPaymentProcessor-unclearedBalanceOf}.
      */
-    function unclearedBalanceOf(address account) external view virtual returns (uint256) {
+    function unclearedBalanceOf(address account) external view returns (uint256) {
         return _unclearedBalances[account];
     }
 
     /**
-     * @dev Returns the cleared balance for an account.
-     * @param account The address of the account.
+     * @dev See {ICardPaymentProcessor-clearedBalanceOf}.
      */
-    function clearedBalanceOf(address account) external view virtual returns (uint256) {
+    function clearedBalanceOf(address account) external view returns (uint256) {
         return _clearedBalances[account];
     }
 
     /**
-     * @dev Returns payment data for a card transaction authorization ID.
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * @dev See {ICardPaymentProcessor-paymentFor}.
      */
-    function paymentFor(bytes16 authorizationId) external view virtual returns (Payment memory) {
+    function paymentFor(bytes16 authorizationId) external view returns (Payment memory) {
         return _payments[authorizationId];
     }
 
     /**
-     * @dev Checks if a payment related to a parent transaction hash has been revoked.
-     * @param parentTxHash The hash of the transaction where the payment was made.
+     * @dev See {ICardPaymentProcessor-isPaymentRevoked}.
      */
-    function isPaymentRevoked(bytes32 parentTxHash) external view virtual returns (bool) {
+    function isPaymentRevoked(bytes32 parentTxHash) external view returns (bool) {
         return _paymentRevocationFlags[parentTxHash];
     }
 
     /**
-     * @dev Checks if a payment related to a parent transaction hash has been reversed.
-     * @param parentTxHash The hash of the transaction where the payment was made.
+     * @dev See {ICardPaymentProcessor-isPaymentReversed}.
      */
-    function isPaymentReversed(bytes32 parentTxHash) external view virtual returns (bool) {
+    function isPaymentReversed(bytes32 parentTxHash) external view returns (bool) {
         return _paymentReversionFlags[parentTxHash];
     }
 
     /**
-     * @dev Returns the limit on the number of payment revocations.
+     * @dev See {ICardPaymentProcessor-revocationLimit}.
      */
-    function revocationLimit() external virtual view returns (uint8) {
+    function revocationLimit() external view returns (uint8) {
         return _revocationLimit;
     }
 
     /**
-     * @dev Makes a card payment.
-     *
-     * Transfers the underlying tokens from the payer (who is the caller of the function) to this contract.
+     * @dev See {ICardPaymentProcessor-makePayment}.
      *
      * Requirements:
      *
      * - The contract must not be paused.
-     * - The amount of tokens in the payment should be greater then zero.
-     * - The authorization ID of the payment should not be zero.
-     * - The payment with the authorization ID should not exist or
-     *   should be revoked not more then the configured maximum times.
-     *
-     * Emits a {MakePayment} event.
-     *
-     * @param amount The amount of tokens to be transferred to this contract because of the payment.
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to call of this function in the off-chain card processing backend.
      */
     function makePayment(
         uint256 amount,
@@ -329,18 +221,12 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
     }
 
     /**
-     * @dev Executes a clearing operation for a single previously made card payment.
+     * @dev See {ICardPaymentProcessor-clearPayment}.
      *
      * Requirements:
      *
-     * - The payment should have the "uncleared" status.
      * - The contract must not be paused.
-     * - The caller should have the {EXECUTOR_ROLE} role.
-     * - The input authorization ID of the payment should not be zero.
-     *
-     * Emits a {ClearPayment} event for the payment.
-     *
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * - The caller must have the {EXECUTOR_ROLE} role.
      */
     function clearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         uint256 amount = clearPaymentInternal(authorizationId);
@@ -350,19 +236,12 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
     }
 
     /**
-     * @dev Executes a clearing operation for several previously made card payments.
+     * @dev See {ICardPaymentProcessor-clearPayments}.
      *
      * Requirements:
      *
-     * - Each payment should have the "uncleared" status or the call will be reverted.
      * - The contract must not be paused.
-     * - The caller should have the {EXECUTOR_ROLE} role.
-     * - The input array of the the authorization IDs should not be empty.
-     * - All the authorization IDs of the payments should not be zero.
-     *
-     * Emits a {ClearPayment} event for each payment.
-     *
-     * @param authorizationIds The card transaction authorization IDs from the off-chain card processing backend.
+     * - The caller must have the {EXECUTOR_ROLE} role.
      */
     function clearPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (authorizationIds.length == 0) {
@@ -378,18 +257,12 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
     }
 
     /**
-     * @dev Cancels a previously executed clearing operation for a single card payment.
+     * @dev See {ICardPaymentProcessor-unclearPayment}.
      *
      * Requirements:
      *
-     * - The payment should have the "cleared" status or the call will be reverted.
      * - The contract must not be paused.
-     * - The caller should have the {EXECUTOR_ROLE} role.
-     * - The input authorization ID of the payment should not be zero.
-     *
-     * Emits a {UnclearPayment} event for the payment.
-     *
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * - The caller must have the {EXECUTOR_ROLE} role.
      */
     function unclearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         uint256 amount = unclearPaymentInternal(authorizationId);
@@ -399,24 +272,18 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
     }
 
     /**
-     * @dev Cancels a previously executed clearing operation for several card payments.
+     * @dev See {ICardPaymentProcessor-unclearPayments}.
      *
      * Requirements:
      *
-     * - Each payment should have the "cleared" status or the call will be reverted.
      * - The contract must not be paused.
-     * - The caller should have the {EXECUTOR_ROLE} role.
-     * - The input array of the the authorization IDs should not be empty.
-     * - All the authorization IDs of the payments should not be zero.
-     *
-     * Emits a {UnclearPayment} event for the payment.
-     *
-     * @param authorizationIds The card transaction authorization IDs from the off-chain card processing backend.
+     * - The caller must have the {EXECUTOR_ROLE} role.
      */
     function unclearPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (authorizationIds.length == 0) {
             revert EmptyAuthorizationIdsArray();
         }
+
         uint256 totalAmount = 0;
         for (uint256 i = 0; i < authorizationIds.length; i++) {
             totalAmount = totalAmount + unclearPaymentInternal(authorizationIds[i]);
@@ -426,44 +293,12 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
     }
 
     /**
-     * @dev Sets a new value for the revocation limit.
-     * Emits a {SetRevocationLimit} event if the new limit differs from the old value.
-     * @param newLimit The new value of revocation limit to set.
-     */
-    function setRevocationLimit(uint8 newLimit) external onlyRole(OWNER_ROLE) {
-        if (newLimit == 0) {
-            revert ZeroRevocationLimit();
-        }
-
-        uint8 oldLimit = _revocationLimit;
-        if (oldLimit == newLimit) {
-            return;
-        }
-
-        _revocationLimit = newLimit;
-        emit SetRevocationLimit(
-            oldLimit,
-            newLimit
-        );
-    }
-
-    /**
-     * @dev Performs the reverse of a previously made card payment.
-     * Finalizes the payment: no other operations can be done for the payment.
-     * Transfers tokens back from this contract to the payer.
+     * @dev See {ICardPaymentProcessor-reversePayment}.
      *
      * Requirements:
      *
-     * - The payment should have "cleared" or "uncleared" statuses.
      * - The contract must not be paused.
-     * - The caller should have the {EXECUTOR_ROLE} role.
-     * - The input authorization ID and parent transaction hash of the payment should not be zero.
-     *
-     * Emits a {ReversePayment} event for the payment.
-     *
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to call of this function in the off-chain card processing backend.
-     * @param parentTxHash The hash of the transaction where the payment was made.
+     * - The caller must have the {EXECUTOR_ROLE} role.
      */
     function reversePayment(
         bytes16 authorizationId,
@@ -483,22 +318,12 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
     }
 
     /**
-     * @dev Performs the revocation of a previously made card payment and increase its revocation counter.
-     * Does not finalize the payment: it can be made again until revocation counter reaches the configured maximum.
-     * Transfers tokens back from this contract to the payer.
+     * @dev See {ICardPaymentProcessor-revokePayment}.
      *
      * Requirements:
      *
-     * - The payment should have "cleared" or "uncleared" statuses.
      * - The contract must not be paused.
-     * - The caller should have the {EXECUTOR_ROLE} role.
-     * - The input authorization ID and parent transaction hash of the payment should not be zero.
-     *
-     * Emits a {RevokePayment} event for the payment.
-     *
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to call of this function in the off-chain card processing backend.
-     * @param parentTxHash The hash of the transaction where the payment was made.
+     * - The caller must have the {EXECUTOR_ROLE} role.
      */
     function revokePayment(
         bytes16 authorizationId,
@@ -518,21 +343,12 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
     }
 
     /**
-     * @dev Executes the final step of single card payments processing with token transferring.
-     * Finalizes the payment: no other operations can be done for the payment.
-     * Transfers previously cleared tokens gotten from a payer to a dedicated cash-out account for further operations.
+     * @dev See {ICardPaymentProcessor-confirmPayment}.
      *
      * Requirements:
      *
-     * - The payment should have the "cleared" status.
      * - The contract must not be paused.
-     * - The caller should have the {EXECUTOR_ROLE} role.
-     * - The input authorization ID and cash out account of the payment should not be zero.
-     *
-     * Emits a {ConfirmPayment} event for the payment.
-     *
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param cashOutAccount The account to transfer cleared tokens to.
+     * - The caller must have the {EXECUTOR_ROLE} role.
      */
     function confirmPayment(
         bytes16 authorizationId,
@@ -552,20 +368,12 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
     }
 
     /**
-     * @dev Executes the final step of several card payments processing with token transferring.
-     * Finalizes the payment: no other operations can be done for the payments.
-     * Transfers previously cleared tokens gotten from payers to a dedicated cash-out account for further operations.
+     * @dev See {ICardPaymentProcessor-confirmPayments}.
      *
      * Requirements:
      *
-     * - Each payment should have the "cleared" status or the call will be reverted.
      * - The contract must not be paused.
-     * - The caller should have the {EXECUTOR_ROLE} role.
-     *
-     * Emits a {ConfirmPayment} event for the payment.
-     *
-     * @param authorizationIds The card transaction authorization IDs from the off-chain card processing backend.
-     * @param cashOutAccount The account to transfer cleared tokens to.
+     * - The caller must have the {EXECUTOR_ROLE} role.
      */
     function confirmPayments(
         bytes16[] memory authorizationIds,
@@ -586,9 +394,38 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         for (uint256 i = 0; i < authorizationIds.length; i++) {
             totalAmount += confirmPaymentInternal(authorizationIds[i]);
         }
-        _totalClearedBalance = _totalClearedBalance - totalAmount;
 
+        _totalClearedBalance = _totalClearedBalance - totalAmount;
         IERC20Upgradeable(token).transfer(cashOutAccount, totalAmount);
+    }
+
+    /**
+     * @dev Sets a new value for the revocation limit.
+     *
+     * Requirements:
+     *
+     * - The new revocation limit must be greater then zero.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     *
+     * Emits a {SetRevocationLimit} event if the new limit differs from the old value.
+     *
+     * @param newLimit The new revocation limit value to be set.
+     */
+    function setRevocationLimit(uint8 newLimit) external onlyRole(OWNER_ROLE) {
+        if (newLimit == 0) {
+            revert ZeroRevocationLimit();
+        }
+
+        uint8 oldLimit = _revocationLimit;
+        if (oldLimit == newLimit) {
+            return;
+        }
+
+        _revocationLimit = newLimit;
+        emit SetRevocationLimit(
+            oldLimit,
+            newLimit
+        );
     }
 
     function clearPaymentInternal(bytes16 authorizationId) internal returns (uint256 amount) {
