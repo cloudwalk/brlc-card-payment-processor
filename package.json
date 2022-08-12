@@ -1,37 +1,20 @@
 {
-  "name": "brlc-periphery",
-  "version": "1.0.0",
-  "description": "The periphery smart contracts, which is used together with the BRLC token",
-  "scripts": {
-    "test": "npx hardhat test"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/cloudwalk/brlc-periphery.git"
-  },
-  "keywords": [
-    "blockchain",
-    "solidity",
-    "BRLC"
-  ],
-  "author": "CloudWalk",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/cloudwalk/brlc-periphery/issues"
-  },
-  "homepage": "https://github.com/cloudwalk/brlc-periphery#readme",
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^1.0.2",
-    "@openzeppelin/contracts-upgradeable": "^4.7.2",
-    "@openzeppelin/hardhat-upgrades": "^1.19.1",
-    "@types/chai": "^4.3.1",
+    "@openzeppelin/contracts-upgradeable": "^4.7.3",
+    "@openzeppelin/hardhat-upgrades": "^1.20.0",
+    "@types/chai": "^4.3.3",
     "@types/mocha": "^9.1.1",
-    "@types/node": "^18.6.3",
+    "@types/node": "^18.7.2",
     "chai": "^4.3.6",
     "hardhat": "^2.10.1",
     "prettier": "^2.7.1",
     "prettier-plugin-solidity": "^1.0.0-beta.24",
     "ts-node": "^10.9.1",
     "typescript": "^4.7.4"
+  },
+  "scripts": {
+    "test": "npx hardhat test",
+    "prettier": "prettier --write 'contracts/**/*.sol'"
   }
 }
