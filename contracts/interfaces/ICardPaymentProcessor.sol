@@ -48,7 +48,7 @@ interface ICardPaymentProcessorTypes {
 /**
  * @title CardPaymentProcessor interface
  */
-interface ICardPaymentProcessor is ICardPaymentProcessorTypes{
+interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Emitted when payment is made.
      */

@@ -7,7 +7,7 @@ import { ICardPaymentProcessorTypes } from "./interfaces/ICardPaymentProcessor.s
 /**
  * @title CardPaymentProcessor storage version 1
  */
-abstract contract CardPaymentProcessorStorageV1 is ICardPaymentProcessorTypes{
+abstract contract CardPaymentProcessorStorageV1 is ICardPaymentProcessorTypes {
     /// @dev The address of the underlying token.
     address internal _token;
 
