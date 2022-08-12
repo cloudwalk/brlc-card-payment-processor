@@ -270,7 +270,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
     // Get user accounts
     [deployer, user1, user2] = await ethers.getSigners();
 
-    //Roles
+    // Roles
     ownerRole = (await cardPaymentProcessor.OWNER_ROLE()).toLowerCase();
     pauserRole = (await cardPaymentProcessor.PAUSER_ROLE()).toLowerCase();
     executorRole = (await cardPaymentProcessor.EXECUTOR_ROLE()).toLowerCase();
@@ -282,18 +282,18 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
   });
 
   it("The initial contract configuration should be as expected", async () => {
-    //The underlying contract address
+    // The underlying contract address
     expect(await cardPaymentProcessor.underlyingToken()).to.equal(tokenMock.address);
 
-    //The revocation limit
+    // The revocation limit
     expect(await cardPaymentProcessor.revocationLimit()).to.equal(255);
 
-    //The role admins
+    // The role admins
     expect(await cardPaymentProcessor.getRoleAdmin(ownerRole)).to.equal(ownerRole);
     expect(await cardPaymentProcessor.getRoleAdmin(pauserRole)).to.equal(ownerRole);
     expect(await cardPaymentProcessor.getRoleAdmin(executorRole)).to.equal(ownerRole);
 
-    //The deployer should have the owner role, but not the other roles
+    // The deployer should have the owner role, but not the other roles
     expect(await cardPaymentProcessor.hasRole(ownerRole, deployer.address)).to.equal(true);
     expect(await cardPaymentProcessor.hasRole(pauserRole, deployer.address)).to.equal(false);
     expect(await cardPaymentProcessor.hasRole(executorRole, deployer.address)).to.equal(false);
@@ -410,7 +410,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       await checkCardPaymentProcessorState([payment]);
     });
 
-    it ("Executes successfully even if the revocation limit of payments is zero", async () => {
+    it("Executes successfully even if the revocation limit of payments is zero", async () => {
       await proveTx(cardPaymentProcessor.setRevocationLimit(0));
       await expect(cardPaymentProcessor.connect(payment.account).makePayment(
         payment.amount,
@@ -420,7 +420,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         cardPaymentProcessor,
         "MakePayment"
       );
-    })
+    });
 
     it("Is reverted if the payment authorization ID already exists", async () => {
       await makePayments([payment]);

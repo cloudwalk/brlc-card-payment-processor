@@ -6,7 +6,7 @@ import { proveTx } from "../../test-utils/eth";
 import { createRevertMessageDueToMissingRole } from "../../test-utils/misc";
 
 describe("Contract 'PauseControlUpgradeable'", async () => {
-  const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = 'Initializable: contract is already initialized';
+  const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
 
   let pauseControlMock: Contract;
   let deployer: SignerWithAddress;
@@ -21,7 +21,7 @@ describe("Contract 'PauseControlUpgradeable'", async () => {
 
     [deployer, user] = await ethers.getSigners();
 
-    //Roles
+    // Roles
     ownerRole = (await pauseControlMock.OWNER_ROLE()).toLowerCase();
     pauserRole = (await pauseControlMock.PAUSER_ROLE()).toLowerCase();
   });
@@ -37,14 +37,14 @@ describe("Contract 'PauseControlUpgradeable'", async () => {
   });
 
   it("The initial contract configuration should be as expected", async () => {
-    //The role admins
+    // The role admins
     expect(await pauseControlMock.getRoleAdmin(ownerRole)).to.equal(ethers.constants.HashZero);
     expect(await pauseControlMock.getRoleAdmin(pauserRole)).to.equal(ownerRole);
 
-    //The deployer should have the owner role, but not the other roles
+    // The deployer should have the owner role, but not the other roles
     expect(await pauseControlMock.hasRole(ownerRole, deployer.address)).to.equal(true);
     expect(await pauseControlMock.hasRole(pauserRole, deployer.address)).to.equal(false);
-  })
+  });
 
   describe("Function 'pause()'", async () => {
     beforeEach(async () => {
