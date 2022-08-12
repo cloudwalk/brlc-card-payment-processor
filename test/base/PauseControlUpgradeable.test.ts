@@ -36,6 +36,16 @@ describe("Contract 'PauseControlUpgradeable'", async () => {
       .to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
   });
 
+  it("The initial contract configuration should be as expected", async () => {
+    //The role admins
+    expect(await pauseControlMock.getRoleAdmin(ownerRole)).to.equal(ethers.constants.HashZero);
+    expect(await pauseControlMock.getRoleAdmin(pauserRole)).to.equal(ownerRole);
+
+    //The deployer should have the owner role, but not the other roles
+    expect(await pauseControlMock.hasRole(ownerRole, deployer.address)).to.equal(true);
+    expect(await pauseControlMock.hasRole(pauserRole, deployer.address)).to.equal(false);
+  })
+
   describe("Function 'pause()'", async () => {
     beforeEach(async () => {
       await proveTx(pauseControlMock.grantRole(pauserRole, user.address));

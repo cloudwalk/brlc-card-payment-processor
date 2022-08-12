@@ -282,6 +282,24 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       .to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
   });
 
+  it("The initial contract configuration should be as expected", async () => {
+    //The underlying contract address
+    expect(await cardPaymentProcessor.underlyingToken()).to.equal(tokenMock.address);
+
+    //The revocation limit
+    expect(await cardPaymentProcessor.revocationLimit()).to.equal(255);
+
+    //The role admins
+    expect(await cardPaymentProcessor.getRoleAdmin(ownerRole)).to.equal(ownerRole);
+    expect(await cardPaymentProcessor.getRoleAdmin(pauserRole)).to.equal(ownerRole);
+    expect(await cardPaymentProcessor.getRoleAdmin(executorRole)).to.equal(ownerRole);
+
+    //The deployer should have the owner role, but not the other roles
+    expect(await cardPaymentProcessor.hasRole(ownerRole, deployer.address)).to.equal(true);
+    expect(await cardPaymentProcessor.hasRole(pauserRole, deployer.address)).to.equal(false);
+    expect(await cardPaymentProcessor.hasRole(executorRole, deployer.address)).to.equal(false);
+  })
+
   describe("Function 'setRevocationLimit()'", async () => {
     const revocationCounterNewValue: number = 123;
     const revocationLimitDefaultValue: number = 255;
