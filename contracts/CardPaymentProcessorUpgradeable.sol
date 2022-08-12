@@ -183,7 +183,7 @@ contract CardPaymentProcessorUpgradeable is
         }
 
         uint8 revocationCounter = payment.revocationCounter;
-        if (revocationCounter >= _revocationLimit) {
+        if (revocationCounter != 0 && revocationCounter >= _revocationLimit) {
             revert RevocationLimitReached(_revocationLimit);
         }
 
@@ -305,6 +305,9 @@ contract CardPaymentProcessorUpgradeable is
         bytes16 correlationId,
         bytes32 parentTxHash
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        if (_revocationLimit == 0) {
+            revert RevocationLimitReached(0);
+        }
         cancelPaymentInternal(
             authorizationId,
             correlationId,

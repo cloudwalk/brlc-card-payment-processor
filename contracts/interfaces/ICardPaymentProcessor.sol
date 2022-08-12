@@ -185,6 +185,7 @@ interface ICardPaymentProcessor {
      * - The amount of tokens must be greater then zero.
      * - The authorization ID of the payment must not be zero.
      * - The payment with the authorization ID must not exist or be revoked.
+     * - The payment's revocation counter must be less then the configured revocation limit of payments or equals zero.
      *
      * Emits a {MakePayment} event.
      *
@@ -287,6 +288,7 @@ interface ICardPaymentProcessor {
      *
      * - The payment must have "cleared" or "uncleared" statuses.
      * - The input authorization ID and parent transaction hash of the payment must not be zero.
+     * - The revocation limit of payments should not be zero.
      *
      * Emits a {RevokePayment} event for the payment.
      *

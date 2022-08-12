@@ -410,6 +410,18 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       await checkCardPaymentProcessorState([payment]);
     });
 
+    it ("Executes successfully even if the revocation limit of payments is zero", async () => {
+      await proveTx(cardPaymentProcessor.setRevocationLimit(0));
+      await expect(cardPaymentProcessor.connect(payment.account).makePayment(
+        payment.amount,
+        authorizationId,
+        correlationId
+      )).to.emit(
+        cardPaymentProcessor,
+        "MakePayment"
+      );
+    })
+
     it("Is reverted if the payment authorization ID already exists", async () => {
       await makePayments([payment]);
       const otherMakingPaymentCorrelationsId: string = createBytesString(
@@ -861,6 +873,15 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         reversingPaymentCorrelationId,
         parentTxHash
       )).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
+    });
+
+    it("Is reverted if the configured revocation limit of payments is zero", async () => {
+      await proveTx(cardPaymentProcessor.setRevocationLimit(0));
+      await expect(cardPaymentProcessor.connect(admin).revokePayment(
+        authorizationId,
+        reversingPaymentCorrelationId,
+        parentTxHash
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_LIMIT);
     });
 
     it("Is reverted if the payment authorization ID is zero", async () => {
