@@ -83,7 +83,6 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
   const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
   const REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE = "ERC20: transfer amount exceeds balance";
 
-  const REVERT_ERROR_IF_NEW_REVOCATION_LIMIT_VALUE_IS_ZERO = "ZeroRevocationLimit";
   const REVERT_ERROR_IF_PAYMENT_AMOUNT_IS_ZERO = "ZeroPaymentAmount";
   const REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO = "ZeroAuthorizationId";
   const REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS = "PaymentAlreadyExists";
@@ -298,7 +297,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
     expect(await cardPaymentProcessor.hasRole(ownerRole, deployer.address)).to.equal(true);
     expect(await cardPaymentProcessor.hasRole(pauserRole, deployer.address)).to.equal(false);
     expect(await cardPaymentProcessor.hasRole(executorRole, deployer.address)).to.equal(false);
-  })
+  });
 
   describe("Function 'setRevocationLimit()'", async () => {
     const revocationCounterNewValue: number = 123;
@@ -308,14 +307,6 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       await expect(cardPaymentProcessor.connect(user1).setRevocationLimit(
         revocationCounterNewValue
       )).to.be.revertedWith(createRevertMessageDueToMissingRole(user1.address, ownerRole));
-    });
-
-    it("Is reverted if the new value is zero", async () => {
-      await expect(cardPaymentProcessor.setRevocationLimit(0))
-        .to.be.revertedWithCustomError(
-          cardPaymentProcessor,
-          REVERT_ERROR_IF_NEW_REVOCATION_LIMIT_VALUE_IS_ZERO
-        );
     });
 
     it("Emits the correct event, changes the revocation counter limit properly", async () => {

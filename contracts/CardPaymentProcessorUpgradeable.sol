@@ -26,9 +26,6 @@ contract CardPaymentProcessorUpgradeable is
 
     event SetRevocationLimit(uint8 oldLimit, uint8 newLimit);
 
-    /// @dev Zero has been passed when setting a new revocation limit.
-    error ZeroRevocationLimit();
-
     /// @dev Zero amount of tokens has been passed when making a payment.
     error ZeroPaymentAmount();
 
@@ -369,10 +366,10 @@ contract CardPaymentProcessorUpgradeable is
 
     /**
      * @dev Sets a new value for the revocation limit.
+     * If the limit equals 0 or 1 a payment with the same authorization ID cannot be repeated after the revocation.
      *
      * Requirements:
      *
-     * - The new revocation limit must be greater then zero.
      * - The caller must have the {EXECUTOR_ROLE} role.
      *
      * Emits a {SetRevocationLimit} event if the new limit differs from the old value.
@@ -380,10 +377,6 @@ contract CardPaymentProcessorUpgradeable is
      * @param newLimit The new revocation limit value to be set.
      */
     function setRevocationLimit(uint8 newLimit) external onlyRole(OWNER_ROLE) {
-        if (newLimit == 0) {
-            revert ZeroRevocationLimit();
-        }
-
         uint8 oldLimit = _revocationLimit;
         if (oldLimit == newLimit) {
             return;
