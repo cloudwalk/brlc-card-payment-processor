@@ -15,18 +15,19 @@ library CardPaymentProcessor {
      * - Cleared ----- The payment has been cleared and is ready to be confirmed.
      * - Revoked ----- The payment was revoked due to some technical reason.
      *                 The related tokens have been transferred back to a customer.
-     *                 The payment can be made again with the same authorizationId.
+     *                 The payment can be made again with the same authorizationId
+     *                 if its revocation counter does not reach the configure limit.
      * - Reversed ---- The payment was reversed due to the decision of the off-chain card processing service.
      *                 The related tokens have been transferred back to a customer.
      *                 The payment cannot be made again with the same authorizationId.
      */
     enum PaymentStatus {
         Nonexistent, // 0
-        Uncleared, // 1
-        Cleared, // 2
-        Revoked, // 3
-        Reversed, // 4
-        Confirmed // 5
+        Uncleared,   // 1
+        Cleared,     // 2
+        Revoked,     // 3
+        Reversed,    // 4
+        Confirmed    // 5
     }
 
     /**
@@ -170,7 +171,7 @@ interface ICardPaymentProcessor {
     function isPaymentReversed(bytes32 parentTxHash) external view returns (bool);
 
     /**
-     * @dev Returns the limit on the number of payment revocations.
+     * @dev Returns the configured limit of revocations for a single payment.
      */
     function revocationLimit() external view returns (uint8);
 
@@ -279,7 +280,7 @@ interface ICardPaymentProcessor {
 
     /**
      * @dev Performs the revocation of a previously made card payment and increase its revocation counter.
-     * Does not finalize the payment: it can be made again until revocation counter reaches the configured maximum.
+     * Does not finalize the payment: it can be made again until revocation counter reaches the configured limit.
      * Transfers tokens back from this contract to the payer.
      *
      * Requirements:

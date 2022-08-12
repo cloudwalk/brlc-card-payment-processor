@@ -35,7 +35,7 @@ contract CardPaymentProcessorUpgradeable is
     /// @dev Zero authorization ID has been passed as a function argument.
     error ZeroAuthorizationId();
 
-    /// @dev The payment with the provided authorization ID already exists and not revoked.
+    /// @dev The payment with the provided authorization ID already exists and is not revoked.
     error PaymentAlreadyExists();
 
     /// @dev Payment with the provided authorization ID is uncleared, but it must be cleared.
@@ -158,7 +158,7 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-makePayment}.
      *
-     * Requirements:
+     * Additional requirements:
      *
      * - The contract must not be paused.
      */
@@ -205,7 +205,7 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-clearPayment}.
      *
-     * Requirements:
+     * Additional requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -220,7 +220,7 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-clearPayments}.
      *
-     * Requirements:
+     * Additional requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -241,7 +241,7 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-unclearPayment}.
      *
-     * Requirements:
+     * Additional requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -256,7 +256,7 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-unclearPayments}.
      *
-     * Requirements:
+     * Additional requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -277,7 +277,7 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-reversePayment}.
      *
-     * Requirements:
+     * Additional requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -298,7 +298,7 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-revokePayment}.
      *
-     * Requirements:
+     * Additional requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -308,13 +308,18 @@ contract CardPaymentProcessorUpgradeable is
         bytes16 correlationId,
         bytes32 parentTxHash
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        cancelPaymentInternal(authorizationId, correlationId, parentTxHash, CardPaymentProcessor.PaymentStatus.Revoked);
+        cancelPaymentInternal(
+            authorizationId,
+            correlationId,
+            parentTxHash,
+            CardPaymentProcessor.PaymentStatus.Revoked
+        );
     }
 
     /**
      * @dev See {ICardPaymentProcessor-confirmPayment}.
      *
-     * Requirements:
+     * Additional requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -336,7 +341,7 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-confirmPayments}.
      *
-     * Requirements:
+     * Additional requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
