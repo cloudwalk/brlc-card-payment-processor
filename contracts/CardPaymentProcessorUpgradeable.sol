@@ -5,7 +5,7 @@ pragma solidity ^0.8.8;
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import { ICardPaymentProcessor, CardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
+import { ICardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
 import { PauseControlUpgradeable } from "./base/PauseControlUpgradeable.sol";
 import { CardPaymentProcessorStorage } from "./CardPaymentProcessorStorage.sol";
 
@@ -57,7 +57,7 @@ contract CardPaymentProcessorUpgradeable is
      * @dev The payment with the provided authorization ID has an inappropriate status.
      * @param currentStatus The current status of payment with the provided authorization ID.
      */
-    error InappropriatePaymentStatus(CardPaymentProcessor.PaymentStatus currentStatus);
+    error InappropriatePaymentStatus(PaymentStatus currentStatus);
 
     /**
      * @dev Revocation counter of the payment reached the configured limit.
@@ -127,7 +127,7 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-paymentFor}.
      */
-    function paymentFor(bytes16 authorizationId) external view returns (CardPaymentProcessor.Payment memory) {
+    function paymentFor(bytes16 authorizationId) external view returns (Payment memory) {
         return _payments[authorizationId];
     }
 
@@ -164,7 +164,7 @@ contract CardPaymentProcessorUpgradeable is
         bytes16 authorizationId,
         bytes16 correlationId
     ) external whenNotPaused {
-        CardPaymentProcessor.Payment storage payment = _payments[authorizationId];
+        Payment storage payment = _payments[authorizationId];
         address sender = _msgSender();
 
         if (amount == 0) {
@@ -174,10 +174,10 @@ contract CardPaymentProcessorUpgradeable is
             revert ZeroAuthorizationId();
         }
 
-        CardPaymentProcessor.PaymentStatus status = payment.status;
+        PaymentStatus status = payment.status;
         if (
-            status != CardPaymentProcessor.PaymentStatus.Nonexistent &&
-            status != CardPaymentProcessor.PaymentStatus.Revoked
+            status != PaymentStatus.Nonexistent &&
+            status != PaymentStatus.Revoked
         ) {
             revert PaymentAlreadyExists();
         }
@@ -191,7 +191,7 @@ contract CardPaymentProcessorUpgradeable is
 
         payment.account = sender;
         payment.amount = amount;
-        payment.status = CardPaymentProcessor.PaymentStatus.Uncleared;
+        payment.status = PaymentStatus.Uncleared;
 
         _unclearedBalances[sender] = _unclearedBalances[sender] + amount;
         _totalUnclearedBalance = _totalUnclearedBalance + amount;
@@ -288,7 +288,7 @@ contract CardPaymentProcessorUpgradeable is
             authorizationId,
             correlationId,
             parentTxHash,
-            CardPaymentProcessor.PaymentStatus.Reversed
+            PaymentStatus.Reversed
         );
     }
 
@@ -312,7 +312,7 @@ contract CardPaymentProcessorUpgradeable is
             authorizationId,
             correlationId,
             parentTxHash,
-            CardPaymentProcessor.PaymentStatus.Revoked
+            PaymentStatus.Revoked
         );
     }
 
@@ -394,10 +394,10 @@ contract CardPaymentProcessorUpgradeable is
             revert ZeroAuthorizationId();
         }
 
-        CardPaymentProcessor.Payment storage payment = _payments[authorizationId];
+        Payment storage payment = _payments[authorizationId];
 
         checkUnclearedStatus(payment.status);
-        payment.status = CardPaymentProcessor.PaymentStatus.Cleared;
+        payment.status = PaymentStatus.Cleared;
 
         address account = payment.account;
         amount = payment.amount;
@@ -422,10 +422,10 @@ contract CardPaymentProcessorUpgradeable is
             revert ZeroAuthorizationId();
         }
 
-        CardPaymentProcessor.Payment storage payment = _payments[authorizationId];
+        Payment storage payment = _payments[authorizationId];
 
         checkClearedStatus(payment.status);
-        payment.status = CardPaymentProcessor.PaymentStatus.Uncleared;
+        payment.status = PaymentStatus.Uncleared;
 
         address account = payment.account;
         amount = payment.amount;
@@ -450,10 +450,10 @@ contract CardPaymentProcessorUpgradeable is
             revert ZeroAuthorizationId();
         }
 
-        CardPaymentProcessor.Payment storage payment = _payments[authorizationId];
+        Payment storage payment = _payments[authorizationId];
 
         checkClearedStatus(payment.status);
-        payment.status = CardPaymentProcessor.PaymentStatus.Confirmed;
+        payment.status = PaymentStatus.Confirmed;
 
         address account = payment.account;
         amount = payment.amount;
@@ -467,7 +467,7 @@ contract CardPaymentProcessorUpgradeable is
         bytes16 authorizationId,
         bytes16 correlationId,
         bytes32 parentTxHash,
-        CardPaymentProcessor.PaymentStatus targetStatus
+        PaymentStatus targetStatus
     ) internal {
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
@@ -476,20 +476,20 @@ contract CardPaymentProcessorUpgradeable is
             revert ZeroParentTransactionHash();
         }
 
-        CardPaymentProcessor.Payment storage payment = _payments[authorizationId];
-        CardPaymentProcessor.PaymentStatus status = payment.status;
+        Payment storage payment = _payments[authorizationId];
+        PaymentStatus status = payment.status;
 
-        if (status == CardPaymentProcessor.PaymentStatus.Nonexistent) {
+        if (status == PaymentStatus.Nonexistent) {
             revert PaymentDoesNotExit();
         }
 
         address account = payment.account;
         uint256 amount = payment.amount;
 
-        if (status == CardPaymentProcessor.PaymentStatus.Uncleared) {
+        if (status == PaymentStatus.Uncleared) {
             _unclearedBalances[account] = _unclearedBalances[account] - amount;
             _totalUnclearedBalance = _totalUnclearedBalance - amount;
-        } else if (status == CardPaymentProcessor.PaymentStatus.Cleared) {
+        } else if (status == PaymentStatus.Cleared) {
             _clearedBalances[account] = _clearedBalances[account] - amount;
             _totalClearedBalance = _totalClearedBalance - amount;
         } else {
@@ -498,8 +498,8 @@ contract CardPaymentProcessorUpgradeable is
 
         IERC20Upgradeable(_token).safeTransfer(account, amount);
 
-        if (targetStatus == CardPaymentProcessor.PaymentStatus.Revoked) {
-            payment.status = CardPaymentProcessor.PaymentStatus.Revoked;
+        if (targetStatus == PaymentStatus.Revoked) {
+            payment.status = PaymentStatus.Revoked;
             uint8 newRevocationCounter = payment.revocationCounter + 1;
             payment.revocationCounter = newRevocationCounter;
             _paymentRevocationFlags[parentTxHash] = true;
@@ -511,12 +511,12 @@ contract CardPaymentProcessorUpgradeable is
                 amount,
                 _clearedBalances[account],
                 _unclearedBalances[account],
-                status == CardPaymentProcessor.PaymentStatus.Cleared,
+                status == PaymentStatus.Cleared,
                 parentTxHash,
                 newRevocationCounter
             );
         } else {
-            payment.status = CardPaymentProcessor.PaymentStatus.Reversed;
+            payment.status = PaymentStatus.Reversed;
             _paymentReversionFlags[parentTxHash] = true;
 
             emit ReversePayment(
@@ -526,33 +526,33 @@ contract CardPaymentProcessorUpgradeable is
                 amount,
                 _clearedBalances[account],
                 _unclearedBalances[account],
-                status == CardPaymentProcessor.PaymentStatus.Cleared,
+                status == PaymentStatus.Cleared,
                 parentTxHash,
                 payment.revocationCounter
             );
         }
     }
 
-    function checkClearedStatus(CardPaymentProcessor.PaymentStatus status) internal pure {
-        if (status == CardPaymentProcessor.PaymentStatus.Nonexistent) {
+    function checkClearedStatus(PaymentStatus status) internal pure {
+        if (status == PaymentStatus.Nonexistent) {
             revert PaymentDoesNotExit();
         }
-        if (status == CardPaymentProcessor.PaymentStatus.Uncleared) {
+        if (status == PaymentStatus.Uncleared) {
             revert PaymentAlreadyUncleared();
         }
-        if (status != CardPaymentProcessor.PaymentStatus.Cleared) {
+        if (status != PaymentStatus.Cleared) {
             revert InappropriatePaymentStatus(status);
         }
     }
 
-    function checkUnclearedStatus(CardPaymentProcessor.PaymentStatus status) internal pure {
-        if (status == CardPaymentProcessor.PaymentStatus.Nonexistent) {
+    function checkUnclearedStatus(PaymentStatus status) internal pure {
+        if (status == PaymentStatus.Nonexistent) {
             revert PaymentDoesNotExit();
         }
-        if (status == CardPaymentProcessor.PaymentStatus.Cleared) {
+        if (status == PaymentStatus.Cleared) {
             revert PaymentAlreadyCleared();
         }
-        if (status != CardPaymentProcessor.PaymentStatus.Uncleared) {
+        if (status != PaymentStatus.Uncleared) {
             revert InappropriatePaymentStatus(status);
         }
     }

@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.8;
 
-import { CardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
+import { ICardPaymentProcessorTypes } from "./interfaces/ICardPaymentProcessor.sol";
 
 /**
  * @title CardPaymentProcessor storage version 1
  */
-abstract contract CardPaymentProcessorStorageV1 {
+abstract contract CardPaymentProcessorStorageV1 is ICardPaymentProcessorTypes{
     /// @dev The address of the underlying token.
     address internal _token;
 
@@ -18,7 +18,7 @@ abstract contract CardPaymentProcessorStorageV1 {
     uint256 internal _totalUnclearedBalance;
 
     /// @dev Mapping of a payment for a given authorization ID.
-    mapping(bytes16 => CardPaymentProcessor.Payment) internal _payments;
+    mapping(bytes16 => Payment) internal _payments;
 
     /// @dev Mapping of uncleared balance for a given address.
     mapping(address => uint256) internal _unclearedBalances;

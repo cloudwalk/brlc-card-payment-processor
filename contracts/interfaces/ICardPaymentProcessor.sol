@@ -3,9 +3,9 @@
 pragma solidity ^0.8.8;
 
 /**
- * @title CardPaymentProcessor library
+ * @title CardPaymentProcessor types interface
  */
-library CardPaymentProcessor {
+interface ICardPaymentProcessorTypes {
     /**
      * @dev Possible statuses of a payment as an enum.
      *
@@ -48,7 +48,7 @@ library CardPaymentProcessor {
 /**
  * @title CardPaymentProcessor interface
  */
-interface ICardPaymentProcessor {
+interface ICardPaymentProcessor is ICardPaymentProcessorTypes{
     /**
      * @dev Emitted when payment is made.
      */
@@ -156,7 +156,7 @@ interface ICardPaymentProcessor {
      * @dev Returns payment data for a card transaction authorization ID.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      */
-    function paymentFor(bytes16 authorizationId) external view returns (CardPaymentProcessor.Payment memory);
+    function paymentFor(bytes16 authorizationId) external view returns (Payment memory);
 
     /**
      * @dev Checks if a payment related to a parent transaction hash has been revoked.
