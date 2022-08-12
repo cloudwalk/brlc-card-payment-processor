@@ -83,18 +83,18 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
   const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
   const REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE = "ERC20: transfer amount exceeds balance";
 
-  const REVERT_ERROR_IF_NEW_REVOCATION_COUNTER_MAXIMUM_VALUE_IS_ZERO = "ZeroNewValueOfRevocationCounterMaximum";
+  const REVERT_ERROR_IF_NEW_REVOCATION_LIMIT_VALUE_IS_ZERO = "ZeroRevocationLimit";
   const REVERT_ERROR_IF_PAYMENT_AMOUNT_IS_ZERO = "ZeroPaymentAmount";
   const REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO = "ZeroAuthorizationId";
   const REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS = "PaymentAlreadyExists";
   const REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST = "PaymentDoesNotExit";
-  const REVERT_ERROR_IF_PAYMENT_IS_CLEARED = "PaymentIsCleared";
-  const REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY = "EmptyInputArrayOfAuthorizationIds";
-  const REVERT_ERROR_IF_PAYMENT_IS_UNCLEARED = "PaymentIsUncleared";
+  const REVERT_ERROR_IF_PAYMENT_IS_ALREADY_CLEARED = "PaymentAlreadyCleared";
+  const REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY = "EmptyAuthorizationIdsArray";
+  const REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED = "PaymentAlreadyUncleared";
   const REVERT_ERROR_IF_PARENT_TX_HASH_IS_ZERO = "ZeroParentTransactionHash";
   const REVERT_ERROR_IF_CASH_OUT_ACCOUNT_IS_ZERO_ADDRESS = "ZeroCashOutAccount";
   const REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS = "InappropriatePaymentStatus";
-  const REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_MAXIMUM = "RevocationCounterReachedMaximum";
+  const REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_LIMIT = "RevocationLimitReached";
 
   let cardPaymentProcessor: Contract;
   let tokenMock: Contract;
@@ -282,43 +282,43 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       .to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
   });
 
-  describe("Function 'setRevocationCounterMaximum()'", async () => {
+  describe("Function 'setRevocationLimit()'", async () => {
     const revocationCounterNewValue: number = 123;
-    const revocationCounterMaximumDefaultValue: number = 255;
+    const revocationLimitDefaultValue: number = 255;
 
     it("Is reverted if is called not by the account with the owner role", async () => {
-      await expect(cardPaymentProcessor.connect(user1).setRevocationCounterMaximum(
+      await expect(cardPaymentProcessor.connect(user1).setRevocationLimit(
         revocationCounterNewValue
       )).to.be.revertedWith(createRevertMessageDueToMissingRole(user1.address, ownerRole));
     });
 
     it("Is reverted if the new value is zero", async () => {
-      await expect(cardPaymentProcessor.setRevocationCounterMaximum(0))
+      await expect(cardPaymentProcessor.setRevocationLimit(0))
         .to.be.revertedWithCustomError(
           cardPaymentProcessor,
-          REVERT_ERROR_IF_NEW_REVOCATION_COUNTER_MAXIMUM_VALUE_IS_ZERO
+          REVERT_ERROR_IF_NEW_REVOCATION_LIMIT_VALUE_IS_ZERO
         );
     });
 
-    it("Emits the correct event, changes the revocation counter maximum properly", async () => {
-      expect(await cardPaymentProcessor.revocationCounterMaximum()).to.equal(revocationCounterMaximumDefaultValue);
-      await expect(cardPaymentProcessor.setRevocationCounterMaximum(
+    it("Emits the correct event, changes the revocation counter limit properly", async () => {
+      expect(await cardPaymentProcessor.revocationLimit()).to.equal(revocationLimitDefaultValue);
+      await expect(cardPaymentProcessor.setRevocationLimit(
         revocationCounterNewValue
       )).to.emit(
         cardPaymentProcessor,
-        "SetRevocationCounterMaximum"
+        "SetRevocationLimit"
       ).withArgs(
-        revocationCounterMaximumDefaultValue,
+        revocationLimitDefaultValue,
         revocationCounterNewValue
       );
     });
 
     it("Does not emit events if the new value equals the old one", async () => {
-      await expect(cardPaymentProcessor.setRevocationCounterMaximum(
-        revocationCounterMaximumDefaultValue
+      await expect(cardPaymentProcessor.setRevocationLimit(
+        revocationLimitDefaultValue
       )).not.to.emit(
         cardPaymentProcessor,
-        "SetRevocationCounterMaximum"
+        "SetRevocationLimit"
       );
     });
   });
@@ -492,7 +492,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       ));
       await expect(cardPaymentProcessor.connect(admin).clearPayment(
         authorizationId
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_CLEARED);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_CLEARED);
     });
   });
 
@@ -576,7 +576,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       ));
       await expect(cardPaymentProcessor.connect(admin).clearPayments(
         authorizationIds
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_CLEARED);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_CLEARED);
     });
 
     it("Does not transfer tokens, emits the correct events, changes the state properly", async () => {
@@ -691,7 +691,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       ));
       await expect(cardPaymentProcessor.connect(admin).unclearPayment(
         authorizationId
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_UNCLEARED);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
     });
   });
 
@@ -774,7 +774,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       ));
       await expect(cardPaymentProcessor.connect(admin).unclearPayments(
         authorizationIds
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_UNCLEARED);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
     });
 
     it("Does not transfer tokens, emits the correct events, changes the state properly", async () => {
@@ -1103,7 +1103,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       await expect(cardPaymentProcessor.connect(admin).confirmPayment(
         authorizationId,
         cashOutAccount.address
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_UNCLEARED);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
     });
 
     it("Transfers tokens as expected, emits the correct event, changes the state properly", async () => {
@@ -1229,7 +1229,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       await expect(cardPaymentProcessor.connect(admin).confirmPayments(
         authorizationIds,
         cashOutAccount.address
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_UNCLEARED);
+      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
     });
 
     it("Transfer tokens, emits the correct events, changes the state properly", async () => {
@@ -1423,11 +1423,11 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
       )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
     });
 
-    it("Making payment function is reverted if the revocation counter has reached the maximum", async () => {
+    it("Making payment function is reverted if the revocation counter has reached the limit", async () => {
       const revocationCounterMax: number = 1;
 
-      await proveTx(cardPaymentProcessor.setRevocationCounterMaximum(revocationCounterMax));
-      expect(await cardPaymentProcessor.revocationCounterMaximum()).to.equal(revocationCounterMax);
+      await proveTx(cardPaymentProcessor.setRevocationLimit(revocationCounterMax));
+      expect(await cardPaymentProcessor.revocationLimit()).to.equal(revocationCounterMax);
 
       for (let relocationCounter = 0; relocationCounter < revocationCounterMax; ++relocationCounter) {
         await makePayments([payments[0]]);
@@ -1446,7 +1446,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
         someCorrelationId
       )).to.be.revertedWithCustomError(
         cardPaymentProcessor,
-        REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_MAXIMUM
+        REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_LIMIT
       );
     });
   });
