@@ -22,11 +22,11 @@ library CardPaymentProcessor {
      */
     enum PaymentStatus {
         Nonexistent, // 0
-        Uncleared,   // 1
-        Cleared,     // 2
-        Revoked,     // 3
-        Reversed,    // 4
-        Confirmed    // 5
+        Uncleared, // 1
+        Cleared, // 2
+        Revoked, // 3
+        Reversed, // 4
+        Confirmed // 5
     }
 
     /**

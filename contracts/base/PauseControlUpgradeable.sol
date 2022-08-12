@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.8;
 
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 
 /**
  * @title PauseControlUpgradeable base contract
@@ -12,7 +12,6 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/security/
  * The admins of the {PAUSER_ROLE} roles are accounts with the role defined in the init() function.
  */
 abstract contract PauseControlUpgradeable is AccessControlUpgradeable, PausableUpgradeable {
-
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
     function __PauseControl_init(bytes32 pauserRoleAdmin) internal initializer {

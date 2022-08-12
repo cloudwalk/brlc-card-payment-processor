@@ -2,28 +2,29 @@
 
 pragma solidity ^0.8.8;
 
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import {SafeERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import {IERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import {ICardPaymentProcessor, CardPaymentProcessor} from "./interfaces/ICardPaymentProcessor.sol";
-import {PauseControlUpgradeable} from "./base/PauseControlUpgradeable.sol";
-import {CardPaymentProcessorStorage} from "./CardPaymentProcessorStorage.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { ICardPaymentProcessor, CardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
+import { PauseControlUpgradeable } from "./base/PauseControlUpgradeable.sol";
+import { CardPaymentProcessorStorage } from "./CardPaymentProcessorStorage.sol";
 
 /**
  * @title CardPaymentProcessorUpgradeable contract
  * @dev Wrapper for the card payment operations.
  */
-contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseControlUpgradeable, CardPaymentProcessorStorage, ICardPaymentProcessor {
-
+contract CardPaymentProcessorUpgradeable is
+    AccessControlUpgradeable,
+    PauseControlUpgradeable,
+    CardPaymentProcessorStorage,
+    ICardPaymentProcessor
+{
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    event SetRevocationLimit(
-        uint8 oldLimit,
-        uint8 newLimit
-    );
+    event SetRevocationLimit(uint8 oldLimit, uint8 newLimit);
 
     /// @dev Zero has been passed when setting a new revocation limit.
     error ZeroRevocationLimit();
@@ -165,10 +166,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         uint256 amount,
         bytes16 authorizationId,
         bytes16 correlationId
-    )
-        external
-        whenNotPaused
-    {
+    ) external whenNotPaused {
         CardPaymentProcessor.Payment storage payment = _payments[authorizationId];
         address sender = _msgSender();
 
@@ -180,7 +178,10 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         }
 
         CardPaymentProcessor.PaymentStatus status = payment.status;
-        if (status != CardPaymentProcessor.PaymentStatus.Nonexistent && status != CardPaymentProcessor.PaymentStatus.Revoked) {
+        if (
+            status != CardPaymentProcessor.PaymentStatus.Nonexistent &&
+            status != CardPaymentProcessor.PaymentStatus.Revoked
+        ) {
             revert PaymentAlreadyExists();
         }
 
@@ -189,11 +190,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
             revert RevocationLimitReached(_revocationLimit);
         }
 
-        IERC20Upgradeable(_token).safeTransferFrom(
-            sender,
-            address(this),
-            amount
-        );
+        IERC20Upgradeable(_token).safeTransferFrom(sender, address(this), amount);
 
         payment.account = sender;
         payment.amount = amount;
@@ -202,13 +199,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         _unclearedBalances[sender] = _unclearedBalances[sender] + amount;
         _totalUnclearedBalance = _totalUnclearedBalance + amount;
 
-        emit MakePayment(
-            authorizationId,
-            correlationId,
-            sender,
-            amount,
-            revocationCounter
-        );
+        emit MakePayment(authorizationId, correlationId, sender, amount, revocationCounter);
     }
 
     /**
@@ -295,11 +286,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         bytes16 authorizationId,
         bytes16 correlationId,
         bytes32 parentTxHash
-    )
-        external
-        whenNotPaused
-        onlyRole(EXECUTOR_ROLE)
-    {
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         cancelPaymentInternal(
             authorizationId,
             correlationId,
@@ -320,17 +307,8 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         bytes16 authorizationId,
         bytes16 correlationId,
         bytes32 parentTxHash
-    )
-        external
-        whenNotPaused
-        onlyRole(EXECUTOR_ROLE)
-    {
-        cancelPaymentInternal(
-            authorizationId,
-            correlationId,
-            parentTxHash,
-            CardPaymentProcessor.PaymentStatus.Revoked
-        );
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        cancelPaymentInternal(authorizationId, correlationId, parentTxHash, CardPaymentProcessor.PaymentStatus.Revoked);
     }
 
     /**
@@ -341,10 +319,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
      */
-    function confirmPayment(
-        bytes16 authorizationId,
-        address cashOutAccount
-    )
+    function confirmPayment(bytes16 authorizationId, address cashOutAccount)
         external
         whenNotPaused
         onlyRole(EXECUTOR_ROLE)
@@ -366,10 +341,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
      */
-    function confirmPayments(
-        bytes16[] memory authorizationIds,
-        address cashOutAccount
-    )
+    function confirmPayments(bytes16[] memory authorizationIds, address cashOutAccount)
         external
         whenNotPaused
         onlyRole(EXECUTOR_ROLE)
@@ -413,10 +385,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         }
 
         _revocationLimit = newLimit;
-        emit SetRevocationLimit(
-            oldLimit,
-            newLimit
-        );
+        emit SetRevocationLimit(oldLimit, newLimit);
     }
 
     function clearPaymentInternal(bytes16 authorizationId) internal returns (uint256 amount) {
@@ -490,13 +459,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         uint256 newClearedBalance = _clearedBalances[account] - amount;
         _clearedBalances[account] = newClearedBalance;
 
-        emit ConfirmPayment(
-            authorizationId,
-            account,
-            amount,
-            newClearedBalance,
-            payment.revocationCounter
-        );
+        emit ConfirmPayment(authorizationId, account, amount, newClearedBalance, payment.revocationCounter);
     }
 
     function cancelPaymentInternal(
@@ -504,9 +467,7 @@ contract CardPaymentProcessorUpgradeable is AccessControlUpgradeable, PauseContr
         bytes16 correlationId,
         bytes32 parentTxHash,
         CardPaymentProcessor.PaymentStatus targetStatus
-    )
-        internal
-    {
+    ) internal {
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
         }

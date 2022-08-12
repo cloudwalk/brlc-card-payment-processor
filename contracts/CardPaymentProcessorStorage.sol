@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.8;
 
-import {CardPaymentProcessor} from "./interfaces/ICardPaymentProcessor.sol";
+import { CardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
 
 abstract contract CardPaymentProcessorStorageV1 {
     /// @dev The address of the underlying token.

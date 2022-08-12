@@ -9,7 +9,6 @@ import "../../base/PauseControlUpgradeable.sol";
  * @dev An implementation of the {PauseControlUpgradeable} contract for test purposes.
  */
 contract PauseControlUpgradeableMock is PauseControlUpgradeable {
-
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
     /**
