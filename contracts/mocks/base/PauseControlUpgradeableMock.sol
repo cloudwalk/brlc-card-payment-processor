@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.8;
 
-import "../../base/PausableExUpgradeable.sol";
+import { PauseControlUpgradeable } from "../../base/PauseControlUpgradeable.sol";
 
 /**
- * @title PausableExUpgradeableMock contract
- * @dev An implementation of the {PausableExUpgradeable} contract for test purposes.
+ * @title PauseControlUpgradeableMock contract
+ * @dev An implementation of the {PauseControlUpgradeable} contract for test purposes.
  */
-contract PausableExUpgradeableMock is PausableExUpgradeable {
-
+contract PauseControlUpgradeableMock is PauseControlUpgradeable {
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
     /**
@@ -18,7 +17,7 @@ contract PausableExUpgradeableMock is PausableExUpgradeable {
      */
     function initialize() public {
         _setupRole(OWNER_ROLE, _msgSender());
-        __PausableEx_init(OWNER_ROLE);
+        __PauseControl_init(OWNER_ROLE);
     }
 
     /**
@@ -27,6 +26,6 @@ contract PausableExUpgradeableMock is PausableExUpgradeable {
      */
     function initialize_unchained() public {
         _setupRole(OWNER_ROLE, _msgSender());
-        __PausableEx_init_unchained(OWNER_ROLE);
+        __PauseControl_init_unchained(OWNER_ROLE);
     }
 }

@@ -40,4 +40,4 @@ export {
   countNumberArrayTotal,
   createBytesString,
   createRevertMessageDueToMissingRole
-}
+};
