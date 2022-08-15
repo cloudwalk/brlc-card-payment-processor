@@ -14,14 +14,14 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/securit
 abstract contract PauseControlUpgradeable is AccessControlUpgradeable, PausableUpgradeable {
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    function __PauseControl_init(bytes32 pauserRoleAdmin) internal initializer {
+    function __PauseControl_init(bytes32 pauserRoleAdmin) internal onlyInitializing {
         __Context_init_unchained();
         __ERC165_init_unchained();
         __Pausable_init_unchained();
         __PauseControl_init_unchained(pauserRoleAdmin);
     }
 
-    function __PauseControl_init_unchained(bytes32 pauserRoleAdmin) internal initializer {
+    function __PauseControl_init_unchained(bytes32 pauserRoleAdmin) internal onlyInitializing {
         _setRoleAdmin(PAUSER_ROLE, pauserRoleAdmin);
     }
 

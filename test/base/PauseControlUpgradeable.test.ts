@@ -7,6 +7,7 @@ import { createRevertMessageDueToMissingRole } from "../../test-utils/misc";
 
 describe("Contract 'PauseControlUpgradeable'", async () => {
   const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
+  const REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING = "Initializable: contract is not initializing";
 
   let pauseControlMock: Contract;
   let deployer: SignerWithAddress;
@@ -31,9 +32,14 @@ describe("Contract 'PauseControlUpgradeable'", async () => {
       .to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
   });
 
-  it("The initialize unchained function can't be called more than once", async () => {
-    await expect(pauseControlMock.initialize_unchained())
-      .to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+  it("The init function of the ancestor contract can't be called outside the init process", async () => {
+    await expect(pauseControlMock.call_parent_initialize())
+      .to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
+  });
+
+  it("The init unchained function of the ancestor contract can't be called outside the init process", async () => {
+    await expect(pauseControlMock.call_parent_initialize_unchained())
+      .to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
   });
 
   it("The initial contract configuration should be as expected", async () => {
