@@ -5,7 +5,9 @@ pragma solidity ^0.8.8;
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+
 import { PauseControlUpgradeable } from "./base/PauseControlUpgradeable.sol";
+import { RescueControlUpgradeable } from "./base/RescueControlUpgradeable.sol";
 import { CardPaymentProcessorStorage } from "./CardPaymentProcessorStorage.sol";
 import { ICardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
 
@@ -16,6 +18,7 @@ import { ICardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
 contract CardPaymentProcessorUpgradeable is
     AccessControlUpgradeable,
     PauseControlUpgradeable,
+    RescueControlUpgradeable,
     CardPaymentProcessorStorage,
     ICardPaymentProcessor
 {
@@ -75,6 +78,7 @@ contract CardPaymentProcessorUpgradeable is
         __ERC165_init_unchained();
         __Pausable_init_unchained();
         __PauseControl_init_unchained(OWNER_ROLE);
+        __RescueControl_init_unchained(OWNER_ROLE);
 
         __CardPaymentProcessor_init_unchained(token_);
     }

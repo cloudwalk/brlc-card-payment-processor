@@ -102,6 +102,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
   let user2: SignerWithAddress;
   let ownerRole: string;
   let pauserRole: string;
+  let rescuerRole: string;
   let executorRole: string;
 
   async function setUpContractsForPayments(payments: TestPayment[]) {
@@ -273,6 +274,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
     // Roles
     ownerRole = (await cardPaymentProcessor.OWNER_ROLE()).toLowerCase();
     pauserRole = (await cardPaymentProcessor.PAUSER_ROLE()).toLowerCase();
+    rescuerRole = (await cardPaymentProcessor.RESCUER_ROLE()).toLowerCase();
     executorRole = (await cardPaymentProcessor.EXECUTOR_ROLE()).toLowerCase();
   });
 
@@ -291,11 +293,13 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
     // The role admins
     expect(await cardPaymentProcessor.getRoleAdmin(ownerRole)).to.equal(ownerRole);
     expect(await cardPaymentProcessor.getRoleAdmin(pauserRole)).to.equal(ownerRole);
+    expect(await cardPaymentProcessor.getRoleAdmin(rescuerRole)).to.equal(ownerRole);
     expect(await cardPaymentProcessor.getRoleAdmin(executorRole)).to.equal(ownerRole);
 
     // The deployer should have the owner role, but not the other roles
     expect(await cardPaymentProcessor.hasRole(ownerRole, deployer.address)).to.equal(true);
     expect(await cardPaymentProcessor.hasRole(pauserRole, deployer.address)).to.equal(false);
+    expect(await cardPaymentProcessor.hasRole(rescuerRole, deployer.address)).to.equal(false);
     expect(await cardPaymentProcessor.hasRole(executorRole, deployer.address)).to.equal(false);
   });
 
