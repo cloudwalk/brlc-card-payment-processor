@@ -78,7 +78,7 @@ function checkEquality(
   }
 }
 
-describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
+describe("Contract 'CardPaymentProcessor'", async () => {
   const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
   const REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE = "ERC20: transfer amount exceeds balance";
@@ -263,7 +263,7 @@ describe("Contract 'CardPaymentProcessorUpgradeable'", async () => {
     await tokenMock.deployed();
 
     // Deploy the being tested contract
-    const CardPaymentProcessor: ContractFactory = await ethers.getContractFactory("CardPaymentProcessorUpgradeable");
+    const CardPaymentProcessor: ContractFactory = await ethers.getContractFactory("CardPaymentProcessor");
     cardPaymentProcessor = await upgrades.deployProxy(CardPaymentProcessor, [tokenMock.address]);
     await cardPaymentProcessor.deployed();
 

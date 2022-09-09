@@ -10,10 +10,10 @@ import { CardPaymentProcessorStorage } from "./CardPaymentProcessorStorage.sol";
 import { ICardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
 
 /**
- * @title CardPaymentProcessorUpgradeable contract
+ * @title CardPaymentProcessor contract
  * @dev Wrapper for the card payment operations.
  */
-contract CardPaymentProcessorUpgradeable is
+contract CardPaymentProcessor is
     AccessControlUpgradeable,
     PauseControlUpgradeable,
     CardPaymentProcessorStorage,
