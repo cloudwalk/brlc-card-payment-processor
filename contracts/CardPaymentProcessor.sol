@@ -5,17 +5,24 @@ pragma solidity ^0.8.8;
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+
+import { BlacklistControlUpgradeable } from "./base/BlacklistControlUpgradeable.sol";
 import { PauseControlUpgradeable } from "./base/PauseControlUpgradeable.sol";
+import { RescueControlUpgradeable } from "./base/RescueControlUpgradeable.sol";
 import { CardPaymentProcessorStorage } from "./CardPaymentProcessorStorage.sol";
 import { ICardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
+import { StoragePlaceholder200 } from "./base/StoragePlaceholder.sol";
 
 /**
- * @title CardPaymentProcessorUpgradeable contract
+ * @title CardPaymentProcessor contract
  * @dev Wrapper for the card payment operations.
  */
-contract CardPaymentProcessorUpgradeable is
+contract CardPaymentProcessor is
     AccessControlUpgradeable,
+    BlacklistControlUpgradeable,
     PauseControlUpgradeable,
+    RescueControlUpgradeable,
+    StoragePlaceholder200,
     CardPaymentProcessorStorage,
     ICardPaymentProcessor
 {
@@ -24,7 +31,11 @@ contract CardPaymentProcessorUpgradeable is
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    // -------------------- Events -----------------------------------
+
     event SetRevocationLimit(uint8 oldLimit, uint8 newLimit);
+
+    // -------------------- Errors -----------------------------------
 
     /// @dev Zero amount of tokens has been passed when making a payment.
     error ZeroPaymentAmount();
@@ -65,6 +76,8 @@ contract CardPaymentProcessorUpgradeable is
      */
     error RevocationLimitReached(uint8 configuredRevocationLimit);
 
+    // ------------------- Functions ---------------------------------
+
     function initialize(address token_) public initializer {
         __CardPaymentProcessor_init(token_);
     }
@@ -74,7 +87,9 @@ contract CardPaymentProcessorUpgradeable is
         __Context_init_unchained();
         __ERC165_init_unchained();
         __Pausable_init_unchained();
+        __BlacklistControl_init_unchained(OWNER_ROLE);
         __PauseControl_init_unchained(OWNER_ROLE);
+        __RescueControl_init_unchained(OWNER_ROLE);
 
         __CardPaymentProcessor_init_unchained(token_);
     }
@@ -155,15 +170,21 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-makePayment}.
      *
-     * Additional requirements:
+     * Requirements:
      *
      * - The contract must not be paused.
+     * - The caller must must not be blacklisted.
+     * - The amount of tokens must be greater then zero.
+     * - The authorization ID of the payment must not be zero.
+     * - The payment with the authorization ID must not exist or be revoked.
+     * - The payment's revocation counter must be less then the configured revocation limit of payments or equals zero.
+     *
      */
     function makePayment(
         uint256 amount,
         bytes16 authorizationId,
         bytes16 correlationId
-    ) external whenNotPaused {
+    ) external whenNotPaused notBlacklisted(_msgSender()) {
         Payment storage payment = _payments[authorizationId];
         address sender = _msgSender();
 
@@ -202,10 +223,12 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-clearPayment}.
      *
-     * Additional requirements:
+     * Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The payment must have the "uncleared" status.
+     * - The input authorization ID of the payment must not be zero.
      */
     function clearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         uint256 amount = clearPaymentInternal(authorizationId);
@@ -217,10 +240,13 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-clearPayments}.
      *
-     * Additional requirements:
+     * Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
+     * - Each payment must have the "uncleared" status or the call will be reverted.
+     * - The input array of the the authorization IDs must not be empty.
+     * - All the authorization IDs of the payments must not be zero.
      */
     function clearPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (authorizationIds.length == 0) {
@@ -238,10 +264,12 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-unclearPayment}.
      *
-     * Additional requirements:
+     * Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The payment must have the "cleared" status or the call will be reverted.
+     * - The input authorization ID of the payment must not be zero.
      */
     function unclearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         uint256 amount = unclearPaymentInternal(authorizationId);
@@ -253,10 +281,13 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-unclearPayments}.
      *
-     * Additional requirements:
+     * Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
+     * - Each payment must have the "cleared" status or the call will be reverted.
+     * - The input array of the the authorization IDs must not be empty.
+     * - All the authorization IDs of the payments must not be zero.
      */
     function unclearPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (authorizationIds.length == 0) {
@@ -274,10 +305,12 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-reversePayment}.
      *
-     * Additional requirements:
+     * Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The payment must have "cleared" or "uncleared" statuses.
+     * - The input authorization ID and parent transaction hash of the payment must not be zero.
      */
     function reversePayment(
         bytes16 authorizationId,
@@ -295,10 +328,13 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-revokePayment}.
      *
-     * Additional requirements:
+     * Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The payment must have "cleared" or "uncleared" statuses.
+     * - The input authorization ID and parent transaction hash of the payment must not be zero.
+     * - The revocation limit of payments should not be zero.
      */
     function revokePayment(
         bytes16 authorizationId,
@@ -319,10 +355,12 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-confirmPayment}.
      *
-     * Additional requirements:
+     * Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The payment must have the "cleared" status.
+     * - The input authorization ID and cash out account of the payment must not be zero.
      */
     function confirmPayment(bytes16 authorizationId, address cashOutAccount)
         external
@@ -341,10 +379,11 @@ contract CardPaymentProcessorUpgradeable is
     /**
      * @dev See {ICardPaymentProcessor-confirmPayments}.
      *
-     * Additional requirements:
+     * Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
+     * - Each payment must have the "cleared" status or the call will be reverted.
      */
     function confirmPayments(bytes16[] memory authorizationIds, address cashOutAccount)
         external

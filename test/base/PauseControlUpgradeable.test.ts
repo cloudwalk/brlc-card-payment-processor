@@ -1,4 +1,4 @@
-import { ethers, upgrades } from "hardhat";
+import { ethers } from "hardhat";
 import { expect } from "chai";
 import { Contract, ContractFactory } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
@@ -7,6 +7,7 @@ import { createRevertMessageDueToMissingRole } from "../../test-utils/misc";
 
 describe("Contract 'PauseControlUpgradeable'", async () => {
   const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
+  const REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING = "Initializable: contract is not initializing";
 
   let pauseControlMock: Contract;
   let deployer: SignerWithAddress;
@@ -15,10 +16,13 @@ describe("Contract 'PauseControlUpgradeable'", async () => {
   let pauserRole: string;
 
   beforeEach(async () => {
+    // Deploy the contract under test
     const PauseControlMock: ContractFactory = await ethers.getContractFactory("PauseControlUpgradeableMock");
-    pauseControlMock = await upgrades.deployProxy(PauseControlMock);
+    pauseControlMock = await PauseControlMock.deploy();
     await pauseControlMock.deployed();
+    await proveTx(pauseControlMock.initialize());
 
+    // Accounts
     [deployer, user] = await ethers.getSigners();
 
     // Roles
@@ -27,13 +31,21 @@ describe("Contract 'PauseControlUpgradeable'", async () => {
   });
 
   it("The initialize function can't be called more than once", async () => {
-    await expect(pauseControlMock.initialize())
-      .to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+    await expect(
+      pauseControlMock.initialize()
+    ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
   });
 
-  it("The initialize unchained function can't be called more than once", async () => {
-    await expect(pauseControlMock.initialize_unchained())
-      .to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+  it("The init function of the ancestor contract can't be called outside the init process", async () => {
+    await expect(
+      pauseControlMock.call_parent_initialize()
+    ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
+  });
+
+  it("The init unchained function of the ancestor contract can't be called outside the init process", async () => {
+    await expect(
+      pauseControlMock.call_parent_initialize_unchained()
+    ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
   });
 
   it("The initial contract configuration should be as expected", async () => {
@@ -44,6 +56,9 @@ describe("Contract 'PauseControlUpgradeable'", async () => {
     // The deployer should have the owner role, but not the other roles
     expect(await pauseControlMock.hasRole(ownerRole, deployer.address)).to.equal(true);
     expect(await pauseControlMock.hasRole(pauserRole, deployer.address)).to.equal(false);
+
+    // The initial contract state is unpaused
+    expect(await pauseControlMock.paused()).to.equal(false);
   });
 
   describe("Function 'pause()'", async () => {
@@ -52,19 +67,19 @@ describe("Contract 'PauseControlUpgradeable'", async () => {
     });
 
     it("Is reverted if is called by an account without the pauser role", async () => {
-      await expect(pauseControlMock.pause())
-        .to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, pauserRole));
+      await expect(
+        pauseControlMock.pause()
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, pauserRole));
     });
 
-    it("Executes successfully if is called by an account with the pauser role", async () => {
-      await proveTx(pauseControlMock.connect(user).pause());
+    it("Executes successfully and emits the correct event", async () => {
+      await expect(
+        pauseControlMock.connect(user).pause()
+      ).to.emit(
+        pauseControlMock,
+        "Paused"
+      ).withArgs(user.address);
       expect(await pauseControlMock.paused()).to.equal(true);
-    });
-
-    it("Emits the correct event", async () => {
-      await expect(pauseControlMock.connect(user).pause())
-        .to.emit(pauseControlMock, "Paused")
-        .withArgs(user.address);
     });
   });
 
@@ -75,19 +90,19 @@ describe("Contract 'PauseControlUpgradeable'", async () => {
     });
 
     it("Is reverted if is called by an account without the pauser role", async () => {
-      await expect(pauseControlMock.unpause())
-        .to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, pauserRole));
+      await expect(
+        pauseControlMock.unpause()
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, pauserRole));
     });
 
-    it("Executes successfully if is called by an account with the pauser role", async () => {
-      await proveTx(pauseControlMock.connect(user).unpause());
+    it("Executes successfully and emits the correct event", async () => {
+      await expect(
+        pauseControlMock.connect(user).unpause()
+      ).to.emit(
+        pauseControlMock,
+        "Unpaused"
+      ).withArgs(user.address);
       expect(await pauseControlMock.paused()).to.equal(false);
-    });
-
-    it("Emits the correct event", async () => {
-      await expect(pauseControlMock.connect(user).unpause())
-        .to.emit(pauseControlMock, "Unpaused")
-        .withArgs(user.address);
     });
   });
 });

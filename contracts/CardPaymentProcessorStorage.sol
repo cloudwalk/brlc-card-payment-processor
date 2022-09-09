@@ -38,13 +38,13 @@ abstract contract CardPaymentProcessorStorageV1 is ICardPaymentProcessorTypes {
 
 /**
  * @title CardPaymentProcessor storage
- * @dev Contains storage variables of the {CardPaymentProcessor} contract
+ * @dev Contains storage variables of the {CardPaymentProcessor} contract.
  *
  * We are following Compound's approach of upgrading new contract implementations.
  * See https://github.com/compound-finance/compound-protocol.
  * When we need to add new storage variables, we create a new version of CardPaymentProcessorStorage
  * e.g. CardPaymentProcessorStorage<versionNumber>, so finally it would look like
- * "contract CardPaymentProcessorStorage is CardPaymentProcessorStorageV1, CardPaymentProcessorStorageV2"
+ * "contract CardPaymentProcessorStorage is CardPaymentProcessorStorageV1, CardPaymentProcessorStorageV2".
  */
 abstract contract CardPaymentProcessorStorage is CardPaymentProcessorStorageV1 {
 

@@ -27,4 +27,12 @@ contract ERC20UpgradeableMock is ERC20Upgradeable {
         _mint(account, amount);
         return true;
     }
+
+    /**
+     * @dev Cals the appropriate internal function to burn needed amount of tokens.
+     * @param amount The amount of tokens of this contract to burn.
+     */
+    function burn(uint256 amount) external {
+        _burn(msg.sender, amount);
+    }
 }
