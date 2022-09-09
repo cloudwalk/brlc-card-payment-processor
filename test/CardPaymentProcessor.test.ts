@@ -1,4 +1,4 @@
-import { ethers, upgrades } from "hardhat";
+import { ethers } from "hardhat";
 import { expect } from "chai";
 import { BigNumber, Contract, ContractFactory } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
@@ -83,6 +83,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
   const REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE = "ERC20: transfer amount exceeds balance";
 
+  const REVERT_ERROR_IF_ACCOUNT_IS_BLACKLISTED = "BlacklistedAccount";
   const REVERT_ERROR_IF_PAYMENT_AMOUNT_IS_ZERO = "ZeroPaymentAmount";
   const REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO = "ZeroAuthorizationId";
   const REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS = "PaymentAlreadyExists";
@@ -101,7 +102,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   let user1: SignerWithAddress;
   let user2: SignerWithAddress;
   let ownerRole: string;
+  let blacklisterRole: string;
   let pauserRole: string;
+  let rescuerRole: string;
   let executorRole: string;
 
   async function setUpContractsForPayments(payments: TestPayment[]) {
@@ -109,21 +112,25 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await proveTx(tokenMock.mint(payment.account.address, payment.amount));
       const allowance: BigNumber = await tokenMock.allowance(payment.account.address, cardPaymentProcessor.address);
       if (allowance.lt(BigNumber.from(ethers.constants.MaxUint256))) {
-        await proveTx(tokenMock.connect(payment.account).approve(
-          cardPaymentProcessor.address,
-          ethers.constants.MaxUint256
-        ));
+        await proveTx(
+          tokenMock.connect(payment.account).approve(
+            cardPaymentProcessor.address,
+            ethers.constants.MaxUint256
+          )
+        );
       }
     }
   }
 
   async function makePayments(payments: TestPayment[]) {
     for (let payment of payments) {
-      await proveTx(cardPaymentProcessor.connect(payment.account).makePayment(
-        payment.amount,
-        createBytesString(payment.authorizationId, BYTES16_LENGTH),
-        createBytesString(payment.makingPaymentCorrelationId, BYTES16_LENGTH)
-      ));
+      await proveTx(
+        cardPaymentProcessor.connect(payment.account).makePayment(
+          payment.amount,
+          createBytesString(payment.authorizationId, BYTES16_LENGTH),
+          createBytesString(payment.makingPaymentCorrelationId, BYTES16_LENGTH)
+        )
+      );
       payment.status = PaymentStatus.Uncleared;
     }
   }
@@ -201,10 +208,14 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       );
       checkEquality(actualPayment, expectedPayment, i);
       if (!!expectedPayment.parentTxHash) {
-        expect(await cardPaymentProcessor.isPaymentReversed(expectedPayment.parentTxHash)).to.equal(
+        expect(
+          await cardPaymentProcessor.isPaymentReversed(expectedPayment.parentTxHash)
+        ).to.equal(
           expectedPayment.status == PaymentStatus.Reversed
         );
-        expect(await cardPaymentProcessor.isPaymentRevoked(expectedPayment.parentTxHash)).to.equal(
+        expect(
+          await cardPaymentProcessor.isPaymentRevoked(expectedPayment.parentTxHash)
+        ).to.equal(
           expectedPayment.status == PaymentStatus.Revoked
         );
       }
@@ -221,12 +232,16 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         continue;
       }
       if (isClearedBalance) {
-        expect(await cardPaymentProcessor.clearedBalanceOf(account)).to.equal(
+        expect(
+          await cardPaymentProcessor.clearedBalanceOf(account)
+        ).to.equal(
           expectedBalance,
           `The cleared balance for account ${account} is wrong`
         );
       } else {
-        expect(await cardPaymentProcessor.unclearedBalanceOf(account)).to.equal(
+        expect(
+          await cardPaymentProcessor.unclearedBalanceOf(account)
+        ).to.equal(
           expectedBalance,
           `The uncleared balance for account ${account} is wrong`
         );
@@ -240,17 +255,23 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     await checkBalancesOnBlockchain(expectedState.clearedBalancesPerAccount, true);
     await checkBalancesOnBlockchain(expectedState.unclearedBalancesPerAccount, false);
 
-    expect(await cardPaymentProcessor.totalClearedBalance()).to.equal(
+    expect(
+      await cardPaymentProcessor.totalClearedBalance()
+    ).to.equal(
       expectedState.totalClearedBalance,
       `The total cleared balance is wrong`
     );
 
-    expect(await cardPaymentProcessor.totalUnclearedBalance()).to.equal(
+    expect(
+      await cardPaymentProcessor.totalUnclearedBalance()
+    ).to.equal(
       expectedState.totalUnclearedBalance,
       `The total uncleared balance is wrong`
     );
 
-    expect(await tokenMock.balanceOf(cardPaymentProcessor.address)).to.equal(
+    expect(
+      await tokenMock.balanceOf(cardPaymentProcessor.address)
+    ).to.equal(
       expectedState.tokenBalance,
       `The processor token balance is wrong`
     );
@@ -259,26 +280,31 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   beforeEach(async () => {
     // Deploy the token mock contract
     const TokenMock: ContractFactory = await ethers.getContractFactory("ERC20UpgradeableMock");
-    tokenMock = await upgrades.deployProxy(TokenMock, ["BRL Coin", "BRLC"]);
+    tokenMock = await TokenMock.deploy();
     await tokenMock.deployed();
+    await proveTx(tokenMock.initialize("BRL Coin", "BRLC"));
 
     // Deploy the being tested contract
     const CardPaymentProcessor: ContractFactory = await ethers.getContractFactory("CardPaymentProcessor");
-    cardPaymentProcessor = await upgrades.deployProxy(CardPaymentProcessor, [tokenMock.address]);
+    cardPaymentProcessor = await CardPaymentProcessor.deploy();
     await cardPaymentProcessor.deployed();
+    await proveTx(cardPaymentProcessor.initialize(tokenMock.address));
 
-    // Get user accounts
+    // Accounts
     [deployer, user1, user2] = await ethers.getSigners();
 
     // Roles
     ownerRole = (await cardPaymentProcessor.OWNER_ROLE()).toLowerCase();
+    blacklisterRole = (await cardPaymentProcessor.BLACKLISTER_ROLE()).toLowerCase();
     pauserRole = (await cardPaymentProcessor.PAUSER_ROLE()).toLowerCase();
+    rescuerRole = (await cardPaymentProcessor.RESCUER_ROLE()).toLowerCase();
     executorRole = (await cardPaymentProcessor.EXECUTOR_ROLE()).toLowerCase();
   });
 
   it("The initialize function can't be called more than once", async () => {
-    await expect(cardPaymentProcessor.initialize(tokenMock.address))
-      .to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+    await expect(
+      cardPaymentProcessor.initialize(tokenMock.address)
+    ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
   });
 
   it("The initial contract configuration should be as expected", async () => {
@@ -290,13 +316,20 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
     // The role admins
     expect(await cardPaymentProcessor.getRoleAdmin(ownerRole)).to.equal(ownerRole);
+    expect(await cardPaymentProcessor.getRoleAdmin(blacklisterRole)).to.equal(ownerRole);
     expect(await cardPaymentProcessor.getRoleAdmin(pauserRole)).to.equal(ownerRole);
+    expect(await cardPaymentProcessor.getRoleAdmin(rescuerRole)).to.equal(ownerRole);
     expect(await cardPaymentProcessor.getRoleAdmin(executorRole)).to.equal(ownerRole);
 
     // The deployer should have the owner role, but not the other roles
     expect(await cardPaymentProcessor.hasRole(ownerRole, deployer.address)).to.equal(true);
+    expect(await cardPaymentProcessor.hasRole(blacklisterRole, deployer.address)).to.equal(false);
     expect(await cardPaymentProcessor.hasRole(pauserRole, deployer.address)).to.equal(false);
+    expect(await cardPaymentProcessor.hasRole(rescuerRole, deployer.address)).to.equal(false);
     expect(await cardPaymentProcessor.hasRole(executorRole, deployer.address)).to.equal(false);
+
+    // The initial contract state is unpaused
+    expect(await cardPaymentProcessor.paused()).to.equal(false);
   });
 
   describe("Function 'setRevocationLimit()'", async () => {
@@ -304,16 +337,16 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     const revocationLimitDefaultValue: number = 255;
 
     it("Is reverted if is called not by the account with the owner role", async () => {
-      await expect(cardPaymentProcessor.connect(user1).setRevocationLimit(
-        revocationCounterNewValue
-      )).to.be.revertedWith(createRevertMessageDueToMissingRole(user1.address, ownerRole));
+      await expect(
+        cardPaymentProcessor.connect(user1).setRevocationLimit(revocationCounterNewValue)
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(user1.address, ownerRole));
     });
 
     it("Emits the correct event, changes the revocation counter limit properly", async () => {
       expect(await cardPaymentProcessor.revocationLimit()).to.equal(revocationLimitDefaultValue);
-      await expect(cardPaymentProcessor.setRevocationLimit(
-        revocationCounterNewValue
-      )).to.emit(
+      await expect(
+        cardPaymentProcessor.setRevocationLimit(revocationCounterNewValue)
+      ).to.emit(
         cardPaymentProcessor,
         "SetRevocationLimit"
       ).withArgs(
@@ -323,9 +356,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
 
     it("Does not emit events if the new value equals the old one", async () => {
-      await expect(cardPaymentProcessor.setRevocationLimit(
-        revocationLimitDefaultValue
-      )).not.to.emit(
+      await expect(
+        cardPaymentProcessor.setRevocationLimit(revocationLimitDefaultValue)
+      ).not.to.emit(
         cardPaymentProcessor,
         "SetRevocationLimit"
       );
@@ -353,46 +386,68 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the contract is paused", async () => {
       await proveTx(cardPaymentProcessor.grantRole(pauserRole, deployer.address));
       await proveTx(cardPaymentProcessor.pause());
-      await expect(cardPaymentProcessor.connect(payment.account).makePayment(
-        payment.amount,
-        authorizationId,
-        correlationId
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      await expect(
+        cardPaymentProcessor.connect(payment.account).makePayment(
+          payment.amount,
+          authorizationId,
+          correlationId
+        )
+      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+    });
+
+    it("Is reverted if the caller is blacklisted", async () => {
+      await proveTx(cardPaymentProcessor.grantRole(blacklisterRole, deployer.address));
+      await proveTx(cardPaymentProcessor.blacklist(payment.account.address));
+      await expect(
+        cardPaymentProcessor.connect(payment.account).makePayment(
+          payment.amount,
+          authorizationId,
+          correlationId
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_ACCOUNT_IS_BLACKLISTED);
     });
 
     it("Is reverted if the payment token amount is zero", async () => {
       const zeroAmount: number = 0;
-      await expect(cardPaymentProcessor.connect(payment.account).makePayment(
-        zeroAmount,
-        authorizationId,
-        correlationId
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AMOUNT_IS_ZERO);
+      await expect(
+        cardPaymentProcessor.connect(payment.account).makePayment(
+          zeroAmount,
+          authorizationId,
+          correlationId
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AMOUNT_IS_ZERO);
     });
 
     it("Is reverted if the payment authorization ID is zero", async () => {
-      await expect(cardPaymentProcessor.connect(payment.account).makePayment(
-        payment.amount,
-        ZERO_BYTES16_STRING,
-        correlationId
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      await expect(
+        cardPaymentProcessor.connect(payment.account).makePayment(
+          payment.amount,
+          ZERO_BYTES16_STRING,
+          correlationId
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if the user has not enough token balance", async () => {
       const excessTokenAmount: number = payment.amount + 1;
-      await expect(cardPaymentProcessor.connect(payment.account).makePayment(
-        excessTokenAmount,
-        authorizationId,
-        correlationId
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
+      await expect(
+        cardPaymentProcessor.connect(payment.account).makePayment(
+          excessTokenAmount,
+          authorizationId,
+          correlationId
+        )
+      ).to.be.revertedWith(REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
     });
 
     it("Transfers tokens as expected, emits the correct event, changes the state properly", async () => {
       await checkCardPaymentProcessorState([payment]);
-      await expect(cardPaymentProcessor.connect(payment.account).makePayment(
-        payment.amount,
-        authorizationId,
-        correlationId
-      )).to.changeTokenBalances(
+      await expect(
+        cardPaymentProcessor.connect(payment.account).makePayment(
+          payment.amount,
+          authorizationId,
+          correlationId
+        )
+      ).to.changeTokenBalances(
         tokenMock,
         [cardPaymentProcessor, payment.account],
         [+payment.amount, -payment.amount]
@@ -412,11 +467,13 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
     it("Executes successfully even if the revocation limit of payments is zero", async () => {
       await proveTx(cardPaymentProcessor.setRevocationLimit(0));
-      await expect(cardPaymentProcessor.connect(payment.account).makePayment(
-        payment.amount,
-        authorizationId,
-        correlationId
-      )).to.emit(
+      await expect(
+        cardPaymentProcessor.connect(payment.account).makePayment(
+          payment.amount,
+          authorizationId,
+          correlationId
+        )
+      ).to.emit(
         cardPaymentProcessor,
         "MakePayment"
       );
@@ -428,11 +485,13 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         payment.makingPaymentCorrelationId + 1,
         BYTES16_LENGTH
       );
-      await expect(cardPaymentProcessor.connect(payment.account).makePayment(
-        payment.amount + 1,
-        authorizationId,
-        otherMakingPaymentCorrelationsId
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
+      await expect(
+        cardPaymentProcessor.connect(payment.account).makePayment(
+          payment.amount + 1,
+          authorizationId,
+          otherMakingPaymentCorrelationsId
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
     });
   });
 
@@ -459,36 +518,38 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the contract is paused", async () => {
       await proveTx(cardPaymentProcessor.grantRole(pauserRole, deployer.address));
       await proveTx(cardPaymentProcessor.pause());
-      await expect(cardPaymentProcessor.connect(admin).clearPayment(
-        authorizationId
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      await expect(
+        cardPaymentProcessor.connect(admin).clearPayment(authorizationId)
+      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the executor role", async () => {
-      await expect(cardPaymentProcessor.connect(deployer).clearPayment(
-        authorizationId
-      )).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
+      await expect(
+        cardPaymentProcessor.connect(deployer).clearPayment(authorizationId)
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
     });
 
     it("Is reverted if the payment authorization ID is zero", async () => {
-      await expect(cardPaymentProcessor.connect(admin).clearPayment(
-        ZERO_BYTES16_STRING
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      await expect(
+        cardPaymentProcessor.connect(admin).clearPayment(ZERO_BYTES16_STRING)
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if the payment with the provided authorization ID does not exist", async () => {
-      await expect(cardPaymentProcessor.connect(admin).clearPayment(
-        createBytesString(payment.authorizationId + 1, BYTES16_LENGTH)
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+      await expect(
+        cardPaymentProcessor.connect(admin).clearPayment(
+          createBytesString(payment.authorizationId + 1, BYTES16_LENGTH)
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Does not transfer tokens, emits the correct event, changes the state properly", async () => {
       await checkCardPaymentProcessorState([payment]);
       const expectedClearedBalance: number = payment.amount;
       const expectedUnclearedBalance: number = 0;
-      await expect(cardPaymentProcessor.connect(admin).clearPayment(
-        authorizationId
-      )).to.changeTokenBalances(
+      await expect(
+        cardPaymentProcessor.connect(admin).clearPayment(authorizationId)
+      ).to.changeTokenBalances(
         tokenMock,
         [cardPaymentProcessor, payment.account],
         [0, 0]
@@ -508,12 +569,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
 
     it("Is reverted if the payment has already been cleared", async () => {
-      await proveTx(cardPaymentProcessor.connect(admin).clearPayment(
-        authorizationId
-      ));
-      await expect(cardPaymentProcessor.connect(admin).clearPayment(
-        authorizationId
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_CLEARED);
+      await proveTx(cardPaymentProcessor.connect(admin).clearPayment(authorizationId));
+      await expect(
+        cardPaymentProcessor.connect(admin).clearPayment(authorizationId)
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_CLEARED);
     });
   });
 
@@ -559,52 +618,52 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the contract is paused", async () => {
       await proveTx(cardPaymentProcessor.grantRole(pauserRole, deployer.address));
       await proveTx(cardPaymentProcessor.pause());
-      await expect(cardPaymentProcessor.connect(admin).clearPayments(
-        authorizationIds
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      await expect(
+        cardPaymentProcessor.connect(admin).clearPayments(authorizationIds)
+      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the executor role", async () => {
-      await expect(cardPaymentProcessor.connect(deployer).clearPayments(
-        authorizationIds
-      )).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
+      await expect(
+        cardPaymentProcessor.connect(deployer).clearPayments(authorizationIds)
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
     });
 
     it("Is reverted if the payment authorization IDs array is empty", async () => {
-      await expect(cardPaymentProcessor.connect(admin).clearPayments(
-        []
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY);
+      await expect(
+        cardPaymentProcessor.connect(admin).clearPayments([])
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY);
     });
 
     it("Is reverted if one of the payment authorization IDs is zero", async () => {
-      await expect(cardPaymentProcessor.connect(admin).clearPayments(
-        [authorizationIds[0], ZERO_BYTES16_STRING]
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      await expect(
+        cardPaymentProcessor.connect(admin).clearPayments([authorizationIds[0], ZERO_BYTES16_STRING])
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if one of the payments with provided authorization IDs does not exist", async () => {
-      await expect(cardPaymentProcessor.connect(admin).clearPayments(
-        [
-          authorizationIds[0],
-          createBytesString(payments[payments.length - 1].authorizationId + 1, BYTES16_LENGTH),
-        ]
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+      await expect(
+        cardPaymentProcessor.connect(admin).clearPayments(
+          [
+            authorizationIds[0],
+            createBytesString(payments[payments.length - 1].authorizationId + 1, BYTES16_LENGTH),
+          ]
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Is reverted if one of the payments has been already cleared", async () => {
-      await proveTx(cardPaymentProcessor.connect(admin).clearPayment(
-        authorizationIds[0]
-      ));
-      await expect(cardPaymentProcessor.connect(admin).clearPayments(
-        authorizationIds
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_CLEARED);
+      await proveTx(cardPaymentProcessor.connect(admin).clearPayment(authorizationIds[0]));
+      await expect(
+        cardPaymentProcessor.connect(admin).clearPayments(authorizationIds)
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_CLEARED);
     });
 
     it("Does not transfer tokens, emits the correct events, changes the state properly", async () => {
       await checkCardPaymentProcessorState(payments);
-      await expect(cardPaymentProcessor.connect(admin).clearPayments(
-        authorizationIds
-      )).to.changeTokenBalances(
+      await expect(
+        cardPaymentProcessor.connect(admin).clearPayments(authorizationIds)
+      ).to.changeTokenBalances(
         tokenMock,
         [cardPaymentProcessor, ...accountAddresses],
         [0, ...accountAddresses.map(() => 0)]
@@ -658,36 +717,38 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the contract is paused", async () => {
       await proveTx(cardPaymentProcessor.grantRole(pauserRole, deployer.address));
       await proveTx(cardPaymentProcessor.pause());
-      await expect(cardPaymentProcessor.connect(admin).unclearPayment(
-        authorizationId
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      await expect(
+        cardPaymentProcessor.connect(admin).unclearPayment(authorizationId)
+      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the executor role", async () => {
-      await expect(cardPaymentProcessor.connect(deployer).unclearPayment(
-        authorizationId
-      )).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
+      await expect(
+        cardPaymentProcessor.connect(deployer).unclearPayment(authorizationId)
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
     });
 
     it("Is reverted if the payment authorization ID is zero", async () => {
-      await expect(cardPaymentProcessor.connect(admin).unclearPayment(
-        ZERO_BYTES16_STRING
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      await expect(
+        cardPaymentProcessor.connect(admin).unclearPayment(ZERO_BYTES16_STRING)
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if the payment with the provided authorization ID does not exist", async () => {
-      await expect(cardPaymentProcessor.connect(admin).unclearPayment(
-        createBytesString(payment.authorizationId + 1, BYTES16_LENGTH)
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+      await expect(
+        cardPaymentProcessor.connect(admin).unclearPayment(
+          createBytesString(payment.authorizationId + 1, BYTES16_LENGTH)
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Does not transfer tokens, emits the correct event, changes the state properly", async () => {
       await checkCardPaymentProcessorState([payment]);
       const expectedClearedBalance: number = 0;
       const expectedUnclearedBalance: number = payment.amount;
-      await expect(cardPaymentProcessor.connect(admin).unclearPayment(
-        authorizationId
-      )).to.changeTokenBalances(
+      await expect(
+        cardPaymentProcessor.connect(admin).unclearPayment(authorizationId)
+      ).to.changeTokenBalances(
         tokenMock,
         [cardPaymentProcessor, payment.account],
         [0, 0]
@@ -707,12 +768,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
 
     it("Is reverted if the payment is uncleared", async () => {
-      await proveTx(cardPaymentProcessor.connect(admin).unclearPayment(
-        authorizationId
-      ));
-      await expect(cardPaymentProcessor.connect(admin).unclearPayment(
-        authorizationId
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
+      await proveTx(cardPaymentProcessor.connect(admin).unclearPayment(authorizationId));
+      await expect(
+        cardPaymentProcessor.connect(admin).unclearPayment(authorizationId)
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
     });
   });
 
@@ -757,52 +816,52 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the contract is paused", async () => {
       await proveTx(cardPaymentProcessor.grantRole(pauserRole, deployer.address));
       await proveTx(cardPaymentProcessor.pause());
-      await expect(cardPaymentProcessor.connect(admin).unclearPayments(
-        authorizationIds
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      await expect(
+        cardPaymentProcessor.connect(admin).unclearPayments(authorizationIds)
+      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the executor role", async () => {
-      await expect(cardPaymentProcessor.connect(deployer).unclearPayments(
-        authorizationIds
-      )).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
+      await expect(
+        cardPaymentProcessor.connect(deployer).unclearPayments(authorizationIds)
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
     });
 
     it("Is reverted if the payment authorization IDs array is empty", async () => {
-      await expect(cardPaymentProcessor.connect(admin).unclearPayments(
-        []
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY);
+      await expect(
+        cardPaymentProcessor.connect(admin).unclearPayments([])
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY);
     });
 
     it("Is reverted if one of the payment authorization IDs is zero", async () => {
-      await expect(cardPaymentProcessor.connect(admin).unclearPayments(
-        [authorizationIds[0], ZERO_BYTES16_STRING]
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      await expect(
+        cardPaymentProcessor.connect(admin).unclearPayments([authorizationIds[0], ZERO_BYTES16_STRING])
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if one of the payments with provided authorization IDs does not exist", async () => {
-      await expect(cardPaymentProcessor.connect(admin).unclearPayments(
-        [
-          authorizationIds[0],
-          createBytesString(payments[payments.length - 1].authorizationId + 1, BYTES16_LENGTH)
-        ]
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+      await expect(
+        cardPaymentProcessor.connect(admin).unclearPayments(
+          [
+            authorizationIds[0],
+            createBytesString(payments[payments.length - 1].authorizationId + 1, BYTES16_LENGTH)
+          ]
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Is reverted if one of the payments is uncleared", async () => {
-      await proveTx(cardPaymentProcessor.connect(admin).unclearPayment(
-        authorizationIds[0]
-      ));
-      await expect(cardPaymentProcessor.connect(admin).unclearPayments(
-        authorizationIds
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
+      await proveTx(cardPaymentProcessor.connect(admin).unclearPayment(authorizationIds[0]));
+      await expect(
+        cardPaymentProcessor.connect(admin).unclearPayments(authorizationIds)
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
     });
 
     it("Does not transfer tokens, emits the correct events, changes the state properly", async () => {
       await checkCardPaymentProcessorState(payments);
-      await expect(cardPaymentProcessor.connect(admin).unclearPayments(
-        authorizationIds
-      )).to.changeTokenBalances(
+      await expect(
+        cardPaymentProcessor.connect(admin).unclearPayments(authorizationIds)
+      ).to.changeTokenBalances(
         tokenMock,
         [cardPaymentProcessor, ...accountAddresses],
         [0, ...accountAddresses.map(() => 0)]
@@ -860,52 +919,64 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the contract is paused", async () => {
       await proveTx(cardPaymentProcessor.grantRole(pauserRole, deployer.address));
       await proveTx(cardPaymentProcessor.pause());
-      await expect(cardPaymentProcessor.connect(admin).revokePayment(
-        authorizationId,
-        reversingPaymentCorrelationId,
-        parentTxHash
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      await expect(
+        cardPaymentProcessor.connect(admin).revokePayment(
+          authorizationId,
+          reversingPaymentCorrelationId,
+          parentTxHash
+        )
+      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the executor role", async () => {
-      await expect(cardPaymentProcessor.connect(deployer).revokePayment(
-        authorizationId,
-        reversingPaymentCorrelationId,
-        parentTxHash
-      )).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
+      await expect(
+        cardPaymentProcessor.connect(deployer).revokePayment(
+          authorizationId,
+          reversingPaymentCorrelationId,
+          parentTxHash
+        )
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
     });
 
     it("Is reverted if the configured revocation limit of payments is zero", async () => {
       await proveTx(cardPaymentProcessor.setRevocationLimit(0));
-      await expect(cardPaymentProcessor.connect(admin).revokePayment(
-        authorizationId,
-        reversingPaymentCorrelationId,
-        parentTxHash
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_LIMIT);
+      await expect(
+        cardPaymentProcessor.connect(admin).revokePayment(
+          authorizationId,
+          reversingPaymentCorrelationId,
+          parentTxHash
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_LIMIT);
     });
 
     it("Is reverted if the payment authorization ID is zero", async () => {
-      await expect(cardPaymentProcessor.connect(admin).revokePayment(
-        ZERO_BYTES16_STRING,
-        reversingPaymentCorrelationId,
-        parentTxHash
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      await expect(
+        cardPaymentProcessor.connect(admin).revokePayment(
+          ZERO_BYTES16_STRING,
+          reversingPaymentCorrelationId,
+          parentTxHash
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if the parent transaction hash is zero", async () => {
-      await expect(cardPaymentProcessor.connect(admin).revokePayment(
-        authorizationId,
-        reversingPaymentCorrelationId,
-        ZERO_BYTES32_STRING,
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PARENT_TX_HASH_IS_ZERO);
+      await expect(
+        cardPaymentProcessor.connect(admin).revokePayment(
+          authorizationId,
+          reversingPaymentCorrelationId,
+          ZERO_BYTES32_STRING,
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PARENT_TX_HASH_IS_ZERO);
     });
 
     it("Is reverted if the payment with the provided authorization ID does not exist", async () => {
-      await expect(cardPaymentProcessor.connect(admin).revokePayment(
-        createBytesString(payment.authorizationId + 1, BYTES16_LENGTH),
-        reversingPaymentCorrelationId,
-        parentTxHash
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+      await expect(
+        cardPaymentProcessor.connect(admin).revokePayment(
+          createBytesString(payment.authorizationId + 1, BYTES16_LENGTH),
+          reversingPaymentCorrelationId,
+          parentTxHash
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     describe("Transfers tokens as expected, emits the correct event, changes the state properly", async () => {
@@ -915,11 +986,13 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       async function checkRevocation(wasPaymentCleared: boolean) {
         await checkCardPaymentProcessorState([payment]);
-        await expect(cardPaymentProcessor.connect(admin).revokePayment(
-          authorizationId,
-          reversingPaymentCorrelationId,
-          parentTxHash
-        )).to.changeTokenBalances(
+        await expect(
+          cardPaymentProcessor.connect(admin).revokePayment(
+            authorizationId,
+            reversingPaymentCorrelationId,
+            parentTxHash
+          )
+        ).to.changeTokenBalances(
           tokenMock,
           [cardPaymentProcessor, payment.account],
           [-payment.amount, +payment.amount]
@@ -982,43 +1055,53 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the contract is paused", async () => {
       await proveTx(cardPaymentProcessor.grantRole(pauserRole, deployer.address));
       await proveTx(cardPaymentProcessor.pause());
-      await expect(cardPaymentProcessor.connect(admin).reversePayment(
-        authorizationId,
-        reversingPaymentCorrelationId,
-        parentTxHash
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      await expect(
+        cardPaymentProcessor.connect(admin).reversePayment(
+          authorizationId,
+          reversingPaymentCorrelationId,
+          parentTxHash
+        )
+      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the executor role", async () => {
-      await expect(cardPaymentProcessor.connect(deployer).reversePayment(
-        authorizationId,
-        reversingPaymentCorrelationId,
-        parentTxHash
-      )).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
+      await expect(
+        cardPaymentProcessor.connect(deployer).reversePayment(
+          authorizationId,
+          reversingPaymentCorrelationId,
+          parentTxHash
+        )
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
     });
 
     it("Is reverted if the payment authorization ID is zero", async () => {
-      await expect(cardPaymentProcessor.connect(admin).reversePayment(
-        ZERO_BYTES16_STRING,
-        reversingPaymentCorrelationId,
-        parentTxHash
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      await expect(
+        cardPaymentProcessor.connect(admin).reversePayment(
+          ZERO_BYTES16_STRING,
+          reversingPaymentCorrelationId,
+          parentTxHash
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if the parent transaction hash is zero", async () => {
-      await expect(cardPaymentProcessor.connect(admin).reversePayment(
-        authorizationId,
-        reversingPaymentCorrelationId,
-        ZERO_BYTES32_STRING,
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PARENT_TX_HASH_IS_ZERO);
+      await expect(
+        cardPaymentProcessor.connect(admin).reversePayment(
+          authorizationId,
+          reversingPaymentCorrelationId,
+          ZERO_BYTES32_STRING,
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PARENT_TX_HASH_IS_ZERO);
     });
 
     it("Is reverted if the payment with the provided authorization ID does not exist", async () => {
-      await expect(cardPaymentProcessor.connect(admin).reversePayment(
-        createBytesString(payment.authorizationId + 1, BYTES16_LENGTH),
-        reversingPaymentCorrelationId,
-        parentTxHash
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+      await expect(
+        cardPaymentProcessor.connect(admin).reversePayment(
+          createBytesString(payment.authorizationId + 1, BYTES16_LENGTH),
+          reversingPaymentCorrelationId,
+          parentTxHash
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     describe("Transfers tokens as expected, emits the correct event, changes the state properly", async () => {
@@ -1027,11 +1110,13 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       async function checkReversion(wasPaymentCleared: boolean) {
         await checkCardPaymentProcessorState([payment]);
-        await expect(cardPaymentProcessor.connect(admin).reversePayment(
-          authorizationId,
-          reversingPaymentCorrelationId,
-          parentTxHash
-        )).to.changeTokenBalances(
+        await expect(
+          cardPaymentProcessor.connect(admin).reversePayment(
+            authorizationId,
+            reversingPaymentCorrelationId,
+            parentTxHash
+          )
+        ).to.changeTokenBalances(
           tokenMock,
           [cardPaymentProcessor, payment.account],
           [-payment.amount, +payment.amount]
@@ -1092,57 +1177,69 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the contract is paused", async () => {
       await proveTx(cardPaymentProcessor.grantRole(pauserRole, deployer.address));
       await proveTx(cardPaymentProcessor.pause());
-      await expect(cardPaymentProcessor.connect(admin).confirmPayment(
-        authorizationId,
-        cashOutAccount.address
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      await expect(
+        cardPaymentProcessor.connect(admin).confirmPayment(
+          authorizationId,
+          cashOutAccount.address
+        )
+      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the executor role", async () => {
-      await expect(cardPaymentProcessor.connect(deployer).confirmPayment(
-        authorizationId,
-        cashOutAccount.address
-      )).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
+      await expect(
+        cardPaymentProcessor.connect(deployer).confirmPayment(
+          authorizationId,
+          cashOutAccount.address
+        )
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
     });
 
     it("Is reverted if the payment authorization ID is zero", async () => {
-      await expect(cardPaymentProcessor.connect(admin).confirmPayment(
-        ZERO_BYTES16_STRING,
-        cashOutAccount.address
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      await expect(
+        cardPaymentProcessor.connect(admin).confirmPayment(
+          ZERO_BYTES16_STRING,
+          cashOutAccount.address
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if the input cash out account is the zero address", async () => {
-      await expect(cardPaymentProcessor.connect(admin).confirmPayment(
-        authorizationId,
-        ethers.constants.AddressZero
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASH_OUT_ACCOUNT_IS_ZERO_ADDRESS);
+      await expect(
+        cardPaymentProcessor.connect(admin).confirmPayment(
+          authorizationId,
+          ethers.constants.AddressZero
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASH_OUT_ACCOUNT_IS_ZERO_ADDRESS);
     });
 
     it("Is reverted if the payment with the provided authorization ID does not exist", async () => {
-      await expect(cardPaymentProcessor.connect(admin).confirmPayment(
-        createBytesString(payment.authorizationId + 1, BYTES16_LENGTH),
-        cashOutAccount.address
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+      await expect(
+        cardPaymentProcessor.connect(admin).confirmPayment(
+          createBytesString(payment.authorizationId + 1, BYTES16_LENGTH),
+          cashOutAccount.address
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Is reverted if the payment is uncleared", async () => {
-      await proveTx(cardPaymentProcessor.connect(admin).unclearPayment(
-        authorizationId
-      ));
-      await expect(cardPaymentProcessor.connect(admin).confirmPayment(
-        authorizationId,
-        cashOutAccount.address
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
+      await proveTx(cardPaymentProcessor.connect(admin).unclearPayment(authorizationId));
+      await expect(
+        cardPaymentProcessor.connect(admin).confirmPayment(
+          authorizationId,
+          cashOutAccount.address
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
     });
 
     it("Transfers tokens as expected, emits the correct event, changes the state properly", async () => {
       await checkCardPaymentProcessorState([payment]);
       const expectedClearedBalance: number = 0;
-      await expect(cardPaymentProcessor.connect(admin).confirmPayment(
-        authorizationId,
-        cashOutAccount.address
-      )).to.changeTokenBalances(
+      await expect(
+        cardPaymentProcessor.connect(admin).confirmPayment(
+          authorizationId,
+          cashOutAccount.address
+        )
+      ).to.changeTokenBalances(
         tokenMock,
         [cardPaymentProcessor, cashOutAccount, payment.account],
         [-payment.amount, +payment.amount, 0]
@@ -1208,67 +1305,81 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the contract is paused", async () => {
       await proveTx(cardPaymentProcessor.grantRole(pauserRole, deployer.address));
       await proveTx(cardPaymentProcessor.pause());
-      await expect(cardPaymentProcessor.connect(admin).confirmPayments(
-        authorizationIds,
-        cashOutAccount.address
-      )).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      await expect(
+        cardPaymentProcessor.connect(admin).confirmPayments(
+          authorizationIds,
+          cashOutAccount.address
+        )
+      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the executor role", async () => {
-      await expect(cardPaymentProcessor.connect(deployer).confirmPayments(
-        authorizationIds,
-        cashOutAccount.address
-      )).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
+      await expect(
+        cardPaymentProcessor.connect(deployer).confirmPayments(
+          authorizationIds,
+          cashOutAccount.address
+        )
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
     });
 
     it("Is reverted if the payment authorization IDs array is empty", async () => {
-      await expect(cardPaymentProcessor.connect(admin).confirmPayments(
-        [],
-        cashOutAccount.address
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY);
+      await expect(
+        cardPaymentProcessor.connect(admin).confirmPayments(
+          [],
+          cashOutAccount.address
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY);
     });
 
     it("Is reverted if the input cash out account is the zero address", async () => {
-      await expect(cardPaymentProcessor.connect(admin).confirmPayments(
-        authorizationIds,
-        ethers.constants.AddressZero
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASH_OUT_ACCOUNT_IS_ZERO_ADDRESS);
+      await expect(
+        cardPaymentProcessor.connect(admin).confirmPayments(
+          authorizationIds,
+          ethers.constants.AddressZero
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASH_OUT_ACCOUNT_IS_ZERO_ADDRESS);
     });
 
     it("Is reverted if one of the payment authorization IDs is zero", async () => {
-      await expect(cardPaymentProcessor.connect(admin).confirmPayments(
-        [authorizationIds[0], ZERO_BYTES16_STRING],
-        cashOutAccount.address
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+      await expect(
+        cardPaymentProcessor.connect(admin).confirmPayments(
+          [authorizationIds[0], ZERO_BYTES16_STRING],
+          cashOutAccount.address
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
     });
 
     it("Is reverted if one of the payments with provided authorization IDs does not exist", async () => {
-      await expect(cardPaymentProcessor.connect(admin).confirmPayments(
-        [
-          authorizationIds[0],
-          createBytesString(payments[payments.length - 1].authorizationId + 1, BYTES16_LENGTH)
-        ],
-        cashOutAccount.address
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+      await expect(
+        cardPaymentProcessor.connect(admin).confirmPayments(
+          [
+            authorizationIds[0],
+            createBytesString(payments[payments.length - 1].authorizationId + 1, BYTES16_LENGTH)
+          ],
+          cashOutAccount.address
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Is reverted if one of the payments is uncleared", async () => {
-      await proveTx(cardPaymentProcessor.connect(admin).unclearPayment(
-        authorizationIds[1]
-      ));
-      await expect(cardPaymentProcessor.connect(admin).confirmPayments(
-        authorizationIds,
-        cashOutAccount.address
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
+      await proveTx(cardPaymentProcessor.connect(admin).unclearPayment(authorizationIds[1]));
+      await expect(
+        cardPaymentProcessor.connect(admin).confirmPayments(
+          authorizationIds,
+          cashOutAccount.address
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
     });
 
     it("Transfer tokens, emits the correct events, changes the state properly", async () => {
       const expectedClearedBalance: number = 0;
       await checkCardPaymentProcessorState(payments);
-      await expect(cardPaymentProcessor.connect(admin).confirmPayments(
-        authorizationIds,
-        cashOutAccount.address
-      )).to.changeTokenBalances(
+      await expect(
+        cardPaymentProcessor.connect(admin).confirmPayments(
+          authorizationIds,
+          cashOutAccount.address
+        )
+      ).to.changeTokenBalances(
         tokenMock,
         [cardPaymentProcessor, cashOutAccount, ...accountAddresses],
         [-totalAmount, +totalAmount, ...accountAddresses.map(() => 0)]
@@ -1306,43 +1417,51 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     let authorizationIds: string[];
 
     async function checkRevertingOfAllPaymentProcessingFunctionsExceptMaking() {
-      await expect(cardPaymentProcessor.connect(admin).clearPayment(
-        authorizationIds[0],
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      await expect(
+        cardPaymentProcessor.connect(admin).clearPayment(authorizationIds[0])
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
 
-      await expect(cardPaymentProcessor.connect(admin).clearPayments(
-        authorizationIds,
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      await expect(
+        cardPaymentProcessor.connect(admin).clearPayments(authorizationIds)
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
 
-      await expect(cardPaymentProcessor.connect(admin).unclearPayment(
-        authorizationIds[0],
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      await expect(
+        cardPaymentProcessor.connect(admin).unclearPayment(authorizationIds[0])
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
 
-      await expect(cardPaymentProcessor.connect(admin).unclearPayments(
-        authorizationIds,
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      await expect(
+        cardPaymentProcessor.connect(admin).unclearPayments(authorizationIds)
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
 
-      await expect(cardPaymentProcessor.connect(admin).revokePayment(
-        authorizationIds[0],
-        someCorrelationId,
-        someParentTxHash
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      await expect(
+        cardPaymentProcessor.connect(admin).revokePayment(
+          authorizationIds[0],
+          someCorrelationId,
+          someParentTxHash
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
 
-      await expect(cardPaymentProcessor.connect(admin).reversePayment(
-        authorizationIds[0],
-        someCorrelationId,
-        someParentTxHash
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      await expect(
+        cardPaymentProcessor.connect(admin).reversePayment(
+          authorizationIds[0],
+          someCorrelationId,
+          someParentTxHash
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
 
-      await expect(cardPaymentProcessor.connect(admin).confirmPayment(
-        authorizationIds[0],
-        cashOutAccount.address
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      await expect(
+        cardPaymentProcessor.connect(admin).confirmPayment(
+          authorizationIds[0],
+          cashOutAccount.address
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
 
-      await expect(cardPaymentProcessor.connect(admin).confirmPayments(
-        authorizationIds,
-        cashOutAccount.address
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
+      await expect(
+        cardPaymentProcessor.connect(admin).confirmPayments(
+          authorizationIds,
+          cashOutAccount.address
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS);
     }
 
     beforeEach(async () => {
@@ -1373,22 +1492,26 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
     it("All payment processing functions except making are reverted if a payment was revoked", async () => {
       await makePayments(payments);
-      await proveTx(cardPaymentProcessor.connect(admin).revokePayment(
-        authorizationIds[0],
-        someCorrelationId,
-        someParentTxHash
-      ));
+      await proveTx(
+        cardPaymentProcessor.connect(admin).revokePayment(
+          authorizationIds[0],
+          someCorrelationId,
+          someParentTxHash
+        )
+      );
       payments[0].status = PaymentStatus.Revoked;
       payments[0].revocationCounter = 1;
 
       await checkCardPaymentProcessorState(payments);
       await checkRevertingOfAllPaymentProcessingFunctionsExceptMaking();
 
-      await expect(cardPaymentProcessor.connect(payments[0].account).makePayment(
-        payments[0].amount,
-        authorizationIds[0],
-        someCorrelationId,
-      )).to.changeTokenBalances(
+      await expect(
+        cardPaymentProcessor.connect(payments[0].account).makePayment(
+          payments[0].amount,
+          authorizationIds[0],
+          someCorrelationId,
+        )
+      ).to.changeTokenBalances(
         tokenMock,
         [cardPaymentProcessor, payments[0].account],
         [+payments[0].amount, -payments[0].amount]
@@ -1409,18 +1532,22 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
     it("All payment processing functions are reverted if a payment was reversed", async () => {
       await makePayments(payments);
-      await proveTx(cardPaymentProcessor.connect(admin).reversePayment(
-        authorizationIds[0],
-        someCorrelationId,
-        someParentTxHash
-      ));
+      await proveTx(
+        cardPaymentProcessor.connect(admin).reversePayment(
+          authorizationIds[0],
+          someCorrelationId,
+          someParentTxHash
+        )
+      );
       payments[0].status = PaymentStatus.Reversed;
 
-      await expect(cardPaymentProcessor.makePayment(
-        payments[0].amount,
-        authorizationIds[0],
-        createBytesString(payments[0].makingPaymentCorrelationId, BYTES16_LENGTH)
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
+      await expect(
+        cardPaymentProcessor.makePayment(
+          payments[0].amount,
+          authorizationIds[0],
+          createBytesString(payments[0].makingPaymentCorrelationId, BYTES16_LENGTH)
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
 
       await checkRevertingOfAllPaymentProcessingFunctionsExceptMaking();
       await checkCardPaymentProcessorState(payments);
@@ -1432,11 +1559,13 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await proveTx(cardPaymentProcessor.connect(admin).confirmPayment(authorizationIds[0], cashOutAccount.address));
       payments[0].status = PaymentStatus.Confirmed;
 
-      await expect(cardPaymentProcessor.makePayment(
-        payments[0].amount,
-        authorizationIds[0],
-        createBytesString(payments[0].makingPaymentCorrelationId, BYTES16_LENGTH)
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
+      await expect(
+        cardPaymentProcessor.makePayment(
+          payments[0].amount,
+          authorizationIds[0],
+          createBytesString(payments[0].makingPaymentCorrelationId, BYTES16_LENGTH)
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
 
       await checkRevertingOfAllPaymentProcessingFunctionsExceptMaking();
       await checkCardPaymentProcessorState(payments);
@@ -1446,11 +1575,13 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await makePayments([payments[0]]);
       await clearPayments([payments[0]], admin);
 
-      await expect(cardPaymentProcessor.connect(payments[0].account).makePayment(
-        payments[0].amount,
-        authorizationIds[0],
-        someCorrelationId
-      )).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
+      await expect(
+        cardPaymentProcessor.connect(payments[0].account).makePayment(
+          payments[0].amount,
+          authorizationIds[0],
+          someCorrelationId
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
     });
 
     it("Making payment function is reverted if the revocation counter has reached the limit", async () => {
@@ -1461,20 +1592,24 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       for (let relocationCounter = 0; relocationCounter < revocationCounterMax; ++relocationCounter) {
         await makePayments([payments[0]]);
-        await proveTx(cardPaymentProcessor.connect(admin).revokePayment(
-          authorizationIds[0],
-          someCorrelationId,
-          someParentTxHash
-        ));
+        await proveTx(
+          cardPaymentProcessor.connect(admin).revokePayment(
+            authorizationIds[0],
+            someCorrelationId,
+            someParentTxHash
+          )
+        );
         payments[0].status = PaymentStatus.Revoked;
         payments[0].revocationCounter = relocationCounter + 1;
         await checkCardPaymentProcessorState(payments);
       }
-      await expect(cardPaymentProcessor.connect(payments[0].account).makePayment(
-        payments[0].amount,
-        authorizationIds[0],
-        someCorrelationId
-      )).to.be.revertedWithCustomError(
+      await expect(
+        cardPaymentProcessor.connect(payments[0].account).makePayment(
+          payments[0].amount,
+          authorizationIds[0],
+          someCorrelationId
+        )
+      ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_LIMIT
       );
