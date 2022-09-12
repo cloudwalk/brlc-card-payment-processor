@@ -9,8 +9,8 @@ pragma solidity ^0.8.8;
 interface ITokenDistributor {
     /// @dev Emitted when a new token distribution is executed.
     event DistributeTokens(
-        address indexed token, // The address of the token contract whose coins has been distributed.
-        uint256 total          // The total amount of distributed tokens.
+        address indexed token, // The address of the token used for distribution.
+        uint256 totalAmount    // The total amount of distributed tokens.
     );
 
     /**
@@ -18,9 +18,9 @@ interface ITokenDistributor {
      *
      * Emits a {DistributeTokens} event.
      *
-     * @param token The address of the token contract whose coins are being distributed.
-     * @param recipients Token recipient addresses.
-     * @param balances Token recipient target balances.
+     * @param token The address of the token to use for distribution.
+     * @param recipients An array of token recipient addresses.
+     * @param balances An array of token recipient target balances.
      */
     function distributeTokens(
         address token,

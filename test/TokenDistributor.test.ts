@@ -5,16 +5,16 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { proveTx } from "../test-utils/eth";
 import { countNumberArrayTotal, createRevertMessageDueToMissingRole } from "../test-utils/misc";
 
-describe("Contract 'PixCashierUpgradeable'", async () => {
+describe("Contract 'TokenDistributor'", async () => {
   const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
   const REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE = "ERC20: transfer amount exceeds balance";
 
-  const REVERT_ERROR_IF_TOKEN_IS_ZERO = "ZeroToken";
+  const REVERT_ERROR_IF_TOKEN_ADDRESS_IS_ZERO = "ZeroTokenAddress";
   const REVERT_ERROR_IF_RECIPIENTS_ARRAY_IS_EMPTY = "EmptyRecipientsArray";
   const REVERT_ERROR_IF_BALANCES_ARRAY_LENGTH_MISMATCH = "BalancesArrayLengthMismatch";
-  const REVERT_ERROR_IF_RECIPIENT_IS_ZERO = "ZeroRecipient";
-  const REVERT_ERROR_IF_BALANCE_IS_ZERO = "ZeroBalance";
+  const REVERT_ERROR_IF_RECIPIENT_ADDRESS_IS_ZERO = "ZeroRecipientAddress";
+  const REVERT_ERROR_IF_RECIPIENT_TARGET_BALANCE_IS_ZERO = "ZeroRecipientBalance";
 
   let tokenDistributor: Contract;
   let tokenMock: Contract;
@@ -31,7 +31,7 @@ describe("Contract 'PixCashierUpgradeable'", async () => {
     const TokenMock: ContractFactory = await ethers.getContractFactory("ERC20UpgradeableMock");
     tokenMock = await TokenMock.deploy();
     await tokenMock.deployed();
-    await proveTx(tokenMock.initialize("BRL Coin", "BRLC"));
+    await proveTx(tokenMock.initialize("ERC20 Test", "TEST"));
 
     // Deploy the being tested contract
     const TokenDistributor: ContractFactory = await ethers.getContractFactory("TokenDistributor");
@@ -104,14 +104,14 @@ describe("Contract 'PixCashierUpgradeable'", async () => {
       ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, distributorRole));
     });
 
-    it("Is reverted if the token contract address is zero", async () => {
+    it("Is reverted if the token address is zero", async () => {
       await expect(
         tokenDistributor.connect(distributor).distributeTokens(
           ethers.constants.AddressZero,
           recipientAddresses,
           balances
         )
-      ).to.be.revertedWithCustomError(tokenDistributor, REVERT_ERROR_IF_TOKEN_IS_ZERO);
+      ).to.be.revertedWithCustomError(tokenDistributor, REVERT_ERROR_IF_TOKEN_ADDRESS_IS_ZERO);
     });
 
     it("Is reverted if the array of recipients is empty", async () => {
@@ -145,7 +145,7 @@ describe("Contract 'PixCashierUpgradeable'", async () => {
           recipientAddresses,
           balances
         )
-      ).to.be.revertedWithCustomError(tokenDistributor, REVERT_ERROR_IF_RECIPIENT_IS_ZERO);
+      ).to.be.revertedWithCustomError(tokenDistributor, REVERT_ERROR_IF_RECIPIENT_ADDRESS_IS_ZERO);
     });
 
     it("Is reverted if one of the values in balances array is zero", async () => {
@@ -158,7 +158,7 @@ describe("Contract 'PixCashierUpgradeable'", async () => {
           recipientAddresses,
           badBalances
         )
-      ).to.be.revertedWithCustomError(tokenDistributor, REVERT_ERROR_IF_BALANCE_IS_ZERO);
+      ).to.be.revertedWithCustomError(tokenDistributor, REVERT_ERROR_IF_RECIPIENT_TARGET_BALANCE_IS_ZERO);
     });
 
     it("Is reverted if the contract has not enough tokens to execute all transfers", async () => {
