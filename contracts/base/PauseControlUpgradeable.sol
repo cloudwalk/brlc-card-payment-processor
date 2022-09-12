@@ -8,16 +8,24 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/securit
 /**
  * @title PauseControlUpgradeable base contract
  * @dev Extends OpenZeppelin's PausableUpgradeable contract and AccessControlUpgradeable contract.
- * Introduces the {PAUSER_ROLE} role to control the paused state the contract that is inherited from this one.
+ *
+ * This contract is used through inheritance. It introduces the {PAUSER_ROLE} role that is allowed
+ * to trigger paused/unpaused state of the contract that is inherited from this one.
+ *
  * The admins of the {PAUSER_ROLE} roles are accounts with the role defined in the init() function.
  */
 abstract contract PauseControlUpgradeable is AccessControlUpgradeable, PausableUpgradeable {
+    /// @dev The role of pauser that is allowed to trigger paused/unpaused state of the contract.
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
+
+    // ------------------- Functions ---------------------------------
 
     function __PauseControl_init(bytes32 pauserRoleAdmin) internal onlyInitializing {
         __Context_init_unchained();
         __ERC165_init_unchained();
+        __AccessControl_init_unchained();
         __Pausable_init_unchained();
+
         __PauseControl_init_unchained(pauserRoleAdmin);
     }
 
@@ -40,7 +48,7 @@ abstract contract PauseControlUpgradeable is AccessControlUpgradeable, PausableU
     }
 
     /**
-     * @dev Triggers the unpaused state.
+     * @dev Triggers the unpaused state of the contract.
      *
      * Requirements:
      *

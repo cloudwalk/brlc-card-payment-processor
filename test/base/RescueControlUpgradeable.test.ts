@@ -21,7 +21,7 @@ describe("Contract 'RescueControlUpgradeable'", async () => {
     const TokenMock: ContractFactory = await ethers.getContractFactory("ERC20UpgradeableMock");
     tokenMock = await TokenMock.deploy();
     await tokenMock.deployed();
-    await proveTx(tokenMock.initialize("BRL Coin", "BRLC"));
+    await proveTx(tokenMock.initialize("ERC20 Test", "TEST"));
 
     // Deploy the contract under test
     const RescueControlMock: ContractFactory = await ethers.getContractFactory("RescueControlUpgradeableMock");

@@ -8,7 +8,7 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
  * @title BlacklistControlUpgradeable base contract
  * @dev Allows to blacklist/unblacklist accounts using the {BLACKLISTER_ROLE} role.
  *
- * This contract is used through inheritance. It will make available the modifier `notBlacklisted`,
+ * This contract is used through inheritance. It makes available the modifier `notBlacklisted`,
  * which can be applied to functions to restrict their usage to not blacklisted accounts only.
  *
  * The admins of the {BLACKLISTER_ROLE} role are accounts with the role defined in the init() function.
@@ -16,6 +16,7 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
  * There is also a possibility to any account to blacklist itself.
  */
 abstract contract BlacklistControlUpgradeable is AccessControlUpgradeable {
+    /// @dev The role of blacklister that is allowed to blacklist/unblacklist accounts.
     bytes32 public constant BLACKLISTER_ROLE = keccak256("BLACKLISTER_ROLE");
 
     /// @dev Mapping of presence in the blacklist for a given address.
@@ -42,6 +43,8 @@ abstract contract BlacklistControlUpgradeable is AccessControlUpgradeable {
     function __BlacklistControl_init(bytes32 blacklisterRoleAdmin) internal onlyInitializing {
         __Context_init_unchained();
         __ERC165_init_unchained();
+        __AccessControl_init_unchained();
+
         __BlacklistControl_init_unchained(blacklisterRoleAdmin);
     }
 
@@ -84,7 +87,9 @@ abstract contract BlacklistControlUpgradeable is AccessControlUpgradeable {
         if (_blacklisted[account]) {
             return;
         }
+
         _blacklisted[account] = true;
+
         emit Blacklisted(account);
     }
 
@@ -103,7 +108,9 @@ abstract contract BlacklistControlUpgradeable is AccessControlUpgradeable {
         if (!_blacklisted[account]) {
             return;
         }
+
         _blacklisted[account] = false;
+
         emit UnBlacklisted(account);
     }
 
@@ -120,7 +127,9 @@ abstract contract BlacklistControlUpgradeable is AccessControlUpgradeable {
         if (_blacklisted[_msgSender()]) {
             return;
         }
+
         _blacklisted[_msgSender()] = true;
+
         emit SelfBlacklisted(_msgSender());
         emit Blacklisted(_msgSender());
     }

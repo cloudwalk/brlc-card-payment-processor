@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.8;
 
 import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
@@ -19,7 +19,7 @@ contract ERC20UpgradeableMock is ERC20Upgradeable {
     }
 
     /**
-     * @dev Cals the appropriate internal function to mint needed amount of tokens for an account.
+     * @dev Calls the appropriate internal function to mint needed amount of tokens for an account.
      * @param account The address of an account to mint for.
      * @param amount The amount of tokens to mint.
      */
@@ -29,7 +29,7 @@ contract ERC20UpgradeableMock is ERC20Upgradeable {
     }
 
     /**
-     * @dev Cals the appropriate internal function to burn needed amount of tokens.
+     * @dev Calls the appropriate internal function to burn needed amount of tokens.
      * @param amount The amount of tokens of this contract to burn.
      */
     function burn(uint256 amount) external {
