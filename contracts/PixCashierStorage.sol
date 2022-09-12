@@ -9,7 +9,7 @@ abstract contract PixCashierStorageV1 {
     /// @dev The address of the underlying token.
     address internal _token;
 
-    /// @dev Mapping of a cash-out token balance for a given account. These balances are parts of the contract balance.
+    /// @dev Mapping of a pending cash-out balance for a given account.
     mapping(address => uint256) internal _cashOutBalances;
 }
 

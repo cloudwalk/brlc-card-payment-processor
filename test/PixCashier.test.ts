@@ -5,19 +5,21 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { proveTx } from "../test-utils/eth";
 import { createRevertMessageDueToMissingRole } from "../test-utils/misc";
 
-describe("Contract 'PixCashierUpgradeable'", async () => {
+describe("Contract 'PixCashier'", async () => {
   const TRANSACTION_ID = ethers.utils.formatBytes32String("MOCK_TRANSACTION_ID");
 
   const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
   const REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE = "ERC20: transfer amount exceeds balance";
 
+  const REVERT_ERROR_IF_TOKEN_ADDRESS_IZ_ZERO = "ZeroTokenAddress";
   const REVERT_ERROR_IF_ACCOUNT_IS_BLACKLISTED = "BlacklistedAccount";
   const REVERT_ERROR_IF_ACCOUNT_IS_ZERO = "ZeroAccount";
   const REVERT_ERROR_IF_AMOUNT_IS_ZERO = "ZeroAmount";
   const REVERT_ERROR_IF_TRANSACTION_ID_IS_ZERO = "ZeroTxId";
   const REVERT_ERROR_IF_BALANCE_IS_INSUFFICIENT = "InsufficientCashOutBalance";
 
+  let PixCashier: ContractFactory;
   let pixCashier: Contract;
   let tokenMock: Contract;
   let deployer: SignerWithAddress;
@@ -34,10 +36,10 @@ describe("Contract 'PixCashierUpgradeable'", async () => {
     const TokenMock: ContractFactory = await ethers.getContractFactory("ERC20UpgradeableMock");
     tokenMock = await TokenMock.deploy();
     await tokenMock.deployed();
-    await proveTx(tokenMock.initialize("BRL Coin", "BRLC"));
+    await proveTx(tokenMock.initialize("ERC20 Test", "TEST"));
 
     // Deploy the being tested contract
-    const PixCashier: ContractFactory = await ethers.getContractFactory("PixCashier");
+    PixCashier = await ethers.getContractFactory("PixCashier");
     pixCashier = await PixCashier.deploy();
     await pixCashier.deployed();
     await proveTx(pixCashier.initialize(tokenMock.address));
@@ -57,6 +59,14 @@ describe("Contract 'PixCashierUpgradeable'", async () => {
     await expect(
       pixCashier.initialize(tokenMock.address)
     ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+  });
+
+  it("The initialize function is reverted if the passed token address is zero", async () => {
+    const anotherPixCashier: Contract = await PixCashier.deploy();
+    await anotherPixCashier.deployed();
+    await expect(
+      anotherPixCashier.initialize(ethers.constants.AddressZero)
+    ).to.be.revertedWithCustomError(PixCashier, REVERT_ERROR_IF_TOKEN_ADDRESS_IZ_ZERO);
   });
 
   it("The initial contract configuration should be as expected", async () => {
