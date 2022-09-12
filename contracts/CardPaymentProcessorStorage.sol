@@ -11,10 +11,10 @@ abstract contract CardPaymentProcessorStorageV1 is ICardPaymentProcessorTypes {
     /// @dev The address of the underlying token.
     address internal _token;
 
-    /// @dev The total balance of cleared tokens owned by the contract.
+    /// @dev The total balance of cleared tokens locked in the contract.
     uint256 internal _totalClearedBalance;
 
-    /// @dev The total balance of uncleared tokens owned by the contract.
+    /// @dev The total balance of uncleared tokens locked in the contract.
     uint256 internal _totalUnclearedBalance;
 
     /// @dev Mapping of a payment for a given authorization ID.

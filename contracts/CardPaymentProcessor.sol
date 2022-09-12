@@ -10,12 +10,12 @@ import { BlacklistControlUpgradeable } from "./base/BlacklistControlUpgradeable.
 import { PauseControlUpgradeable } from "./base/PauseControlUpgradeable.sol";
 import { RescueControlUpgradeable } from "./base/RescueControlUpgradeable.sol";
 import { CardPaymentProcessorStorage } from "./CardPaymentProcessorStorage.sol";
-import { ICardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
 import { StoragePlaceholder200 } from "./base/StoragePlaceholder.sol";
+import { ICardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
 
 /**
  * @title CardPaymentProcessor contract
- * @dev Wrapper for the card payment operations.
+ * @dev Wrapper contract for the card payment operations.
  */
 contract CardPaymentProcessor is
     AccessControlUpgradeable,
@@ -26,16 +26,24 @@ contract CardPaymentProcessor is
     CardPaymentProcessorStorage,
     ICardPaymentProcessor
 {
+    using SafeERC20Upgradeable for IERC20Upgradeable;
+
+    /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
+
+    /// @dev The role of executor that is allowed to execute the card payment operations.
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
 
-    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // -------------------- Events -----------------------------------
 
+    /// @dev Emitted when revocation limit is changed.
     event SetRevocationLimit(uint8 oldLimit, uint8 newLimit);
 
     // -------------------- Errors -----------------------------------
+
+    /// @dev The zero token address has been passed as a function argument.
+    error ZeroTokenAddress();
 
     /// @dev Zero amount of tokens has been passed when making a payment.
     error ZeroPaymentAmount();
@@ -53,12 +61,12 @@ contract CardPaymentProcessor is
     error PaymentAlreadyCleared();
 
     /// @dev The payment with the provided authorization ID does not exist.
-    error PaymentDoesNotExit();
+    error PaymentNotExit();
 
     /// @dev Empty array of authorization IDs has been passed as a function argument.
     error EmptyAuthorizationIdsArray();
 
-    /// @dev Zero parent transaction has been passed as a function argument.
+    /// @dev Zero parent transaction hash has been passed as a function argument.
     error ZeroParentTransactionHash();
 
     /// @dev Zero cash out account has been passed as a function argument.
@@ -78,16 +86,26 @@ contract CardPaymentProcessor is
 
     // ------------------- Functions ---------------------------------
 
+    /**
+     * @dev The initialize function of the upgradable contract.
+     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
+     *
+     * Requirements:
+     *
+     * - The passed token address must not be zero.
+     *
+     * @param token_ The address of a token to set as the underlying one.
+     */
     function initialize(address token_) public initializer {
         __CardPaymentProcessor_init(token_);
     }
 
     function __CardPaymentProcessor_init(address token_) internal onlyInitializing {
-        __AccessControl_init_unchained();
         __Context_init_unchained();
         __ERC165_init_unchained();
-        __Pausable_init_unchained();
+        __AccessControl_init_unchained();
         __BlacklistControl_init_unchained(OWNER_ROLE);
+        __Pausable_init_unchained();
         __PauseControl_init_unchained(OWNER_ROLE);
         __RescueControl_init_unchained(OWNER_ROLE);
 
@@ -95,6 +113,10 @@ contract CardPaymentProcessor is
     }
 
     function __CardPaymentProcessor_init_unchained(address token_) internal onlyInitializing {
+        if (token_ == address(0)) {
+            revert ZeroTokenAddress();
+        }
+
         _token = token_;
         _revocationLimit = type(uint8).max;
 
@@ -174,10 +196,10 @@ contract CardPaymentProcessor is
      *
      * - The contract must not be paused.
      * - The caller must must not be blacklisted.
-     * - The amount of tokens must be greater then zero.
+     * - The amount of tokens must be greater than zero.
      * - The authorization ID of the payment must not be zero.
-     * - The payment with the authorization ID must not exist or be revoked.
-     * - The payment's revocation counter must be less then the configured revocation limit of payments or equals zero.
+     * - The payment linked with the authorization ID must not exist or be revoked.
+     * - The payment's revocation counter must be equal to zero or less than the configured revocation limit.
      *
      */
     function makePayment(
@@ -185,15 +207,14 @@ contract CardPaymentProcessor is
         bytes16 authorizationId,
         bytes16 correlationId
     ) external whenNotPaused notBlacklisted(_msgSender()) {
-        Payment storage payment = _payments[authorizationId];
-        address sender = _msgSender();
-
         if (amount == 0) {
             revert ZeroPaymentAmount();
         }
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
         }
+
+        Payment storage payment = _payments[authorizationId];
 
         PaymentStatus status = payment.status;
         if (
@@ -208,6 +229,8 @@ contract CardPaymentProcessor is
             revert RevocationLimitReached(_revocationLimit);
         }
 
+        address sender = _msgSender();
+
         IERC20Upgradeable(_token).safeTransferFrom(sender, address(this), amount);
 
         payment.account = sender;
@@ -217,7 +240,12 @@ contract CardPaymentProcessor is
         _unclearedBalances[sender] = _unclearedBalances[sender] + amount;
         _totalUnclearedBalance = _totalUnclearedBalance + amount;
 
-        emit MakePayment(authorizationId, correlationId, sender, amount, revocationCounter);
+        emit MakePayment(
+            authorizationId,
+            correlationId,
+            sender,
+            amount,
+            revocationCounter);
     }
 
     /**
@@ -227,8 +255,8 @@ contract CardPaymentProcessor is
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The payment must have the "uncleared" status.
      * - The input authorization ID of the payment must not be zero.
+     * - The payment linked with the authorization ID must have "uncleared" status.
      */
     function clearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         uint256 amount = clearPaymentInternal(authorizationId);
@@ -244,9 +272,9 @@ contract CardPaymentProcessor is
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
-     * - Each payment must have the "uncleared" status or the call will be reverted.
-     * - The input array of the the authorization IDs must not be empty.
-     * - All the authorization IDs of the payments must not be zero.
+     * - The input array of authorization IDs must not be empty.
+     * - All authorization IDs in the input array must not be zero.
+     * - All payments linked with the authorization IDs must have "uncleared" status.
      */
     function clearPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (authorizationIds.length == 0) {
@@ -268,8 +296,8 @@ contract CardPaymentProcessor is
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The payment must have the "cleared" status or the call will be reverted.
      * - The input authorization ID of the payment must not be zero.
+     * - The payment linked with the authorization ID must have "cleared" status.
      */
     function unclearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         uint256 amount = unclearPaymentInternal(authorizationId);
@@ -285,9 +313,9 @@ contract CardPaymentProcessor is
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
-     * - Each payment must have the "cleared" status or the call will be reverted.
-     * - The input array of the the authorization IDs must not be empty.
-     * - All the authorization IDs of the payments must not be zero.
+     * - The input array of authorization IDs must not be empty.
+     * - All authorization IDs in the input array must not be zero.
+     * - All payments linked with the authorization IDs must have "cleared" status.
      */
     function unclearPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (authorizationIds.length == 0) {
@@ -309,8 +337,8 @@ contract CardPaymentProcessor is
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The payment must have "cleared" or "uncleared" statuses.
      * - The input authorization ID and parent transaction hash of the payment must not be zero.
+     * - The payment linked with the authorization ID must have "cleared" or "uncleared" status.
      */
     function reversePayment(
         bytes16 authorizationId,
@@ -332,8 +360,8 @@ contract CardPaymentProcessor is
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The payment must have "cleared" or "uncleared" statuses.
      * - The input authorization ID and parent transaction hash of the payment must not be zero.
+     * - The payment linked with the authorization ID must have "cleared" or "uncleared" status.
      * - The revocation limit of payments should not be zero.
      */
     function revokePayment(
@@ -359,8 +387,8 @@ contract CardPaymentProcessor is
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The payment must have the "cleared" status.
      * - The input authorization ID and cash out account of the payment must not be zero.
+     * - The payment linked with the authorization ID must have "cleared" status.
      */
     function confirmPayment(bytes16 authorizationId, address cashOutAccount)
         external
@@ -383,7 +411,9 @@ contract CardPaymentProcessor is
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
-     * - Each payment must have the "cleared" status or the call will be reverted.
+     * - The input array of authorization IDs must not be empty.
+     * - All authorization IDs in the input array must not be zero.
+     * - All payments linked with the authorization IDs must have "cleared" status.
      */
     function confirmPayments(bytes16[] memory authorizationIds, address cashOutAccount)
         external
@@ -519,7 +549,7 @@ contract CardPaymentProcessor is
         PaymentStatus status = payment.status;
 
         if (status == PaymentStatus.Nonexistent) {
-            revert PaymentDoesNotExit();
+            revert PaymentNotExit();
         }
 
         address account = payment.account;
@@ -574,7 +604,7 @@ contract CardPaymentProcessor is
 
     function checkClearedStatus(PaymentStatus status) internal pure {
         if (status == PaymentStatus.Nonexistent) {
-            revert PaymentDoesNotExit();
+            revert PaymentNotExit();
         }
         if (status == PaymentStatus.Uncleared) {
             revert PaymentAlreadyUncleared();
@@ -586,7 +616,7 @@ contract CardPaymentProcessor is
 
     function checkUnclearedStatus(PaymentStatus status) internal pure {
         if (status == PaymentStatus.Nonexistent) {
-            revert PaymentDoesNotExit();
+            revert PaymentNotExit();
         }
         if (status == PaymentStatus.Cleared) {
             revert PaymentAlreadyCleared();

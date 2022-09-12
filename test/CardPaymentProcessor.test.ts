@@ -83,19 +83,21 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
   const REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE = "ERC20: transfer amount exceeds balance";
 
-  const REVERT_ERROR_IF_ACCOUNT_IS_BLACKLISTED = "BlacklistedAccount";
+  const REVERT_ERROR_IF_TOKEN_ADDRESS_IZ_ZERO = "ZeroTokenAddress";
   const REVERT_ERROR_IF_PAYMENT_AMOUNT_IS_ZERO = "ZeroPaymentAmount";
-  const REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO = "ZeroAuthorizationId";
+  const REVERT_ERROR_IF_ACCOUNT_IS_BLACKLISTED = "BlacklistedAccount";
+  const REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST = "PaymentNotExit";
   const REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS = "PaymentAlreadyExists";
-  const REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST = "PaymentDoesNotExit";
   const REVERT_ERROR_IF_PAYMENT_IS_ALREADY_CLEARED = "PaymentAlreadyCleared";
-  const REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY = "EmptyAuthorizationIdsArray";
   const REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED = "PaymentAlreadyUncleared";
-  const REVERT_ERROR_IF_PARENT_TX_HASH_IS_ZERO = "ZeroParentTransactionHash";
-  const REVERT_ERROR_IF_CASH_OUT_ACCOUNT_IS_ZERO_ADDRESS = "ZeroCashOutAccount";
+  const REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO = "ZeroAuthorizationId";
   const REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS = "InappropriatePaymentStatus";
   const REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_LIMIT = "RevocationLimitReached";
+  const REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY = "EmptyAuthorizationIdsArray";
+  const REVERT_ERROR_IF_CASH_OUT_ACCOUNT_IS_ZERO_ADDRESS = "ZeroCashOutAccount";
+  const REVERT_ERROR_IF_PARENT_TX_HASH_IS_ZERO = "ZeroParentTransactionHash";
 
+  let CardPaymentProcessor: ContractFactory;
   let cardPaymentProcessor: Contract;
   let tokenMock: Contract;
   let deployer: SignerWithAddress;
@@ -282,10 +284,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     const TokenMock: ContractFactory = await ethers.getContractFactory("ERC20UpgradeableMock");
     tokenMock = await TokenMock.deploy();
     await tokenMock.deployed();
-    await proveTx(tokenMock.initialize("BRL Coin", "BRLC"));
+    await proveTx(tokenMock.initialize("ERC20 Test", "TEST"));
 
     // Deploy the being tested contract
-    const CardPaymentProcessor: ContractFactory = await ethers.getContractFactory("CardPaymentProcessor");
+    CardPaymentProcessor = await ethers.getContractFactory("CardPaymentProcessor");
     cardPaymentProcessor = await CardPaymentProcessor.deploy();
     await cardPaymentProcessor.deployed();
     await proveTx(cardPaymentProcessor.initialize(tokenMock.address));
@@ -305,6 +307,14 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     await expect(
       cardPaymentProcessor.initialize(tokenMock.address)
     ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+  });
+
+  it("The initialize function is reverted if the passed token address is zero", async () => {
+    const anotherCardPaymentProcessor: Contract = await CardPaymentProcessor.deploy();
+    await anotherCardPaymentProcessor.deployed();
+    await expect(
+      anotherCardPaymentProcessor.initialize(ethers.constants.AddressZero)
+    ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_TOKEN_ADDRESS_IZ_ZERO);
   });
 
   it("The initial contract configuration should be as expected", async () => {

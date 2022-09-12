@@ -14,11 +14,11 @@ interface ICardPaymentProcessorTypes {
      * - Uncleared --- The status immediately after the payment making.
      * - Cleared ----- The payment has been cleared and is ready to be confirmed.
      * - Revoked ----- The payment was revoked due to some technical reason.
-     *                 The related tokens have been transferred back to a customer.
+     *                 The related tokens have been transferred back to the customer.
      *                 The payment can be made again with the same authorizationId
      *                 if its revocation counter does not reach the configure limit.
      * - Reversed ---- The payment was reversed due to the decision of the off-chain card processing service.
-     *                 The related tokens have been transferred back to a customer.
+     *                 The related tokens have been transferred back to the customer.
      *                 The payment cannot be made again with the same authorizationId.
      */
     enum PaymentStatus {
@@ -47,6 +47,7 @@ interface ICardPaymentProcessorTypes {
 
 /**
  * @title CardPaymentProcessor interface
+ * @dev The interface of the wrapper contract for the card paymnet operations.
  */
 interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
@@ -131,23 +132,23 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     function underlyingToken() external view returns (address);
 
     /**
-     * @dev Returns the total uncleared amount of tokens locked in the contract.
+     * @dev Returns the total balance of uncleared tokens locked in the contract.
      */
     function totalUnclearedBalance() external view returns (uint256);
 
     /**
-     * @dev Returns the total cleared amount of tokens locked in the contract.
+     * @dev Returns the total balance of cleared tokens locked in the contract.
      */
     function totalClearedBalance() external view returns (uint256);
 
     /**
-     * @dev Returns the uncleared balance for an account.
+     * @dev Returns the balance of uncleared tokens for an account.
      * @param account The address of the account.
      */
     function unclearedBalanceOf(address account) external view returns (uint256);
 
     /**
-     * @dev Returns the cleared balance for an account.
+     * @dev Returns the balance of cleared tokens for an account.
      * @param account The address of the account.
      */
     function clearedBalanceOf(address account) external view returns (uint256);
@@ -159,14 +160,14 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     function paymentFor(bytes16 authorizationId) external view returns (Payment memory);
 
     /**
-     * @dev Checks if a payment related to a parent transaction hash has been revoked.
-     * @param parentTxHash The hash of the transaction where the payment was made.
+     * @dev Checks if the payment associated with the hash of the parent transaction has been revoked.
+     * @param parentTxHash The hash of the parent transaction where the payment was made.
      */
     function isPaymentRevoked(bytes32 parentTxHash) external view returns (bool);
 
     /**
-     * @dev Checks if a payment related to a parent transaction hash has been reversed.
-     * @param parentTxHash The hash of the transaction where the payment was made.
+     * @dev Checks if the payment associated with the hash of the parent transaction has been reversed.
+     * @param parentTxHash The hash of the parent transaction where the payment was made.
      */
     function isPaymentReversed(bytes32 parentTxHash) external view returns (bool);
 
@@ -179,13 +180,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @dev Makes a card payment.
      *
      * Transfers the underlying tokens from the payer (who is the caller of the function) to this contract.
-     *
-     * Requirements:
-     *
-     * - The amount of tokens must be greater then zero.
-     * - The authorization ID of the payment must not be zero.
-     * - The payment with the authorization ID must not exist or be revoked.
-     * - The payment's revocation counter must be less then the configured revocation limit of payments or equals zero.
+     * This function is expected to be called by any account.
      *
      * Emits a {MakePayment} event.
      *
@@ -202,10 +197,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Executes a clearing operation for a single previously made card payment.
      *
-     * Requirements:
-     *
-     * - The payment must have the "uncleared" status.
-     * - The input authorization ID of the payment must not be zero.
+     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {ClearPayment} event for the payment.
      *
@@ -216,11 +208,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Executes a clearing operation for several previously made card payments.
      *
-     * Requirements:
-     *
-     * - Each payment must have the "uncleared" status or the call will be reverted.
-     * - The input array of the the authorization IDs must not be empty.
-     * - All the authorization IDs of the payments must not be zero.
+     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {ClearPayment} event for each payment.
      *
@@ -231,10 +219,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Cancels a previously executed clearing operation for a single card payment.
      *
-     * Requirements:
-     *
-     * - The payment must have the "cleared" status or the call will be reverted.
-     * - The input authorization ID of the payment must not be zero.
+     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {UnclearPayment} event for the payment.
      *
@@ -245,11 +230,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Cancels a previously executed clearing operation for several card payments.
      *
-     * Requirements:
-     *
-     * - Each payment must have the "cleared" status or the call will be reverted.
-     * - The input array of the the authorization IDs must not be empty.
-     * - All the authorization IDs of the payments must not be zero.
+     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {UnclearPayment} event for the payment.
      *
@@ -259,13 +240,10 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
 
     /**
      * @dev Performs the reverse of a previously made card payment.
-     * Finalizes the payment: no other operations can be done for the payment.
+     *
+     * Finalizes the payment: no other operations can be done for the payment after finalization.
      * Transfers tokens back from this contract to the payer.
-     *
-     * Requirements:
-     *
-     * - The payment must have "cleared" or "uncleared" statuses.
-     * - The input authorization ID and parent transaction hash of the payment must not be zero.
+     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {ReversePayment} event for the payment.
      *
@@ -281,14 +259,10 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
 
     /**
      * @dev Performs the revocation of a previously made card payment and increase its revocation counter.
+     *
      * Does not finalize the payment: it can be made again until revocation counter reaches the configured limit.
      * Transfers tokens back from this contract to the payer.
-     *
-     * Requirements:
-     *
-     * - The payment must have "cleared" or "uncleared" statuses.
-     * - The input authorization ID and parent transaction hash of the payment must not be zero.
-     * - The revocation limit of payments should not be zero.
+     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {RevokePayment} event for the payment.
      *
@@ -303,14 +277,11 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     ) external;
 
     /**
-     * @dev Executes the final step of single card payments processing with token transferring.
-     * Finalizes the payment: no other operations can be done for the payment.
+     * @dev Executes the final step of a single card payment processing with token transferring.
+     *
+     * Finalizes the payment: no other operations can be done for the payment after finalization.
      * Transfers previously cleared tokens gotten from a payer to a dedicated cash-out account for further operations.
-     *
-     * Requirements:
-     *
-     * - The payment must have the "cleared" status.
-     * - The input authorization ID and cash out account of the payment must not be zero.
+     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {ConfirmPayment} event for the payment.
      *
@@ -321,14 +292,12 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
 
     /**
      * @dev Executes the final step of several card payments processing with token transferring.
-     * Finalizes the payment: no other operations can be done for the payments.
+     *
+     * Finalizes the payment: no other operations can be done for the payment after finalization.
      * Transfers previously cleared tokens gotten from payers to a dedicated cash-out account for further operations.
+     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
-     * Requirements:
-     *
-     * - Each payment must have the "cleared" status or the call will be reverted.
-     *
-     * Emits a {ConfirmPayment} event for the payment.
+     * Emits a {ConfirmPayment} event for each payment.
      *
      * @param authorizationIds The card transaction authorization IDs from the off-chain card processing backend.
      * @param cashOutAccount The account to transfer cleared tokens to.
