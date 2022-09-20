@@ -67,7 +67,7 @@ contract PixCashier is
      *
      * @param token_ The address of a token to set as the underlying one.
      */
-    function initialize(address token_) public initializer {
+    function initialize(address token_) external initializer {
         __PixCashier_init(token_);
     }
 
@@ -96,16 +96,6 @@ contract PixCashier is
         _setupRole(OWNER_ROLE, _msgSender());
     }
 
-    /// @dev See {IPixCashier-underlyingToken}.
-    function underlyingToken() external view returns (address) {
-        return _token;
-    }
-
-    /// @dev See {IPixCashier-cashOutBalanceOf}.
-    function cashOutBalanceOf(address account) external view returns (uint256) {
-        return _cashOutBalances[account];
-    }
-
     /**
      * @dev See {IPixCashier-cashIn}.
      *
@@ -130,9 +120,9 @@ contract PixCashier is
             revert ZeroTxId();
         }
 
-        IERC20Mintable(_token).mint(account, amount);
-
         emit CashIn(account, amount, txId);
+
+        IERC20Mintable(_token).mint(account, amount);
     }
 
     /**
@@ -153,20 +143,21 @@ contract PixCashier is
         }
 
         address sender = _msgSender();
-        IERC20Upgradeable(_token).safeTransferFrom(
-            sender,
-            address(this),
-            amount
-        );
 
-        uint256 newCashOutBalance = _cashOutBalances[_msgSender()] + amount;
-        _cashOutBalances[_msgSender()] = newCashOutBalance;
+        uint256 newCashOutBalance = _cashOutBalances[sender] + amount;
+        _cashOutBalances[sender] = newCashOutBalance;
 
         emit CashOut(
             sender,
             amount,
             newCashOutBalance,
             txId
+        );
+
+        IERC20Upgradeable(_token).safeTransferFrom(
+            sender,
+            address(this),
+            amount
         );
     }
 
@@ -190,11 +181,11 @@ contract PixCashier is
 
         address sender = _msgSender();
         uint256 cashOutBalance = _cashOutBalances[sender];
+
         if (cashOutBalance < amount) {
             revert InsufficientCashOutBalance();
         }
 
-        IERC20Mintable(_token).burn(amount);
         cashOutBalance -= amount;
         _cashOutBalances[sender] = cashOutBalance;
 
@@ -204,6 +195,8 @@ contract PixCashier is
             cashOutBalance,
             txId
         );
+
+        IERC20Mintable(_token).burn(amount);
     }
 
     /**
@@ -225,12 +218,13 @@ contract PixCashier is
         }
 
         address sender = _msgSender();
+
         uint256 cashOutBalance = _cashOutBalances[sender];
+
         if (cashOutBalance < amount) {
             revert InsufficientCashOutBalance();
         }
 
-        IERC20Upgradeable(_token).safeTransfer(sender, amount);
         cashOutBalance -= amount;
         _cashOutBalances[sender] = cashOutBalance;
 
@@ -240,5 +234,21 @@ contract PixCashier is
             cashOutBalance,
             txId
         );
+
+        IERC20Upgradeable(_token).safeTransfer(sender, amount);
+    }
+
+    /**
+     * @dev See {IPixCashier-underlyingToken}.
+     */
+    function underlyingToken() external view returns (address) {
+        return _token;
+    }
+
+    /**
+     * @dev See {IPixCashier-cashOutBalanceOf}.
+     */
+    function cashOutBalanceOf(address account) external view returns (uint256) {
+        return _cashOutBalances[account];
     }
 }

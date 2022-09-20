@@ -34,10 +34,9 @@ contract CardPaymentProcessor is
     /// @dev The role of executor that is allowed to execute the card payment operations.
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
 
-
     // -------------------- Events -----------------------------------
 
-    /// @dev Emitted when revocation limit is changed.
+    /// @dev Emitted when the revocation limit is changed.
     event SetRevocationLimit(uint8 oldLimit, uint8 newLimit);
 
     // -------------------- Errors -----------------------------------
@@ -61,7 +60,7 @@ contract CardPaymentProcessor is
     error PaymentAlreadyCleared();
 
     /// @dev The payment with the provided authorization ID does not exist.
-    error PaymentNotExit();
+    error PaymentNotExist();
 
     /// @dev Empty array of authorization IDs has been passed as a function argument.
     error EmptyAuthorizationIdsArray();
@@ -96,7 +95,7 @@ contract CardPaymentProcessor is
      *
      * @param token_ The address of a token to set as the underlying one.
      */
-    function initialize(address token_) public initializer {
+    function initialize(address token_) external initializer {
         __CardPaymentProcessor_init(token_);
     }
 
@@ -124,6 +123,280 @@ contract CardPaymentProcessor is
         _setRoleAdmin(EXECUTOR_ROLE, OWNER_ROLE);
 
         _setupRole(OWNER_ROLE, _msgSender());
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-makePayment}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must must not be blacklisted.
+     * - The amount of tokens must be greater than zero.
+     * - The authorization ID of the payment must not be zero.
+     * - The payment linked with the authorization ID must not exist or be revoked.
+     * - The payment's revocation counter must be equal to zero or less than the configured revocation limit.
+     */
+    function makePayment(
+        uint256 amount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) external whenNotPaused notBlacklisted(_msgSender()) {
+        if (amount == 0) {
+            revert ZeroPaymentAmount();
+        }
+        if (authorizationId == 0) {
+            revert ZeroAuthorizationId();
+        }
+
+        Payment storage payment = _payments[authorizationId];
+
+        PaymentStatus status = payment.status;
+        if (
+            status != PaymentStatus.Nonexistent &&
+            status != PaymentStatus.Revoked
+        ) {
+            revert PaymentAlreadyExists();
+        }
+
+        uint8 revocationCounter = payment.revocationCounter;
+        if (revocationCounter != 0 && revocationCounter >= _revocationLimit) {
+            revert RevocationLimitReached(_revocationLimit);
+        }
+
+        address sender = _msgSender();
+
+        payment.account = sender;
+        payment.amount = amount;
+        payment.status = PaymentStatus.Uncleared;
+
+        _unclearedBalances[sender] = _unclearedBalances[sender] + amount;
+        _totalUnclearedBalance = _totalUnclearedBalance + amount;
+
+        emit MakePayment(
+            authorizationId,
+            correlationId,
+            sender,
+            amount,
+            revocationCounter
+        );
+
+        IERC20Upgradeable(_token).safeTransferFrom(sender, address(this), amount);
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-clearPayment}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input authorization ID of the payment must not be zero.
+     * - The payment linked with the authorization ID must have the "uncleared" status.
+     */
+    function clearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        uint256 amount = clearPaymentInternal(authorizationId);
+
+        _totalUnclearedBalance = _totalUnclearedBalance - amount;
+        _totalClearedBalance = _totalClearedBalance + amount;
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-clearPayments}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input array of authorization IDs must not be empty.
+     * - All authorization IDs in the input array must not be zero.
+     * - All payments linked with the authorization IDs must have the "uncleared" status.
+     */
+    function clearPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        if (authorizationIds.length == 0) {
+            revert EmptyAuthorizationIdsArray();
+        }
+
+        uint256 totalAmount = 0;
+        uint256 len = authorizationIds.length;
+        for (uint256 i = 0; i < len; i++) {
+            totalAmount += clearPaymentInternal(authorizationIds[i]);
+        }
+
+        _totalUnclearedBalance = _totalUnclearedBalance - totalAmount;
+        _totalClearedBalance = _totalClearedBalance + totalAmount;
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-unclearPayment}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input authorization ID of the payment must not be zero.
+     * - The payment linked with the authorization ID must have the "cleared" status.
+     */
+    function unclearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        uint256 amount = unclearPaymentInternal(authorizationId);
+
+        _totalClearedBalance = _totalClearedBalance - amount;
+        _totalUnclearedBalance = _totalUnclearedBalance + amount;
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-unclearPayments}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input array of authorization IDs must not be empty.
+     * - All authorization IDs in the input array must not be zero.
+     * - All payments linked with the authorization IDs must have the "cleared" status.
+     */
+    function unclearPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        if (authorizationIds.length == 0) {
+            revert EmptyAuthorizationIdsArray();
+        }
+
+        uint256 totalAmount = 0;
+        uint256 len = authorizationIds.length;
+        for (uint256 i = 0; i < len; i++) {
+            totalAmount = totalAmount + unclearPaymentInternal(authorizationIds[i]);
+        }
+
+        _totalClearedBalance = _totalClearedBalance - totalAmount;
+        _totalUnclearedBalance = _totalUnclearedBalance + totalAmount;
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-reversePayment}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input authorization ID and parent transaction hash of the payment must not be zero.
+     * - The payment linked with the authorization ID must have the "cleared" or "uncleared" status.
+     */
+    function reversePayment(
+        bytes16 authorizationId,
+        bytes16 correlationId,
+        bytes32 parentTxHash
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        cancelPaymentInternal(
+            authorizationId,
+            correlationId,
+            parentTxHash,
+            PaymentStatus.Reversed
+        );
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-revokePayment}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input authorization ID and parent transaction hash of the payment must not be zero.
+     * - The payment linked with the authorization ID must have the "cleared" or "uncleared" status.
+     * - The revocation limit of payments should not be zero.
+     */
+    function revokePayment(
+        bytes16 authorizationId,
+        bytes16 correlationId,
+        bytes32 parentTxHash
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        if (_revocationLimit == 0) {
+            revert RevocationLimitReached(0);
+        }
+
+        cancelPaymentInternal(
+            authorizationId,
+            correlationId,
+            parentTxHash,
+            PaymentStatus.Revoked
+        );
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-confirmPayment}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input authorization ID and cash out account of the payment must not be zero.
+     * - The payment linked with the authorization ID must have the "cleared" status.
+     */
+    function confirmPayment(bytes16 authorizationId, address cashOutAccount)
+        external
+        whenNotPaused
+        onlyRole(EXECUTOR_ROLE)
+    {
+        if (cashOutAccount == address(0)) {
+            revert ZeroCashOutAccount();
+        }
+
+        uint256 amount = confirmPaymentInternal(authorizationId);
+        _totalClearedBalance = _totalClearedBalance - amount;
+        IERC20Upgradeable(_token).safeTransfer(cashOutAccount, amount);
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-confirmPayments}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input array of authorization IDs must not be empty.
+     * - All authorization IDs in the input array must not be zero.
+     * - All payments linked with the authorization IDs must have the "cleared" status.
+     */
+    function confirmPayments(bytes16[] memory authorizationIds, address cashOutAccount)
+        external
+        whenNotPaused
+        onlyRole(EXECUTOR_ROLE)
+    {
+        if (authorizationIds.length == 0) {
+            revert EmptyAuthorizationIdsArray();
+        }
+        if (cashOutAccount == address(0)) {
+            revert ZeroCashOutAccount();
+        }
+
+        uint256 totalAmount = 0;
+        for (uint256 i = 0; i < authorizationIds.length; i++) {
+            totalAmount += confirmPaymentInternal(authorizationIds[i]);
+        }
+
+        _totalClearedBalance = _totalClearedBalance - totalAmount;
+        IERC20Upgradeable(_token).safeTransfer(cashOutAccount, totalAmount);
+    }
+
+    /**
+     * @dev Sets a new value for the revocation limit.
+     * If the limit equals 0 or 1 a payment with the same authorization ID cannot be repeated after the revocation.
+     *
+     * Requirements:
+     *
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     *
+     * Emits a {SetRevocationLimit} event if the new limit differs from the old value.
+     *
+     * @param newLimit The new revocation limit value to be set.
+     */
+    function setRevocationLimit(uint8 newLimit) external onlyRole(OWNER_ROLE) {
+        uint8 oldLimit = _revocationLimit;
+        if (oldLimit == newLimit) {
+            return;
+        }
+
+        _revocationLimit = newLimit;
+        emit SetRevocationLimit(oldLimit, newLimit);
     }
 
     /**
@@ -187,275 +460,6 @@ contract CardPaymentProcessor is
      */
     function revocationLimit() external view returns (uint8) {
         return _revocationLimit;
-    }
-
-    /**
-     * @dev See {ICardPaymentProcessor-makePayment}.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must must not be blacklisted.
-     * - The amount of tokens must be greater than zero.
-     * - The authorization ID of the payment must not be zero.
-     * - The payment linked with the authorization ID must not exist or be revoked.
-     * - The payment's revocation counter must be equal to zero or less than the configured revocation limit.
-     *
-     */
-    function makePayment(
-        uint256 amount,
-        bytes16 authorizationId,
-        bytes16 correlationId
-    ) external whenNotPaused notBlacklisted(_msgSender()) {
-        if (amount == 0) {
-            revert ZeroPaymentAmount();
-        }
-        if (authorizationId == 0) {
-            revert ZeroAuthorizationId();
-        }
-
-        Payment storage payment = _payments[authorizationId];
-
-        PaymentStatus status = payment.status;
-        if (
-            status != PaymentStatus.Nonexistent &&
-            status != PaymentStatus.Revoked
-        ) {
-            revert PaymentAlreadyExists();
-        }
-
-        uint8 revocationCounter = payment.revocationCounter;
-        if (revocationCounter != 0 && revocationCounter >= _revocationLimit) {
-            revert RevocationLimitReached(_revocationLimit);
-        }
-
-        address sender = _msgSender();
-
-        IERC20Upgradeable(_token).safeTransferFrom(sender, address(this), amount);
-
-        payment.account = sender;
-        payment.amount = amount;
-        payment.status = PaymentStatus.Uncleared;
-
-        _unclearedBalances[sender] = _unclearedBalances[sender] + amount;
-        _totalUnclearedBalance = _totalUnclearedBalance + amount;
-
-        emit MakePayment(
-            authorizationId,
-            correlationId,
-            sender,
-            amount,
-            revocationCounter);
-    }
-
-    /**
-     * @dev See {ICardPaymentProcessor-clearPayment}.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The input authorization ID of the payment must not be zero.
-     * - The payment linked with the authorization ID must have "uncleared" status.
-     */
-    function clearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        uint256 amount = clearPaymentInternal(authorizationId);
-
-        _totalUnclearedBalance = _totalUnclearedBalance - amount;
-        _totalClearedBalance = _totalClearedBalance + amount;
-    }
-
-    /**
-     * @dev See {ICardPaymentProcessor-clearPayments}.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The input array of authorization IDs must not be empty.
-     * - All authorization IDs in the input array must not be zero.
-     * - All payments linked with the authorization IDs must have "uncleared" status.
-     */
-    function clearPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        if (authorizationIds.length == 0) {
-            revert EmptyAuthorizationIdsArray();
-        }
-
-        uint256 totalAmount = 0;
-        for (uint256 i = 0; i < authorizationIds.length; i++) {
-            totalAmount += clearPaymentInternal(authorizationIds[i]);
-        }
-        _totalUnclearedBalance = _totalUnclearedBalance - totalAmount;
-        _totalClearedBalance = _totalClearedBalance + totalAmount;
-    }
-
-    /**
-     * @dev See {ICardPaymentProcessor-unclearPayment}.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The input authorization ID of the payment must not be zero.
-     * - The payment linked with the authorization ID must have "cleared" status.
-     */
-    function unclearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        uint256 amount = unclearPaymentInternal(authorizationId);
-
-        _totalClearedBalance = _totalClearedBalance - amount;
-        _totalUnclearedBalance = _totalUnclearedBalance + amount;
-    }
-
-    /**
-     * @dev See {ICardPaymentProcessor-unclearPayments}.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The input array of authorization IDs must not be empty.
-     * - All authorization IDs in the input array must not be zero.
-     * - All payments linked with the authorization IDs must have "cleared" status.
-     */
-    function unclearPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        if (authorizationIds.length == 0) {
-            revert EmptyAuthorizationIdsArray();
-        }
-
-        uint256 totalAmount = 0;
-        for (uint256 i = 0; i < authorizationIds.length; i++) {
-            totalAmount = totalAmount + unclearPaymentInternal(authorizationIds[i]);
-        }
-        _totalClearedBalance = _totalClearedBalance - totalAmount;
-        _totalUnclearedBalance = _totalUnclearedBalance + totalAmount;
-    }
-
-    /**
-     * @dev See {ICardPaymentProcessor-reversePayment}.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The input authorization ID and parent transaction hash of the payment must not be zero.
-     * - The payment linked with the authorization ID must have "cleared" or "uncleared" status.
-     */
-    function reversePayment(
-        bytes16 authorizationId,
-        bytes16 correlationId,
-        bytes32 parentTxHash
-    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        cancelPaymentInternal(
-            authorizationId,
-            correlationId,
-            parentTxHash,
-            PaymentStatus.Reversed
-        );
-    }
-
-    /**
-     * @dev See {ICardPaymentProcessor-revokePayment}.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The input authorization ID and parent transaction hash of the payment must not be zero.
-     * - The payment linked with the authorization ID must have "cleared" or "uncleared" status.
-     * - The revocation limit of payments should not be zero.
-     */
-    function revokePayment(
-        bytes16 authorizationId,
-        bytes16 correlationId,
-        bytes32 parentTxHash
-    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        if (_revocationLimit == 0) {
-            revert RevocationLimitReached(0);
-        }
-        cancelPaymentInternal(
-            authorizationId,
-            correlationId,
-            parentTxHash,
-            PaymentStatus.Revoked
-        );
-    }
-
-    /**
-     * @dev See {ICardPaymentProcessor-confirmPayment}.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The input authorization ID and cash out account of the payment must not be zero.
-     * - The payment linked with the authorization ID must have "cleared" status.
-     */
-    function confirmPayment(bytes16 authorizationId, address cashOutAccount)
-        external
-        whenNotPaused
-        onlyRole(EXECUTOR_ROLE)
-    {
-        if (cashOutAccount == address(0)) {
-            revert ZeroCashOutAccount();
-        }
-
-        uint256 amount = confirmPaymentInternal(authorizationId);
-        _totalClearedBalance = _totalClearedBalance - amount;
-        IERC20Upgradeable(_token).safeTransfer(cashOutAccount, amount);
-    }
-
-    /**
-     * @dev See {ICardPaymentProcessor-confirmPayments}.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The input array of authorization IDs must not be empty.
-     * - All authorization IDs in the input array must not be zero.
-     * - All payments linked with the authorization IDs must have "cleared" status.
-     */
-    function confirmPayments(bytes16[] memory authorizationIds, address cashOutAccount)
-        external
-        whenNotPaused
-        onlyRole(EXECUTOR_ROLE)
-    {
-        if (authorizationIds.length == 0) {
-            revert EmptyAuthorizationIdsArray();
-        }
-        if (cashOutAccount == address(0)) {
-            revert ZeroCashOutAccount();
-        }
-
-        uint256 totalAmount = 0;
-        for (uint256 i = 0; i < authorizationIds.length; i++) {
-            totalAmount += confirmPaymentInternal(authorizationIds[i]);
-        }
-
-        _totalClearedBalance = _totalClearedBalance - totalAmount;
-        IERC20Upgradeable(_token).safeTransfer(cashOutAccount, totalAmount);
-    }
-
-    /**
-     * @dev Sets a new value for the revocation limit.
-     * If the limit equals 0 or 1 a payment with the same authorization ID cannot be repeated after the revocation.
-     *
-     * Requirements:
-     *
-     * - The caller must have the {EXECUTOR_ROLE} role.
-     *
-     * Emits a {SetRevocationLimit} event if the new limit differs from the old value.
-     *
-     * @param newLimit The new revocation limit value to be set.
-     */
-    function setRevocationLimit(uint8 newLimit) external onlyRole(OWNER_ROLE) {
-        uint8 oldLimit = _revocationLimit;
-        if (oldLimit == newLimit) {
-            return;
-        }
-
-        _revocationLimit = newLimit;
-        emit SetRevocationLimit(oldLimit, newLimit);
     }
 
     function clearPaymentInternal(bytes16 authorizationId) internal returns (uint256 amount) {
@@ -549,7 +553,7 @@ contract CardPaymentProcessor is
         PaymentStatus status = payment.status;
 
         if (status == PaymentStatus.Nonexistent) {
-            revert PaymentNotExit();
+            revert PaymentNotExist();
         }
 
         address account = payment.account;
@@ -604,7 +608,7 @@ contract CardPaymentProcessor is
 
     function checkClearedStatus(PaymentStatus status) internal pure {
         if (status == PaymentStatus.Nonexistent) {
-            revert PaymentNotExit();
+            revert PaymentNotExist();
         }
         if (status == PaymentStatus.Uncleared) {
             revert PaymentAlreadyUncleared();
@@ -616,7 +620,7 @@ contract CardPaymentProcessor is
 
     function checkUnclearedStatus(PaymentStatus status) internal pure {
         if (status == PaymentStatus.Nonexistent) {
-            revert PaymentNotExit();
+            revert PaymentNotExist();
         }
         if (status == PaymentStatus.Cleared) {
             revert PaymentAlreadyCleared();

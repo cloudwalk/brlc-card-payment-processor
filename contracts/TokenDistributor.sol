@@ -41,7 +41,7 @@ contract TokenDistributor is
     /// @dev An empty array of recipients has been passed as a function argument.
     error EmptyRecipientsArray();
 
-    /// @dev The length of the array of balances is mismatched with the one of recipients array.
+    /// @dev The length of the array of balances is mismatched with the one of the recipients array.
     error BalancesArrayLengthMismatch();
 
     /// @dev The zero recipient address has been found in the input array of recipients.
@@ -56,7 +56,7 @@ contract TokenDistributor is
      * @dev The initialize function of the upgradable contract.
      * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
      */
-    function initialize() public initializer {
+    function initialize() external initializer {
         __TokenDistributor_init();
     }
 

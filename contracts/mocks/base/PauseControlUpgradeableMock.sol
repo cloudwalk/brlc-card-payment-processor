@@ -9,16 +9,20 @@ import { PauseControlUpgradeable } from "../../base/PauseControlUpgradeable.sol"
  * @dev An implementation of the {PauseControlUpgradeable} contract for test purposes.
  */
 contract PauseControlUpgradeableMock is PauseControlUpgradeable {
-    /// @dev The role of this contract owner
+    /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
-    /// @dev The initialize function of the upgradable contract.
+    /**
+     * @dev The initialize function of the upgradable contract.
+     */
     function initialize() public initializer {
         _setupRole(OWNER_ROLE, _msgSender());
         __PauseControl_init(OWNER_ROLE);
     }
 
-    /// @dev To check that the initialize function of the ancestor contract has the 'onlyInitializing' modifier.
+    /**
+     * @dev To check that the initialize function of the ancestor contract has the 'onlyInitializing' modifier.
+     */
     function call_parent_initialize() public {
         __PauseControl_init(OWNER_ROLE);
     }

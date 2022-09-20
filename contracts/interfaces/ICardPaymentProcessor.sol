@@ -30,9 +30,7 @@ interface ICardPaymentProcessorTypes {
         Confirmed    // 5
     }
 
-    /**
-     * @dev Structure with data of a single payment.
-     */
+    /// @dev Structure with data of a single payment.
     struct Payment {
         // Account who made the payment
         address account;
@@ -47,12 +45,10 @@ interface ICardPaymentProcessorTypes {
 
 /**
  * @title CardPaymentProcessor interface
- * @dev The interface of the wrapper contract for the card paymnet operations.
+ * @dev The interface of the wrapper contract for the card payment operations.
  */
 interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
-    /**
-     * @dev Emitted when payment is made.
-     */
+    /// @dev Emitted when payment is made.
     event MakePayment(
         bytes16 indexed authorizationId,
         bytes16 indexed correlationId,
@@ -61,9 +57,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint8 revocationCounter
     );
 
-    /**
-     * @dev Emitted when payment is cleared.
-     */
+    /// @dev Emitted when payment is cleared.
     event ClearPayment(
         bytes16 indexed authorizationId,
         address indexed account,
@@ -73,9 +67,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint8 revocationCounter
     );
 
-    /**
-     * @dev Emitted when payment is uncleared.
-     */
+    /// @dev Emitted when payment is uncleared.
     event UnclearPayment(
         bytes16 indexed authorizationId,
         address indexed account,
@@ -85,9 +77,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint8 revocationCounter
     );
 
-    /**
-     * @dev Emitted when payment is revoked.
-     */
+    /// @dev Emitted when payment is revoked.
     event RevokePayment(
         bytes16 indexed authorizationId,
         bytes16 indexed correlationId,
@@ -100,9 +90,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint8 revocationCounter
     );
 
-    /**
-     * @dev Emitted when payment is reversed.
-     */
+    /// @dev Emitted when payment is reversed.
     event ReversePayment(
         bytes16 indexed authorizationId,
         bytes16 indexed correlationId,
@@ -115,9 +103,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint8 revocationCounter
     );
 
-    /**
-     * @dev Emitted when payment is confirmed.
-     */
+    /// @dev Emitted when payment is confirmed.
     event ConfirmPayment(
         bytes16 indexed authorizationId,
         address indexed account,
@@ -160,13 +146,13 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     function paymentFor(bytes16 authorizationId) external view returns (Payment memory);
 
     /**
-     * @dev Checks if the payment associated with the hash of the parent transaction has been revoked.
+     * @dev Checks if the payment associated with the hash of a parent transaction has been revoked.
      * @param parentTxHash The hash of the parent transaction where the payment was made.
      */
     function isPaymentRevoked(bytes32 parentTxHash) external view returns (bool);
 
     /**
-     * @dev Checks if the payment associated with the hash of the parent transaction has been reversed.
+     * @dev Checks if the payment associated with the hash of a parent transaction has been reversed.
      * @param parentTxHash The hash of the parent transaction where the payment was made.
      */
     function isPaymentReversed(bytes32 parentTxHash) external view returns (bool);
@@ -241,7 +227,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Performs the reverse of a previously made card payment.
      *
-     * Finalizes the payment: no other operations can be done for the payment after finalization.
+     * Finalizes the payment: no other operations can be done for the payment after this one.
      * Transfers tokens back from this contract to the payer.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
@@ -279,7 +265,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Executes the final step of a single card payment processing with token transferring.
      *
-     * Finalizes the payment: no other operations can be done for the payment after finalization.
+     * Finalizes the payment: no other operations can be done for the payment after this one.
      * Transfers previously cleared tokens gotten from a payer to a dedicated cash-out account for further operations.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
@@ -293,7 +279,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Executes the final step of several card payments processing with token transferring.
      *
-     * Finalizes the payment: no other operations can be done for the payment after finalization.
+     * Finalizes the payment: no other operations can be done for the payment after this one.
      * Transfers previously cleared tokens gotten from payers to a dedicated cash-out account for further operations.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *

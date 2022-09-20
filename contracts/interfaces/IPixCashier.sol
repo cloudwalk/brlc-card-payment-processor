@@ -38,11 +38,13 @@ interface IPixCashier {
         bytes32 indexed txId     // The off-chain transaction identifier.
     );
 
-    /// @dev Returns the address of the underlying token.
+    /**
+     * @dev Returns the address of the underlying token.
+     */
     function underlyingToken() external view returns (address);
 
     /**
-     * @dev Returns a pending cash-out balance for the account.
+     * @dev Returns the pending cash-out balance for an account.
      * @param account The address of the account.
      */
     function cashOutBalanceOf(address account) external view returns (uint256);

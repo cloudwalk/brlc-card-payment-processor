@@ -38,7 +38,6 @@ abstract contract PauseControlUpgradeable is AccessControlUpgradeable, PausableU
      *
      * Requirements:
      *
-     * - The contract must not be paused.
      * - The caller should have the {PAUSER_ROLE} role.
      *
      * Emits a {Paused} event if it is executed successfully.
@@ -52,7 +51,6 @@ abstract contract PauseControlUpgradeable is AccessControlUpgradeable, PausableU
      *
      * Requirements:
      *
-     * - The contract must not be paused.
      * - The caller should have the {PAUSER_ROLE} role.
      *
      * Emits a {Unpaused} event if it is executed successfully.

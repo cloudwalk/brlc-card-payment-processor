@@ -76,8 +76,8 @@ abstract contract BlacklistControlUpgradeable is AccessControlUpgradeable {
      * @dev Adds the account to the blacklist.
      *
      * Requirements:
+     *
      * - The caller must have the {BLACKLISTER_ROLE} role.
-     * - The account must not be already blacklisted.
      *
      * Emits a {Blacklisted} event.
      *
@@ -97,8 +97,8 @@ abstract contract BlacklistControlUpgradeable is AccessControlUpgradeable {
      * @dev Removes the account from the blacklist.
      *
      * Requirements:
+     *
      * - The caller must have the {BLACKLISTER_ROLE} role.
-     * - The account must not be already unblacklisted.
      *
      * Emits a {UnBlacklisted} event.
      *
@@ -117,21 +117,20 @@ abstract contract BlacklistControlUpgradeable is AccessControlUpgradeable {
     /**
      * @dev Adds the transaction sender to the blacklist.
      *
-     * Requirements:
-     * - The caller must not be already blacklisted.
-     *
      * Emits a {SelfBlacklisted} event.
      * Emits a {Blacklisted} event.
      */
     function selfBlacklist() external {
-        if (_blacklisted[_msgSender()]) {
+        address sender = _msgSender();
+
+        if (_blacklisted[sender]) {
             return;
         }
 
-        _blacklisted[_msgSender()] = true;
+        _blacklisted[sender] = true;
 
-        emit SelfBlacklisted(_msgSender());
-        emit Blacklisted(_msgSender());
+        emit SelfBlacklisted(sender);
+        emit Blacklisted(sender);
     }
 
     /**
