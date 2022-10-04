@@ -53,7 +53,7 @@ function checkEquality(
       0,
       `payment[${paymentIndex}].amount is incorrect`
     );
-    expect(actualOnChainPayment.amount).to.equal(
+    expect(actualOnChainPayment.status).to.equal(
       0,
       `payment[${paymentIndex}].status is incorrect`
     );
