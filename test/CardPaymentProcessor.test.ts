@@ -89,6 +89,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS = "PaymentAlreadyExists";
   const REVERT_ERROR_IF_PAYMENT_IS_ALREADY_CLEARED = "PaymentAlreadyCleared";
   const REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED = "PaymentAlreadyUncleared";
+  const REVERT_ERROR_IF_PAYMENT_ACCOUNT_IS_ZERO = "ZeroAccount";
   const REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO = "ZeroAuthorizationId";
   const REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS = "InappropriatePaymentStatus";
   const REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_LIMIT = "RevocationLimitReached";
@@ -457,7 +458,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         correlationId,
         payment.account.address,
         payment.amount,
-        payment.revocationCounter || 0
+        payment.revocationCounter || 0,
+        payment.account.address
       );
       payment.status = PaymentStatus.Uncleared;
       await checkCardPaymentProcessorState([payment]);
@@ -486,6 +488,169 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(
         cardPaymentProcessor.connect(payment.account).makePayment(
           payment.amount + 1,
+          authorizationId,
+          otherMakingPaymentCorrelationsId
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
+    });
+  });
+
+  describe("Function 'makePaymentFrom()'", async () => {
+    let payment: TestPayment;
+    let admin: SignerWithAddress;
+    let authorizationId: string;
+    let correlationId: string;
+
+    beforeEach(async () => {
+      payment = {
+        authorizationId: 234,
+        account: user1,
+        amount: 345,
+        status: PaymentStatus.Nonexistent,
+        makingPaymentCorrelationId: 456,
+      };
+      admin = user2;
+      authorizationId = createBytesString(payment.authorizationId, BYTES16_LENGTH);
+      correlationId = createBytesString(payment.makingPaymentCorrelationId, BYTES16_LENGTH);
+      await setUpContractsForPayments([payment]);
+      await setExecutorRole(admin);
+    });
+
+    it("Is reverted if the contract is paused", async () => {
+      await proveTx(cardPaymentProcessor.grantRole(pauserRole, deployer.address));
+      await proveTx(cardPaymentProcessor.pause());
+      await expect(
+        cardPaymentProcessor.connect(admin).makePaymentFrom(
+          payment.account.address,
+          payment.amount,
+          authorizationId,
+          correlationId
+        )
+      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+    });
+
+    it("Is reverted if the caller does not have the executor role", async () => {
+      await expect(
+        cardPaymentProcessor.connect(payment.account).makePaymentFrom(
+          payment.account.address,
+          payment.amount,
+          authorizationId,
+          correlationId
+        )
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(payment.account.address, executorRole));
+    });
+
+    it("Is reverted if the payment account address is zero", async () => {
+      await expect(
+        cardPaymentProcessor.connect(admin).makePaymentFrom(
+          ethers.constants.AddressZero,
+          payment.amount,
+          authorizationId,
+          correlationId
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ACCOUNT_IS_ZERO);
+    });
+
+    it("Is reverted if the payment authorization ID is zero", async () => {
+      await expect(
+        cardPaymentProcessor.connect(admin).makePaymentFrom(
+          payment.account.address,
+          payment.amount,
+          ZERO_BYTES16_STRING,
+          correlationId
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
+    });
+
+    it("Is reverted if the user has not enough token balance", async () => {
+      const excessTokenAmount: number = payment.amount + 1;
+      await expect(
+        cardPaymentProcessor.connect(admin).makePaymentFrom(
+          payment.account.address,
+          excessTokenAmount,
+          authorizationId,
+          correlationId
+        )
+      ).to.be.revertedWith(REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
+    });
+
+    it("Transfers tokens as expected, emits the correct event, changes the state properly", async () => {
+      await checkCardPaymentProcessorState([payment]);
+      await expect(
+        cardPaymentProcessor.connect(admin).makePaymentFrom(
+          payment.account.address,
+          payment.amount,
+          authorizationId,
+          correlationId
+        )
+      ).to.changeTokenBalances(
+        tokenMock,
+        [cardPaymentProcessor, payment.account, admin],
+        [+payment.amount, -payment.amount, 0]
+      ).and.to.emit(
+        cardPaymentProcessor,
+        "MakePayment"
+      ).withArgs(
+        authorizationId,
+        correlationId,
+        payment.account.address,
+        payment.amount,
+        payment.revocationCounter || 0,
+        admin.address
+      );
+      payment.status = PaymentStatus.Uncleared;
+      await checkCardPaymentProcessorState([payment]);
+    });
+
+    it("Executes successfully even if the revocation limit of payments is zero", async () => {
+      await proveTx(cardPaymentProcessor.setRevocationLimit(0));
+      await expect(
+        cardPaymentProcessor.connect(admin).makePaymentFrom(
+          payment.account.address,
+          payment.amount,
+          authorizationId,
+          correlationId
+        )
+      ).to.emit(
+        cardPaymentProcessor,
+        "MakePayment"
+      );
+    });
+
+    it("Executes successfully even if the payment amount is zero", async () => {
+      payment.amount = 0;
+      await expect(
+        cardPaymentProcessor.connect(admin).makePaymentFrom(
+          payment.account.address,
+          payment.amount,
+          authorizationId,
+          correlationId
+        )
+      ).to.emit(
+        cardPaymentProcessor,
+        "MakePayment"
+      ).withArgs(
+        authorizationId,
+        correlationId,
+        payment.account.address,
+        payment.amount,
+        payment.revocationCounter || 0,
+        admin.address
+      );
+      payment.status = PaymentStatus.Uncleared;
+      await checkCardPaymentProcessorState([payment]);
+    });
+
+    it("Is reverted if the payment authorization ID already exists", async () => {
+      await makePayments([payment]);
+      const otherMakingPaymentCorrelationsId: string = createBytesString(
+        payment.makingPaymentCorrelationId + 1,
+        BYTES16_LENGTH
+      );
+      await expect(
+        cardPaymentProcessor.connect(admin).makePaymentFrom(
+          payment.account.address,
+          payment.amount,
           authorizationId,
           otherMakingPaymentCorrelationsId
         )
@@ -1521,7 +1686,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         someCorrelationId,
         payments[0].account.address,
         payments[0].amount,
-        payments[0].revocationCounter || 0
+        payments[0].revocationCounter || 0,
+        payments[0].account.address
       );
       payments[0].status = PaymentStatus.Uncleared;
 
