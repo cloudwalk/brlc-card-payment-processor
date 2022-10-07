@@ -35,14 +35,10 @@ interface ICardPaymentProcessorTypes {
 
     /// @dev Structure with data of a single payment.
     struct Payment {
-        // Account who made the payment
-        address account;
-        // Amount of tokens in the payment
-        uint256 amount;
-        // Current status of the payment according to the {PaymentStatus} enum
-        PaymentStatus status;
-        // Number of payment revocations
-        uint8 revocationCounter;
+        address account;         // Account who made the payment
+        uint256 amount;          // Amount of tokens in the payment
+        PaymentStatus status;    // Current status of the payment according to the {PaymentStatus} enum
+        uint8 revocationCounter; // Number of payment revocations
     }
 }
 
@@ -57,7 +53,8 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         bytes16 indexed correlationId,
         address indexed account,
         uint256 amount,
-        uint8 revocationCounter
+        uint8 revocationCounter,
+        address sender
     );
 
     /// @dev Emitted when payment is cleared.
@@ -178,6 +175,26 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @param correlationId The ID that is correlated to call of this function in the off-chain card processing backend.
      */
     function makePayment(
+        uint256 amount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) external;
+
+    /**
+     * @dev Makes a card payment from some other account.
+     *
+     * Transfers the underlying tokens from the account to this contract.
+     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
+     *
+     * Emits a {MakePayment} event.
+     *
+     * @param account The account on that behalf the payment is made.
+     * @param amount The amount of tokens to be transferred to this contract because of the payment.
+     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * @param correlationId The ID that is correlated to call of this function in the off-chain card processing backend.
+     */
+    function makePaymentFrom(
+        address account,
         uint256 amount,
         bytes16 authorizationId,
         bytes16 correlationId

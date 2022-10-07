@@ -44,8 +44,8 @@ contract CardPaymentProcessor is
     /// @dev The zero token address has been passed as a function argument.
     error ZeroTokenAddress();
 
-    /// @dev Zero amount of tokens has been passed when making a payment.
-    error ZeroPaymentAmount();
+    /// @dev The zero account address has been passed as a function argument.
+    error ZeroAccount();
 
     /// @dev Zero authorization ID has been passed as a function argument.
     error ZeroAuthorizationId();
@@ -132,7 +132,6 @@ contract CardPaymentProcessor is
      *
      * - The contract must not be paused.
      * - The caller must must not be blacklisted.
-     * - The amount of tokens must be greater than zero.
      * - The authorization ID of the payment must not be zero.
      * - The payment linked with the authorization ID must not exist or be revoked.
      * - The payment's revocation counter must be equal to zero or less than the configured revocation limit.
@@ -142,46 +141,32 @@ contract CardPaymentProcessor is
         bytes16 authorizationId,
         bytes16 correlationId
     ) external whenNotPaused notBlacklisted(_msgSender()) {
-        if (amount == 0) {
-            revert ZeroPaymentAmount();
-        }
-        if (authorizationId == 0) {
-            revert ZeroAuthorizationId();
-        }
-
-        Payment storage payment = _payments[authorizationId];
-
-        PaymentStatus status = payment.status;
-        if (
-            status != PaymentStatus.Nonexistent &&
-            status != PaymentStatus.Revoked
-        ) {
-            revert PaymentAlreadyExists();
-        }
-
-        uint8 revocationCounter = payment.revocationCounter;
-        if (revocationCounter != 0 && revocationCounter >= _revocationLimit) {
-            revert RevocationLimitReached(_revocationLimit);
-        }
-
         address sender = _msgSender();
+        makePaymentInternal(sender, sender, amount, authorizationId, correlationId);
+    }
 
-        payment.account = sender;
-        payment.amount = amount;
-        payment.status = PaymentStatus.Uncleared;
-
-        _unclearedBalances[sender] = _unclearedBalances[sender] + amount;
-        _totalUnclearedBalance = _totalUnclearedBalance + amount;
-
-        emit MakePayment(
-            authorizationId,
-            correlationId,
-            sender,
-            amount,
-            revocationCounter
-        );
-
-        IERC20Upgradeable(_token).safeTransferFrom(sender, address(this), amount);
+    /**
+     * @dev See {ICardPaymentProcessor-makePaymentFor}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The payment account address must not be zero.
+     * - The authorization ID of the payment must not be zero.
+     * - The payment linked with the authorization ID must not exist or be revoked.
+     * - The payment's revocation counter must be equal to zero or less than the configured revocation limit.
+     */
+    function makePaymentFrom(
+        address account,
+        uint256 amount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        if (account == address(0)) {
+            revert ZeroAccount();
+        }
+        makePaymentInternal(_msgSender(), account, amount, authorizationId, correlationId);
     }
 
     /**
@@ -460,6 +445,51 @@ contract CardPaymentProcessor is
      */
     function revocationLimit() external view returns (uint8) {
         return _revocationLimit;
+    }
+
+    function makePaymentInternal(
+        address sender,
+        address account,
+        uint256 amount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) internal {
+        if (authorizationId == 0) {
+            revert ZeroAuthorizationId();
+        }
+
+        Payment storage payment = _payments[authorizationId];
+
+        PaymentStatus status = payment.status;
+        if (
+            status != PaymentStatus.Nonexistent &&
+            status != PaymentStatus.Revoked
+        ) {
+            revert PaymentAlreadyExists();
+        }
+
+        uint8 revocationCounter = payment.revocationCounter;
+        if (revocationCounter != 0 && revocationCounter >= _revocationLimit) {
+            revert RevocationLimitReached(_revocationLimit);
+        }
+
+        payment.account = account;
+        payment.amount = amount;
+        payment.status = PaymentStatus.Uncleared;
+
+        _unclearedBalances[account] = _unclearedBalances[account] + amount;
+        _totalUnclearedBalance = _totalUnclearedBalance + amount;
+
+        emit MakePayment(
+            authorizationId,
+            correlationId,
+            account,
+            amount,
+            revocationCounter,
+            sender
+        );
+
+        IERC20Upgradeable(_token).safeTransferFrom(account, address(this), amount);
     }
 
     function clearPaymentInternal(bytes16 authorizationId) internal returns (uint256 amount) {
