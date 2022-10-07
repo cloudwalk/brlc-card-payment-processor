@@ -44,9 +44,6 @@ contract CardPaymentProcessor is
     /// @dev The zero token address has been passed as a function argument.
     error ZeroTokenAddress();
 
-    /// @dev Zero amount of tokens has been passed when making a payment.
-    error ZeroPaymentAmount();
-
     /// @dev Zero authorization ID has been passed as a function argument.
     error ZeroAuthorizationId();
 
@@ -132,7 +129,6 @@ contract CardPaymentProcessor is
      *
      * - The contract must not be paused.
      * - The caller must must not be blacklisted.
-     * - The amount of tokens must be greater than zero.
      * - The authorization ID of the payment must not be zero.
      * - The payment linked with the authorization ID must not exist or be revoked.
      * - The payment's revocation counter must be equal to zero or less than the configured revocation limit.
@@ -142,9 +138,6 @@ contract CardPaymentProcessor is
         bytes16 authorizationId,
         bytes16 correlationId
     ) external whenNotPaused notBlacklisted(_msgSender()) {
-        if (amount == 0) {
-            revert ZeroPaymentAmount();
-        }
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
         }

@@ -84,7 +84,6 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE = "ERC20: transfer amount exceeds balance";
 
   const REVERT_ERROR_IF_TOKEN_ADDRESS_IZ_ZERO = "ZeroTokenAddress";
-  const REVERT_ERROR_IF_PAYMENT_AMOUNT_IS_ZERO = "ZeroPaymentAmount";
   const REVERT_ERROR_IF_ACCOUNT_IS_BLACKLISTED = "BlacklistedAccount";
   const REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST = "PaymentNotExist";
   const REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS = "PaymentAlreadyExists";
@@ -415,17 +414,6 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           correlationId
         )
       ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_ACCOUNT_IS_BLACKLISTED);
-    });
-
-    it("Is reverted if the payment token amount is zero", async () => {
-      const zeroAmount: number = 0;
-      await expect(
-        cardPaymentProcessor.connect(payment.account).makePayment(
-          zeroAmount,
-          authorizationId,
-          correlationId
-        )
-      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AMOUNT_IS_ZERO);
     });
 
     it("Is reverted if the payment authorization ID is zero", async () => {
@@ -1623,6 +1611,52 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         cardPaymentProcessor,
         REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_LIMIT
       );
+    });
+
+    it("All payment processing functions execute successfully if the payment amount is zero", async () => {
+      payments.forEach(payment => payment.amount = 0);
+
+      await makePayments(payments);
+      await checkCardPaymentProcessorState(payments);
+
+      await proveTx(cardPaymentProcessor.connect(admin).clearPayments(authorizationIds));
+      payments.forEach(payment => payment.status = PaymentStatus.Cleared);
+      await checkCardPaymentProcessorState(payments);
+
+      await proveTx(cardPaymentProcessor.connect(admin).unclearPayments(authorizationIds));
+      payments.forEach(payment => payment.status = PaymentStatus.Uncleared);
+      await checkCardPaymentProcessorState(payments);
+
+      await proveTx(
+        cardPaymentProcessor.connect(admin).revokePayment(
+          authorizationIds[0],
+          someCorrelationId,
+          someParentTxHash
+        )
+      );
+      payments[0].status = PaymentStatus.Revoked;
+      payments[0].revocationCounter = 1;
+      await checkCardPaymentProcessorState(payments);
+
+      await proveTx(
+        cardPaymentProcessor.connect(admin).reversePayment(
+          authorizationIds[1],
+          someCorrelationId,
+          someParentTxHash
+        )
+      );
+      payments[1].status = PaymentStatus.Reversed;
+      await checkCardPaymentProcessorState(payments);
+
+      await makePayments([payments[0]]);
+      await clearPayments([payments[0]], admin);
+
+      const cashOutAccountBalanceBefore: BigNumber = await tokenMock.balanceOf(cashOutAccount.address);
+      await proveTx(cardPaymentProcessor.connect(admin).confirmPayments([authorizationIds[0]], cashOutAccount.address));
+      payments[0].status = PaymentStatus.Confirmed;
+      const cashOutAccountBalanceAfter: BigNumber = await tokenMock.balanceOf(cashOutAccount.address);
+      await checkCardPaymentProcessorState(payments);
+      expect(cashOutAccountBalanceBefore).to.equal(cashOutAccountBalanceAfter);
     });
   });
 });
