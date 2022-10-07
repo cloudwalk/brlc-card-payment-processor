@@ -166,8 +166,7 @@ contract CardPaymentProcessor is
         if (account == address(0)) {
             revert ZeroAccount();
         }
-        address sender = _msgSender();
-        makePaymentInternal(sender, account, amount, authorizationId, correlationId);
+        makePaymentInternal(_msgSender(), account, amount, authorizationId, correlationId);
     }
 
     /**

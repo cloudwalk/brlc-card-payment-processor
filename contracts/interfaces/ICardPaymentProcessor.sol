@@ -35,14 +35,10 @@ interface ICardPaymentProcessorTypes {
 
     /// @dev Structure with data of a single payment.
     struct Payment {
-        // Account who made the payment
-        address account;
-        // Amount of tokens in the payment
-        uint256 amount;
-        // Current status of the payment according to the {PaymentStatus} enum
-        PaymentStatus status;
-        // Number of payment revocations
-        uint8 revocationCounter;
+        address account;         // Account who made the payment
+        uint256 amount;          // Amount of tokens in the payment
+        PaymentStatus status;    // Current status of the payment according to the {PaymentStatus} enum
+        uint8 revocationCounter; // Number of payment revocations
     }
 }
 
