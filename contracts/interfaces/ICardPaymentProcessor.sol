@@ -20,6 +20,9 @@ interface ICardPaymentProcessorTypes {
      * - Reversed ---- The payment was reversed due to the decision of the off-chain card processing service.
      *                 The related tokens have been transferred back to the customer.
      *                 The payment cannot be made again with the same authorizationId.
+     * - Confirmed --- The payment was confirmed.
+     *                 The related tokens have been transferred to a special cash-out address.
+     *                 The payment cannot be made again with the same authorizationId.
      */
     enum PaymentStatus {
         Nonexistent, // 0
