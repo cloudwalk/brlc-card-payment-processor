@@ -11,3 +11,6 @@ artifacts
 
 #IDE-specific files
 .idea
+
+# Nix/direnv files
+/.direnv
