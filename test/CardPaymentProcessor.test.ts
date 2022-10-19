@@ -168,24 +168,19 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   function defineExpectedCardPaymentProcessorState(payments: TestPayment[]): CardPaymentProcessorState {
     const tokenBalance: number = countNumberArrayTotal(
       payments.map(
-        function (payment: TestPayment): number {
-          return payment.status == PaymentStatus.Uncleared || payment.status == PaymentStatus.Cleared
-            ? payment.amount
-            : 0;
-        }
+        (payment) => payment.status == PaymentStatus.Uncleared || payment.status == PaymentStatus.Cleared
+          ? payment.amount
+          : 0
       )
     );
     const totalClearedBalance: number = countNumberArrayTotal(
       payments.map(
-        function (payment: TestPayment): number {
-          return payment.status == PaymentStatus.Cleared ? payment.amount : 0;
-        }
+        (payment) => payment.status == PaymentStatus.Cleared ? payment.amount : 0
       )
     );
-    const totalUnclearedBalance: number = countNumberArrayTotal(payments.map(
-        function (payment: TestPayment): number {
-          return payment.status == PaymentStatus.Uncleared ? payment.amount : 0;
-        }
+    const totalUnclearedBalance: number = countNumberArrayTotal(
+      payments.map(
+        (payment) => payment.status == PaymentStatus.Uncleared ? payment.amount : 0
       )
     );
     const clearedBalancesPerAccount: Map<string, number> =
