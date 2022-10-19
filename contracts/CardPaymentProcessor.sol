@@ -109,7 +109,7 @@ contract CardPaymentProcessor is
         __Pausable_init_unchained();
         __PauseControl_init_unchained(OWNER_ROLE);
         __RescueControl_init_unchained(OWNER_ROLE);
-        __CashbackControl_init();
+        __CashbackControl_init_unchained(OWNER_ROLE);
 
         __CardPaymentProcessor_init_unchained(token_);
     }
@@ -385,10 +385,6 @@ contract CardPaymentProcessor is
 
         _revocationLimit = newLimit;
         emit SetRevocationLimit(oldLimit, newLimit);
-    }
-
-    function setCashbackRate(uint32 newRate) external onlyRole(OWNER_ROLE) {
-        setCashbackRateInternal(newRate);
     }
 
     /**
