@@ -375,6 +375,48 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
+  describe("Function 'setCashbackRate()'", async () => {
+    const cashbackRateNewValue: number = 150; // 1.5%
+    const cashbackRateDefaultValue: number = 100; // 1%
+
+    it("Is reverted if is called not by the account with the owner role", async () => {
+      await expect(
+        cardPaymentProcessor.connect(user1).setCashbackRate(cashbackRateNewValue)
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(user1.address, ownerRole));
+    });
+
+    it("Is reverted if amount is bigger than 10%", async () => {
+      await expect(
+        cardPaymentProcessor.setCashbackRate(1001)
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, "UnsafeCashbackRate");
+    });
+
+    it("Has a correct default value", async () => {
+      expect(await cardPaymentProcessor.cashbackRate()).to.equal(cashbackRateDefaultValue);
+    });
+
+    it("Emits the correct event, changes the cashback rate properly", async () => {
+      await expect(
+        cardPaymentProcessor.setCashbackRate(cashbackRateNewValue)
+      ).to.emit(
+        cardPaymentProcessor,
+        "SetCashbackRate"
+      ).withArgs(
+        cashbackRateDefaultValue,
+        cashbackRateNewValue
+      );
+    });
+
+    it("Does not emit events if the new value equals the old one", async () => {
+      await expect(
+        cardPaymentProcessor.setCashbackRate(cashbackRateDefaultValue)
+      ).not.to.emit(
+        cardPaymentProcessor,
+        "SetCashbackRate"
+      );
+    });
+  });
+
   describe("Function 'makePayment()'", async () => {
     let payment: TestPayment;
     let authorizationId: string;
