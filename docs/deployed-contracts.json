@@ -1,0 +1,22 @@
+[
+    {
+        "name": "CardPaymentProcessor",
+        "chainId": 2009,
+        "address": "0xc10dB4941fB486b2d88839775802FA03BAc6dE31"
+    },
+    {
+        "name": "CardPaymentProcessor",
+        "chainId": 2008,
+        "address": "0xe938b69d9AFA593FFE55CF01738AbfD62466DEa7"
+    },
+    {
+        "name": "TokenDistributor",
+        "chainId": 2009,
+        "address": "0xd754822328fd6E4D2f187278e1782f8ec7759f57"
+    },
+    {
+        "name": "TokenDistributor",
+        "chainId": 2008,
+        "address": "0xeda44dc9B5Ad4BA808bDf94C51D07c89921aaD80"
+    }
+]
