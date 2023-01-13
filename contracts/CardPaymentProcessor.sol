@@ -419,7 +419,7 @@ contract CardPaymentProcessor is
         if (status == PaymentStatus.Nonexistent) {
             revert PaymentNotExist();
         }
-        if (status == PaymentStatus.Reversed || status == PaymentStatus.Revoked) {
+        if (status != PaymentStatus.Uncleared && status != PaymentStatus.Cleared && status != PaymentStatus.Confirmed) {
             revert InappropriatePaymentStatus(status);
         }
         if (newRefundAmount > paymentAmount) {
@@ -427,7 +427,7 @@ contract CardPaymentProcessor is
         }
 
         uint256 newCompensationAmount = newRefundAmount +
-            calculateCashback(paymentAmount - newRefundAmount, payment.cashbackRate);
+        calculateCashback(paymentAmount - newRefundAmount, payment.cashbackRate);
         uint256 sentAmount = newCompensationAmount - payment.compensationAmount;
         uint256 revokedCashbackAmount = amount - sentAmount;
 
@@ -442,7 +442,7 @@ contract CardPaymentProcessor is
             _totalClearedBalance -= amount;
             _clearedBalances[account] -= amount;
             IERC20Upgradeable(_token).safeTransfer(account, sentAmount);
-        } else if (status == PaymentStatus.Confirmed) {
+        } else { // status == PaymentStatus.ConfirmPayment
             address cashOutAccount_ = requireCashOutAccount();
             IERC20Upgradeable token = IERC20Upgradeable(_token);
             token.safeTransferFrom(cashOutAccount_, account, sentAmount);
