@@ -3,6 +3,7 @@
 pragma solidity 0.8.16;
 
 import { ICardPaymentProcessorTypes } from "./interfaces/ICardPaymentProcessor.sol";
+import { ICardPaymentCashbackTypes } from "./interfaces/ICardPaymentCashback.sol";
 
 /**
  * @title CardPaymentProcessor storage version 1
@@ -37,6 +38,31 @@ abstract contract CardPaymentProcessorStorageV1 is ICardPaymentProcessorTypes {
 }
 
 /**
+ * @title CardPaymentProcessor storage version 2
+ */
+abstract contract CardPaymentProcessorStorageV2 {
+    /// @dev The account to transfer cleared tokens to.
+    address internal _cashOutAccount;
+}
+
+/**
+ * @title CardPaymentProcessor storage version 3
+ */
+abstract contract CardPaymentProcessorStorageV3 is ICardPaymentCashbackTypes {
+    /// @dev The enable flag of the cashback operations.
+    bool internal _cashbackEnabled;
+
+    /// @dev The address of the cashback distributor contract.
+    address internal _cashbackDistributor;
+
+    /// @dev The current cashback rate in permil (parts per thousand).
+    uint16 internal _cashbackRateInPermil;
+
+    /// @dev Mapping of a structure with cashback data for a given authorization ID.
+    mapping(bytes16 => Cashback) internal _cashbacks;
+}
+
+/**
  * @title CardPaymentProcessor storage
  * @dev Contains storage variables of the {CardPaymentProcessor} contract.
  *
@@ -46,6 +72,9 @@ abstract contract CardPaymentProcessorStorageV1 is ICardPaymentProcessorTypes {
  * e.g. CardPaymentProcessorStorage<versionNumber>, so finally it would look like
  * "contract CardPaymentProcessorStorage is CardPaymentProcessorStorageV1, CardPaymentProcessorStorageV2".
  */
-abstract contract CardPaymentProcessorStorage is CardPaymentProcessorStorageV1 {
+abstract contract CardPaymentProcessorStorage is
+    CardPaymentProcessorStorageV1,
+    CardPaymentProcessorStorageV2,
+    CardPaymentProcessorStorageV3 {
 
 }

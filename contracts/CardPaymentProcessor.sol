@@ -12,6 +12,8 @@ import { RescueControlUpgradeable } from "./base/RescueControlUpgradeable.sol";
 import { CardPaymentProcessorStorage } from "./CardPaymentProcessorStorage.sol";
 import { StoragePlaceholder200 } from "./base/StoragePlaceholder.sol";
 import { ICardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
+import { ICardPaymentCashback } from "./interfaces/ICardPaymentCashback.sol";
+import { ICashbackDistributor, ICashbackDistributorTypes } from "./interfaces/ICashbackDistributor.sol";
 
 /**
  * @title CardPaymentProcessor contract
@@ -24,7 +26,8 @@ contract CardPaymentProcessor is
     RescueControlUpgradeable,
     StoragePlaceholder200,
     CardPaymentProcessorStorage,
-    ICardPaymentProcessor
+    ICardPaymentProcessor,
+    ICardPaymentCashback
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -34,9 +37,16 @@ contract CardPaymentProcessor is
     /// @dev The role of executor that is allowed to execute the card payment operations.
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
 
+    /// @dev The maximum allowable cashback rate in permil (1 permil = 0.1 %).
+    uint16 public constant MAX_CASHBACK_RATE_IN_PERMIL = 250;
+
     // -------------------- Events -----------------------------------
 
-    /// @dev Emitted when the revocation limit is changed.
+    /**
+     * @dev Emitted when the revocation limit is changed.
+     * @param oldLimit The old value of the revocation limit.
+     * @param newLimit The new value of the revocation limit.
+     */
     event SetRevocationLimit(uint8 oldLimit, uint8 newLimit);
 
     // -------------------- Errors -----------------------------------
@@ -68,7 +78,7 @@ contract CardPaymentProcessor is
     /// @dev Zero parent transaction hash has been passed as a function argument.
     error ZeroParentTransactionHash();
 
-    /// @dev Zero cash out account has been passed as a function argument.
+    /// @dev The cash-out account is not configured.
     error ZeroCashOutAccount();
 
     /**
@@ -82,6 +92,33 @@ contract CardPaymentProcessor is
      * @param configuredRevocationLimit The configured revocation limit.
      */
     error RevocationLimitReached(uint8 configuredRevocationLimit);
+
+    /// @dev A new cash-out account is the same as the previously set one.
+    error CashOutAccountUnchanged();
+
+    /// @dev A new cashback rate is the same as previously set one.
+    error CashbackRateUnchanged();
+
+    /// @dev A new cashback rate exceeds the allowed maximum.
+    error CashbackRateExcess();
+
+    /// @dev The cashback operations are already enabled.
+    error CashbackAlreadyEnabled();
+
+    /// @dev The cashback operations are already disabled.
+    error CashbackAlreadyDisabled();
+
+    /// @dev The zero cashback distributor address has been passed as a function argument.
+    error CashbackDistributorZeroAddress();
+
+    /// @dev The cashback distributor contract is not configured.
+    error CashbackDistributorNotConfigured();
+
+    /// @dev The cashback distributor contract is already configured.
+    error CashbackDistributorAlreadyConfigured();
+
+    /// @dev The requested refund amount does not meet the requirements.
+    error InappropriateRefundAmount();
 
     // ------------------- Functions ---------------------------------
 
@@ -313,21 +350,17 @@ contract CardPaymentProcessor is
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The input authorization ID and cash out account of the payment must not be zero.
+     * - The input authorization ID of the payment must not be zero.
      * - The payment linked with the authorization ID must have the "cleared" status.
      */
-    function confirmPayment(bytes16 authorizationId, address cashOutAccount)
-        external
+    function confirmPayment(bytes16 authorizationId)
+        public
         whenNotPaused
         onlyRole(EXECUTOR_ROLE)
     {
-        if (cashOutAccount == address(0)) {
-            revert ZeroCashOutAccount();
-        }
-
         uint256 amount = confirmPaymentInternal(authorizationId);
-        _totalClearedBalance = _totalClearedBalance - amount;
-        IERC20Upgradeable(_token).safeTransfer(cashOutAccount, amount);
+        _totalClearedBalance -= amount;
+        IERC20Upgradeable(_token).safeTransfer(requireCashOutAccount(), amount);
     }
 
     /**
@@ -341,16 +374,13 @@ contract CardPaymentProcessor is
      * - All authorization IDs in the input array must not be zero.
      * - All payments linked with the authorization IDs must have the "cleared" status.
      */
-    function confirmPayments(bytes16[] memory authorizationIds, address cashOutAccount)
-        external
+    function confirmPayments(bytes16[] memory authorizationIds)
+        public
         whenNotPaused
         onlyRole(EXECUTOR_ROLE)
     {
         if (authorizationIds.length == 0) {
             revert EmptyAuthorizationIdsArray();
-        }
-        if (cashOutAccount == address(0)) {
-            revert ZeroCashOutAccount();
         }
 
         uint256 totalAmount = 0;
@@ -358,8 +388,76 @@ contract CardPaymentProcessor is
             totalAmount += confirmPaymentInternal(authorizationIds[i]);
         }
 
-        _totalClearedBalance = _totalClearedBalance - totalAmount;
-        IERC20Upgradeable(_token).safeTransfer(cashOutAccount, totalAmount);
+        _totalClearedBalance -= totalAmount;
+        IERC20Upgradeable(_token).safeTransfer(requireCashOutAccount(), totalAmount);
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-refundPayment}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input authorization ID of the payment must not be zero.
+     */
+    function refundPayment(uint256 amount, bytes16 authorizationId)
+        external
+        whenNotPaused
+        onlyRole(EXECUTOR_ROLE)
+    {
+        if (authorizationId == 0) {
+            revert ZeroAuthorizationId();
+        }
+
+        Payment storage payment = _payments[authorizationId];
+        PaymentStatus status = payment.status;
+        address account = payment.account;
+        uint256 paymentAmount = payment.amount;
+        uint256 newRefundAmount = payment.refundAmount + amount;
+
+        if (status == PaymentStatus.Nonexistent) {
+            revert PaymentNotExist();
+        }
+        if (status == PaymentStatus.Reversed || status == PaymentStatus.Revoked) {
+            revert InappropriatePaymentStatus(status);
+        }
+        if (newRefundAmount > paymentAmount) {
+            revert InappropriateRefundAmount();
+        }
+
+        uint256 newCompensationAmount = newRefundAmount +
+            calculateCashback(paymentAmount - newRefundAmount, payment.cashbackRate);
+        uint256 sentAmount = newCompensationAmount - payment.compensationAmount;
+        uint256 revokedCashbackAmount = amount - sentAmount;
+
+        payment.refundAmount = newRefundAmount;
+        payment.compensationAmount = newCompensationAmount;
+
+        if (status == PaymentStatus.Uncleared) {
+            _totalUnclearedBalance -= amount;
+            _unclearedBalances[account] -= amount;
+            IERC20Upgradeable(_token).safeTransfer(account, sentAmount);
+        } else if (status == PaymentStatus.Cleared) {
+            _totalClearedBalance -= amount;
+            _clearedBalances[account] -= amount;
+            IERC20Upgradeable(_token).safeTransfer(account, sentAmount);
+        } else if (status == PaymentStatus.Confirmed) {
+            address cashOutAccount_ = requireCashOutAccount();
+            IERC20Upgradeable token = IERC20Upgradeable(_token);
+            token.safeTransferFrom(cashOutAccount_, account, sentAmount);
+            token.safeTransferFrom(cashOutAccount_, address(this), revokedCashbackAmount);
+        }
+
+        revokeCashbackInternal(authorizationId, revokedCashbackAmount);
+
+        emit RefundPayment(
+            authorizationId,
+            account,
+            amount,
+            sentAmount,
+            status
+        );
     }
 
     /**
@@ -382,6 +480,13 @@ contract CardPaymentProcessor is
 
         _revocationLimit = newLimit;
         emit SetRevocationLimit(oldLimit, newLimit);
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-cashOutAccount}.
+     */
+    function cashOutAccount() external view returns (address) {
+        return _cashOutAccount;
     }
 
     /**
@@ -447,6 +552,143 @@ contract CardPaymentProcessor is
         return _revocationLimit;
     }
 
+    /**
+     * @dev See {ICardPaymentCashback-cashbackDistributor}.
+     */
+    function cashbackDistributor() external view returns (address) {
+        return _cashbackDistributor;
+    }
+
+    /**
+     * @dev See {ICardPaymentCashback-cashbackEnabled}.
+     */
+    function cashbackEnabled() external view returns (bool) {
+        return _cashbackEnabled;
+    }
+
+    /**
+     * @dev See {ICardPaymentCashback-cashbackRate}.
+     */
+    function cashbackRate() external view returns (uint256) {
+        return _cashbackRateInPermil;
+    }
+
+    /**
+     * @dev See {ICardPaymentCashback-getCashback}.
+     */
+    function getCashback(bytes16 authorizationId) external view returns (Cashback memory) {
+        return _cashbacks[authorizationId];
+    }
+
+    /**
+     * @dev See {ICardPaymentCashback-setCashbackDistributor}.
+     *
+     * Requirements:
+     *
+     * - The caller must have the {OWNER_ROLE} role.
+     * - The new cashback distributor address must not be zero.
+     * - The new cashback distributor can be set only once.
+     */
+    function setCashbackDistributor(address newCashbackDistributor) external onlyRole(OWNER_ROLE) {
+        address oldCashbackDistributor = _cashbackDistributor;
+
+        if (newCashbackDistributor == address(0)) {
+            revert CashbackDistributorZeroAddress();
+        }
+        if (oldCashbackDistributor != address(0)) {
+            revert CashbackDistributorAlreadyConfigured();
+        }
+
+        _cashbackDistributor = newCashbackDistributor;
+
+        emit SetCashbackDistributor(oldCashbackDistributor, newCashbackDistributor);
+
+        IERC20Upgradeable(_token).approve(newCashbackDistributor, type(uint256).max);
+    }
+
+    /**
+     * @dev See {ICardPaymentCashback-setCashbackRate}.
+     *
+     * Requirements:
+     *
+     * - The caller must have the {OWNER_ROLE} role.
+     * - The new rate must differ from the previously set one.
+     * - The new rate must not exceed the allowable maximum specified in the {MAX_CASHBACK_RATE_IN_PERMIL} constant.
+     */
+    function setCashbackRate(uint16 newCashbackRateInPermil) external onlyRole(OWNER_ROLE) {
+        uint16 oldCashbackRateInPermil = _cashbackRateInPermil;
+        if (newCashbackRateInPermil == oldCashbackRateInPermil) {
+            revert CashbackRateUnchanged();
+        }
+        if (newCashbackRateInPermil > MAX_CASHBACK_RATE_IN_PERMIL) {
+            revert CashbackRateExcess();
+        }
+
+        _cashbackRateInPermil = newCashbackRateInPermil;
+
+        emit SetCashbackRate(oldCashbackRateInPermil, newCashbackRateInPermil);
+    }
+
+    /**
+     * @dev See {ICardPaymentCashback-enableCashback}.
+     *
+     * Requirements:
+     *
+     * - The caller must have the {OWNER_ROLE} role.
+     * - The cashback operations must not be already enabled.
+     * - The address of the current cashback distributor must not be zero.
+     */
+    function enableCashback() external onlyRole(OWNER_ROLE) {
+        if (_cashbackEnabled) {
+            revert CashbackAlreadyEnabled();
+        }
+        if (_cashbackDistributor == address(0)) {
+            revert CashbackDistributorNotConfigured();
+        }
+
+        _cashbackEnabled = true;
+
+        emit EnableCashback();
+    }
+
+    /**
+     * @dev See {ICardPaymentCashback-disableCashback}.
+     *
+     * Requirements:
+     *
+     * - The caller must have the {OWNER_ROLE} role.
+     * - The cashback operations must not be already disabled.
+     */
+    function disableCashback() external onlyRole(OWNER_ROLE) {
+        if (!_cashbackEnabled) {
+            revert CashbackAlreadyDisabled();
+        }
+
+        _cashbackEnabled = false;
+
+        emit DisableCashback();
+    }
+
+    /**
+     * @dev See {ICardPaymentCashback-setCashOutAccount}.
+     *
+     * Requirements:
+     *
+     * - The caller must have the {OWNER_ROLE} role.
+     * - The new cash-out account must differ from the previously set one.
+     */
+    function setCashOutAccount(address newCashOutAccount) external onlyRole(OWNER_ROLE) {
+        address oldCashOutAccount = _cashOutAccount;
+
+        if (newCashOutAccount == oldCashOutAccount) {
+            revert CashOutAccountUnchanged();
+        }
+
+        _cashOutAccount = newCashOutAccount;
+
+        emit SetCashOutAccount(oldCashOutAccount, newCashOutAccount);
+    }
+
     function makePaymentInternal(
         address sender,
         address account,
@@ -490,6 +732,10 @@ contract CardPaymentProcessor is
         );
 
         IERC20Upgradeable(_token).safeTransferFrom(account, address(this), amount);
+        (
+            payment.compensationAmount,
+            payment.cashbackRate
+        ) = sendCashbackInternal(account, amount, authorizationId);
     }
 
     function clearPaymentInternal(bytes16 authorizationId) internal returns (uint256 amount) {
@@ -503,7 +749,7 @@ contract CardPaymentProcessor is
         payment.status = PaymentStatus.Cleared;
 
         address account = payment.account;
-        amount = payment.amount;
+        amount = payment.amount - payment.refundAmount;
 
         uint256 newUnclearedBalance = _unclearedBalances[account] - amount;
         _unclearedBalances[account] = newUnclearedBalance;
@@ -531,7 +777,7 @@ contract CardPaymentProcessor is
         payment.status = PaymentStatus.Uncleared;
 
         address account = payment.account;
-        amount = payment.amount;
+        amount = payment.amount - payment.refundAmount;
 
         uint256 newClearedBalance = _clearedBalances[account] - amount;
         _clearedBalances[account] = newClearedBalance;
@@ -559,11 +805,18 @@ contract CardPaymentProcessor is
         payment.status = PaymentStatus.Confirmed;
 
         address account = payment.account;
-        amount = payment.amount;
+        amount = payment.amount - payment.refundAmount;
         uint256 newClearedBalance = _clearedBalances[account] - amount;
         _clearedBalances[account] = newClearedBalance;
 
         emit ConfirmPayment(authorizationId, account, amount, newClearedBalance, payment.revocationCounter);
+    }
+
+    struct CancelPaymentVars {
+        address account;
+        uint256 remainingPaymentAmount;
+        uint256 revokedCashbackAmount;
+        uint256 sentAmount;
     }
 
     function cancelPaymentInternal(
@@ -586,34 +839,38 @@ contract CardPaymentProcessor is
             revert PaymentNotExist();
         }
 
-        address account = payment.account;
-        uint256 amount = payment.amount;
+        CancelPaymentVars memory cancellation;
+        cancellation.account = payment.account;
+        cancellation.sentAmount = payment.amount - payment.compensationAmount;
+        cancellation.remainingPaymentAmount = payment.amount - payment.refundAmount;
+        cancellation.revokedCashbackAmount = cancellation.remainingPaymentAmount - cancellation.sentAmount;
 
         if (status == PaymentStatus.Uncleared) {
-            _unclearedBalances[account] = _unclearedBalances[account] - amount;
-            _totalUnclearedBalance = _totalUnclearedBalance - amount;
+            _totalUnclearedBalance -= cancellation.remainingPaymentAmount;
+            _unclearedBalances[cancellation.account] -= cancellation.remainingPaymentAmount;
         } else if (status == PaymentStatus.Cleared) {
-            _clearedBalances[account] = _clearedBalances[account] - amount;
-            _totalClearedBalance = _totalClearedBalance - amount;
+            _totalClearedBalance -= cancellation.remainingPaymentAmount;
+            _clearedBalances[cancellation.account] -= cancellation.remainingPaymentAmount;
         } else {
             revert InappropriatePaymentStatus(status);
         }
 
-        IERC20Upgradeable(_token).safeTransfer(account, amount);
+        payment.compensationAmount = 0;
+        payment.refundAmount = 0;
 
         if (targetStatus == PaymentStatus.Revoked) {
             payment.status = PaymentStatus.Revoked;
+            _paymentRevocationFlags[parentTxHash] = true;
             uint8 newRevocationCounter = payment.revocationCounter + 1;
             payment.revocationCounter = newRevocationCounter;
-            _paymentRevocationFlags[parentTxHash] = true;
 
             emit RevokePayment(
                 authorizationId,
                 correlationId,
-                account,
-                amount,
-                _clearedBalances[account],
-                _unclearedBalances[account],
+                cancellation.account,
+                cancellation.sentAmount,
+                _clearedBalances[cancellation.account],
+                _unclearedBalances[cancellation.account],
                 status == PaymentStatus.Cleared,
                 parentTxHash,
                 newRevocationCounter
@@ -625,14 +882,56 @@ contract CardPaymentProcessor is
             emit ReversePayment(
                 authorizationId,
                 correlationId,
-                account,
-                amount,
-                _clearedBalances[account],
-                _unclearedBalances[account],
+                cancellation.account,
+                cancellation.sentAmount,
+                _clearedBalances[cancellation.account],
+                _unclearedBalances[cancellation.account],
                 status == PaymentStatus.Cleared,
                 parentTxHash,
                 payment.revocationCounter
             );
+        }
+
+        IERC20Upgradeable(_token).safeTransfer(cancellation.account, cancellation.sentAmount);
+        revokeCashbackInternal(authorizationId, cancellation.revokedCashbackAmount);
+    }
+
+    function sendCashbackInternal(
+        address account,
+        uint256 paymentAmount,
+        bytes16 authorizationId
+    ) internal returns (uint256 cashbackAmount, uint16 cashbackRate_) {
+        address distributor = _cashbackDistributor;
+        if (_cashbackEnabled && distributor != address(0)) {
+            cashbackRate_ = _cashbackRateInPermil;
+            cashbackAmount = calculateCashback(paymentAmount, cashbackRate_);
+            (bool success, uint256 cashbackNonce) = ICashbackDistributor(distributor).sendCashback(
+                _token,
+                ICashbackDistributorTypes.CashbackKind.CardPayment,
+                authorizationId,
+                account,
+                cashbackAmount
+            );
+            _cashbacks[authorizationId].lastCashbackNonce = cashbackNonce;
+            if (success) {
+                emit SendCashbackSuccess(distributor, cashbackAmount, cashbackNonce);
+            } else {
+                emit SendCashbackFailure(distributor, cashbackAmount, cashbackNonce);
+                cashbackAmount = 0;
+                cashbackRate_ = 0;
+            }
+        }
+    }
+
+    function revokeCashbackInternal(bytes16 authorizationId, uint256 amount) internal {
+        address distributor = _cashbackDistributor;
+        uint256 cashbackNonce = _cashbacks[authorizationId].lastCashbackNonce;
+        if (cashbackNonce != 0 && distributor != address(0)) {
+            if (ICashbackDistributor(distributor).revokeCashback(cashbackNonce, amount)) {
+                emit RevokeCashbackSuccess(distributor, amount, cashbackNonce);
+            } else {
+                emit RevokeCashbackFailure(distributor, amount, cashbackNonce);
+            }
         }
     }
 
@@ -658,5 +957,40 @@ contract CardPaymentProcessor is
         if (status != PaymentStatus.Uncleared) {
             revert InappropriatePaymentStatus(status);
         }
+    }
+
+    function requireCashOutAccount() internal view returns (address account) {
+        account = _cashOutAccount;
+        if (account == address(0)) {
+            revert ZeroCashOutAccount();
+        }
+    }
+
+    function calculateCashback(uint256 amount, uint256 cashbackRateInPermil) internal pure returns (uint256) {
+        return amount * cashbackRateInPermil / 1000;
+    }
+
+    /**
+     * @dev Service function for backward compatibility.
+     */
+    function confirmPayments(bytes16[] memory authorizationIds, address cashOutAccount_)
+        external
+        whenNotPaused
+        onlyRole(EXECUTOR_ROLE)
+    {
+        require(cashOutAccount_ == requireCashOutAccount(), "!cashOutAccount");
+        confirmPayments(authorizationIds);
+    }
+
+    /**
+     * @dev Service function for backward compatibility.
+     */
+    function confirmPayment(bytes16 authorizationId, address cashOutAccount_)
+        external
+        whenNotPaused
+        onlyRole(EXECUTOR_ROLE)
+    {
+        require(cashOutAccount_ == requireCashOutAccount(), "!cashOutAccount");
+        confirmPayment(authorizationId);
     }
 }
