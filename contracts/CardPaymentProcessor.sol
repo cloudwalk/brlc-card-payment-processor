@@ -969,28 +969,4 @@ contract CardPaymentProcessor is
     function calculateCashback(uint256 amount, uint256 cashbackRateInPermil) internal pure returns (uint256) {
         return amount * cashbackRateInPermil / 1000;
     }
-
-    /**
-     * @dev Service function for backward compatibility.
-     */
-    function confirmPayments(bytes16[] memory authorizationIds, address cashOutAccount_)
-        external
-        whenNotPaused
-        onlyRole(EXECUTOR_ROLE)
-    {
-        require(cashOutAccount_ == requireCashOutAccount(), "!cashOutAccount");
-        confirmPayments(authorizationIds);
-    }
-
-    /**
-     * @dev Service function for backward compatibility.
-     */
-    function confirmPayment(bytes16 authorizationId, address cashOutAccount_)
-        external
-        whenNotPaused
-        onlyRole(EXECUTOR_ROLE)
-    {
-        require(cashOutAccount_ == requireCashOutAccount(), "!cashOutAccount");
-        confirmPayment(authorizationId);
-    }
 }

@@ -307,18 +307,4 @@ contract CashbackDistributor is
     function getTotalCashbackByTokenAndRecipient(address token, address recipient) external view returns (uint256){
         return _totalCashbackByTokenAndRecipient[token][recipient];
     }
-
-    /**
-     * @dev Service function.
-     */
-    function updateRevokeAmount(uint256 fromNonce, uint256 count) external onlyRole(OWNER_ROLE) {
-        uint256 len = fromNonce + count;
-        for (uint256 i = fromNonce; i < len; ++i) {
-            Cashback storage cashback = _cashbacks[i];
-            if (cashback.status == CashbackStatus.Revoked) {
-                cashback.status = CashbackStatus.Success;
-                cashback.revokedAmount = cashback.amount;
-            }
-        }
-    }
 }
