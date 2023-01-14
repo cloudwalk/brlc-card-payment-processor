@@ -2,15 +2,27 @@
 
 pragma solidity 0.8.16;
 
+import { EnumerableSetUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+import { IPixCashierTypes } from "./interfaces/IPixCashier.sol";
+
 /**
  * @title PixCashier storage version 1
  */
-abstract contract PixCashierStorageV1 {
+abstract contract PixCashierStorageV1 is IPixCashierTypes {
     /// @dev The address of the underlying token.
     address internal _token;
 
-    /// @dev Mapping of a pending cash-out balance for a given account.
+    /// @dev The mapping of a pending cash-out balance for a given account.
     mapping(address => uint256) internal _cashOutBalances;
+
+    /// @dev The mapping of a cash-out operation structure for a given off-chain transaction identifier.
+    mapping(bytes32 => CashOut) internal _cashOuts;
+
+    /// @dev The set of off-chain transaction identifiers that correspond the pending cash-out operations.
+    EnumerableSetUpgradeable.Bytes32Set _pendingCashOutTxIds;
+
+    /// @dev The processed cash-out operation counter that includes number of reversed and confirmed operations.
+    uint256 internal _processedCashOutCounter;
 }
 
 /**
