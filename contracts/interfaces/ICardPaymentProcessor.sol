@@ -39,9 +39,9 @@ interface ICardPaymentProcessorTypes {
         uint256 amount;             // Amount of tokens in the payment.
         PaymentStatus status;       // Current status of the payment.
         uint8 revocationCounter;    // Number of payment revocations.
-        uint256 compensationAmount; // TODO
-        uint256 refundAmount;       // TODO
-        uint16 cashbackRate;        // TODO
+        uint256 compensationAmount; // The total amount of compensation to the account related to the payment
+        uint256 refundAmount;       // The total amount of all refunds related to the payment
+        uint16 cashbackRate;        // The rate of cashback of the payment
     }
 }
 
