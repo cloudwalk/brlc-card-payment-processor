@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import { EnumerableSetUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 import { BlacklistControlUpgradeable } from "./base/BlacklistControlUpgradeable.sol";
@@ -18,7 +19,7 @@ import { IERC20Mintable } from "./interfaces/IERC20Mintable.sol";
  * @title PixCashier contract
  * @dev Wrapper contract for PIX cash-in and cash-out operations.
  *
- * Only accounts that have {CASHIER_ROLE} role can execute the cash-in operations.
+ * Only accounts that have {CASHIER_ROLE} role can execute the cash-in operations and process the cash-out operations.
  * About roles see https://docs.openzeppelin.com/contracts/4.x/api/access#AccessControl.
  */
 contract PixCashier is
@@ -31,6 +32,7 @@ contract PixCashier is
     IPixCashier
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
+    using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
 
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
@@ -52,8 +54,18 @@ contract PixCashier is
     /// @dev The zero off-chain transaction identifier has been passed as a function argument.
     error ZeroTxId();
 
-    /// @dev The balance of the caller is not enough to execute cash-out confirm/reverse function.
-    error InsufficientCashOutBalance();
+    /// @dev An empty array of off-chain transaction identifiers has been passed as a function argument.
+    error EmptyTransactionIdsArray();
+
+    /// @dev The minting of tokens failed when processing an `cashIn` operation.
+    error TokenMintingFailure();
+
+    /**
+     * @dev The cash-out operation with the provided off-chain transaction identifier has an inappropriate status.
+     * @param txId The off-chain transaction identifiers of the operation.
+     * @param status The current status of the operation.
+     */
+    error InappropriateCashOutStatus(bytes32 txId, CashOutStatus status);
 
     // -------------------- Functions --------------------------------
 
@@ -65,7 +77,7 @@ contract PixCashier is
      *
      * - The passed token address must not be zero.
      *
-     * @param token_ The address of a token to set as the underlying one.
+     * @param token_ The address of the token to set as the underlying one.
      */
     function initialize(address token_) external initializer {
         __PixCashier_init(token_);
@@ -97,6 +109,72 @@ contract PixCashier is
     }
 
     /**
+     * @dev See {IPixCashier-underlyingToken}.
+     */
+    function underlyingToken() external view returns (address) {
+        return _token;
+    }
+
+    /**
+     * @dev See {IPixCashier-cashOutBalanceOf}.
+     */
+    function cashOutBalanceOf(address account) external view returns (uint256) {
+        return _cashOutBalances[account];
+    }
+
+    /**
+     * @dev See {IPixCashier-pendingCashOutCounter}.
+     */
+    function pendingCashOutCounter() external view returns (uint256) {
+        return _pendingCashOutTxIds.length();
+    }
+
+    /**
+     * @dev See {IPixCashier-processedCashOutCounter}.
+     */
+    function processedCashOutCounter() external view returns (uint256) {
+        return _processedCashOutCounter;
+    }
+
+    /**
+     * See {IPixCashier-getPendingCashOutTxIds}.
+     */
+    function getPendingCashOutTxIds(uint256 index, uint256 limit) external view returns (bytes32[] memory txIds) {
+        uint256 len = _pendingCashOutTxIds.length();
+        if (len <= index || limit == 0) {
+            txIds = new bytes32[](0);
+        } else {
+            len -= index;
+            if (len > limit) {
+                len = limit;
+            }
+            txIds = new bytes32[](len);
+            for (uint256 i = 0; i < len; i++) {
+                txIds[i] = _pendingCashOutTxIds.at(index);
+                index++;
+            }
+        }
+    }
+
+    /**
+     * @dev See {IPixCashier-getCashOut}.
+     */
+    function getCashOut(bytes32 txIds) external view returns (CashOut memory) {
+        return _cashOuts[txIds];
+    }
+
+    /**
+     * @dev See {IPixCashier-getCashOuts}.
+     */
+    function getCashOuts(bytes32[] memory txIds) external view returns (CashOut[] memory cashOuts) {
+        uint256 len = txIds.length;
+        cashOuts = new CashOut[](len);
+        for (uint256 i = 0; i < len; i++) {
+            cashOuts[i] = _cashOuts[txIds[i]];
+        }
+    }
+
+    /**
      * @dev See {IPixCashier-cashIn}.
      *
      * Requirements:
@@ -122,19 +200,125 @@ contract PixCashier is
 
         emit CashIn(account, amount, txId);
 
-        IERC20Mintable(_token).mint(account, amount);
+        if (!IERC20Mintable(_token).mint(account, amount)) {
+            revert TokenMintingFailure();
+        }
     }
 
     /**
-     * @dev See {IPixCashier-cashOut}.
+     * @dev See {IPixCashier-requestCashOut}.
      *
      * Requirements:
      *
      * - The contract must not be paused.
      * - The caller must must not be blacklisted.
      * - The provided `amount` and `txId` values must not be zero.
+     * - The cash-out operation with the provided `txId` must not be already pending.
      */
-    function cashOut(uint256 amount, bytes32 txId) external whenNotPaused notBlacklisted(_msgSender()) {
+    function requestCashOut(uint256 amount, bytes32 txId) external whenNotPaused notBlacklisted(_msgSender()) {
+        address sender = _msgSender();
+        _requestCashOut(sender, sender, amount, txId);
+    }
+
+    /**
+     * @dev See {IPixCashier-requestCashOutFrom}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {CASHIER_ROLE} role.
+     * - The provided `account`, `amount`, and `txId` values must not be zero.
+     * - The cash-out operation with the provided `txId` must not be already pending.
+     */
+    function requestCashOutFrom(
+        address account,
+        uint256 amount,
+        bytes32 txId
+    ) external whenNotPaused onlyRole(CASHIER_ROLE) {
+        if (account == address(0)) {
+            revert ZeroAccount();
+        }
+        _requestCashOut(_msgSender(), account, amount, txId);
+    }
+
+    /**
+     * @dev See {IPixCashier-confirmCashOut}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {CASHIER_ROLE} role.
+     * - The provided `txId` value must not be zero.
+     * - The cash-out operation corresponded the provided `txId` value must have the pending status.
+     */
+    function confirmCashOut(bytes32 txId) external whenNotPaused onlyRole(CASHIER_ROLE) {
+        _processCashOut(txId, CashOutStatus.Confirmed);
+    }
+
+    /**
+     * @dev See {IPixCashier-confirmCashOuts}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {CASHIER_ROLE} role.
+     * - The input `txIds` array must not be empty.
+     * - All the values in the input `txIds` array must not be zero.
+     * - All the cash-out operations corresponded the values in the input `txIds` array must have the pending status.
+     */
+    function confirmCashOuts(bytes32[] memory txIds) external whenNotPaused onlyRole(CASHIER_ROLE) {
+        uint256 len = txIds.length;
+        if (len == 0) {
+            revert EmptyTransactionIdsArray();
+        }
+
+        for (uint256 i = 0; i < len; i++) {
+            _processCashOut(txIds[i], CashOutStatus.Confirmed);
+        }
+    }
+
+    /**
+     * @dev See {IPixCashier-reverseCashOut}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {CASHIER_ROLE} role.
+     * - The provided `txId` value must not be zero.
+     * - The cash-out operation corresponded the provided `txId` value must have the pending status.
+     */
+    function reverseCashOut(bytes32 txId) external whenNotPaused onlyRole(CASHIER_ROLE) {
+        _processCashOut(txId, CashOutStatus.Reversed);
+    }
+
+    /**
+     * @dev See {IPixCashier-reverseCashOuts}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {CASHIER_ROLE} role.
+     * - The input `txIds` array must not be empty.
+     * - All the values in the input `txIds` array must not be zero.
+     * - All the cash-out operations corresponded the values in the input `txIds` array must have the pending status.
+     */
+    function reverseCashOuts(bytes32[] memory txIds) external whenNotPaused onlyRole(CASHIER_ROLE) {
+        uint256 len = txIds.length;
+        if (len == 0) {
+            revert EmptyTransactionIdsArray();
+        }
+
+        for (uint256 i = 0; i < len; i++) {
+            _processCashOut(txIds[i], CashOutStatus.Reversed);
+        }
+    }
+
+    function _requestCashOut(
+        address sender,
+        address account,
+        uint256 amount,
+        bytes32 txId
+    ) internal {
         if (amount == 0) {
             revert ZeroAmount();
         }
@@ -142,113 +326,72 @@ contract PixCashier is
             revert ZeroTxId();
         }
 
-        address sender = _msgSender();
+        CashOut storage operation = _cashOuts[txId];
+        CashOutStatus status = operation.status;
+        if (status == CashOutStatus.Pending) {
+            revert InappropriateCashOutStatus(txId, status);
+        }
 
-        uint256 newCashOutBalance = _cashOutBalances[sender] + amount;
-        _cashOutBalances[sender] = newCashOutBalance;
+        operation.account = account;
+        operation.amount = amount;
+        operation.status = CashOutStatus.Pending;
 
-        emit CashOut(
-            sender,
+        uint256 newCashOutBalance = _cashOutBalances[account] + amount;
+        _cashOutBalances[account] = newCashOutBalance;
+        _pendingCashOutTxIds.add(txId);
+
+        emit RequestCashOut(
+            account,
             amount,
             newCashOutBalance,
-            txId
+            txId,
+            sender
         );
 
         IERC20Upgradeable(_token).safeTransferFrom(
-            sender,
+            account,
             address(this),
             amount
         );
     }
 
-    /**
-     * @dev See {IPixCashier-cashOutConfirm}.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must must not be blacklisted.
-     * - The provided `amount` and `txId` values must not be zero.
-     * - The cash-out balance of the caller must be not less than the provided `amount` value.
-     */
-    function cashOutConfirm(uint256 amount, bytes32 txId) external whenNotPaused notBlacklisted(_msgSender()) {
-        if (amount == 0) {
-            revert ZeroAmount();
-        }
+    function _processCashOut(bytes32 txId, CashOutStatus targetStatus) internal {
         if (txId == 0) {
             revert ZeroTxId();
         }
 
-        address sender = _msgSender();
-        uint256 cashOutBalance = _cashOutBalances[sender];
-
-        if (cashOutBalance < amount) {
-            revert InsufficientCashOutBalance();
+        CashOut storage operation = _cashOuts[txId];
+        CashOutStatus status = operation.status;
+        if (status != CashOutStatus.Pending) {
+            revert InappropriateCashOutStatus(txId, status);
         }
 
-        cashOutBalance -= amount;
-        _cashOutBalances[sender] = cashOutBalance;
+        address account = operation.account;
+        uint256 amount = operation.amount;
+        uint256 newCashOutBalance = _cashOutBalances[account] - amount;
 
-        emit CashOutConfirm(
-            sender,
-            amount,
-            cashOutBalance,
-            txId
-        );
+        _cashOutBalances[account] = newCashOutBalance;
+        _pendingCashOutTxIds.remove(txId);
+        _processedCashOutCounter += 1;
 
-        IERC20Mintable(_token).burn(amount);
-    }
+        operation.status = targetStatus;
 
-    /**
-     * @dev See {IPixCashier-cashOutReverse}.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must must not be blacklisted.
-     * - The provided `amount` and `txId` values must not be zero.
-     * - The cash-out balance of the caller must be not less than the provided `amount` value.
-     */
-    function cashOutReverse(uint256 amount, bytes32 txId) external whenNotPaused notBlacklisted(_msgSender()) {
-        if (amount == 0) {
-            revert ZeroAmount();
+        if (targetStatus == CashOutStatus.Confirmed) {
+            emit ConfirmCashOut(
+                account,
+                amount,
+                newCashOutBalance,
+                txId
+            );
+            IERC20Mintable(_token).burn(amount);
+        } else {
+            emit ReverseCashOut(
+                account,
+                amount,
+                newCashOutBalance,
+                txId
+            );
+            IERC20Upgradeable(_token).safeTransfer(account, amount);
         }
-        if (txId == 0) {
-            revert ZeroTxId();
-        }
-
-        address sender = _msgSender();
-
-        uint256 cashOutBalance = _cashOutBalances[sender];
-
-        if (cashOutBalance < amount) {
-            revert InsufficientCashOutBalance();
-        }
-
-        cashOutBalance -= amount;
-        _cashOutBalances[sender] = cashOutBalance;
-
-        emit CashOutReverse(
-            sender,
-            amount,
-            cashOutBalance,
-            txId
-        );
-
-        IERC20Upgradeable(_token).safeTransfer(sender, amount);
-    }
-
-    /**
-     * @dev See {IPixCashier-underlyingToken}.
-     */
-    function underlyingToken() external view returns (address) {
-        return _token;
-    }
-
-    /**
-     * @dev See {IPixCashier-cashOutBalanceOf}.
-     */
-    function cashOutBalanceOf(address account) external view returns (uint256) {
-        return _cashOutBalances[account];
     }
 }

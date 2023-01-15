@@ -9,6 +9,8 @@ import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC2
  * @dev An implementation of the {ERC20Upgradeable} contract for test purposes.
  */
 contract ERC20UpgradeableMock is ERC20Upgradeable {
+    bool public mintResult;
+
     /**
      * @dev The initialize function of the upgradable contract.
      * @param name_ The name of the token to set for this ERC20-comparable contract.
@@ -16,6 +18,7 @@ contract ERC20UpgradeableMock is ERC20Upgradeable {
      */
     function initialize(string memory name_, string memory symbol_) public initializer {
         __ERC20_init(name_, symbol_);
+        mintResult = true;
     }
 
     /**
@@ -25,7 +28,7 @@ contract ERC20UpgradeableMock is ERC20Upgradeable {
      */
     function mint(address account, uint256 amount) external returns (bool) {
         _mint(account, amount);
-        return true;
+        return mintResult;
     }
 
     /**
@@ -34,5 +37,9 @@ contract ERC20UpgradeableMock is ERC20Upgradeable {
      */
     function burn(uint256 amount) external {
         _burn(msg.sender, amount);
+    }
+
+    function setMintResult(bool _newMintResult) external {
+        mintResult = _newMintResult;
     }
 }
