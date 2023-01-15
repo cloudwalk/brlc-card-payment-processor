@@ -35,10 +35,13 @@ interface ICardPaymentProcessorTypes {
 
     /// @dev Structure with data of a single payment.
     struct Payment {
-        address account;         // Account who made the payment
-        uint256 amount;          // Amount of tokens in the payment
-        PaymentStatus status;    // Current status of the payment according to the {PaymentStatus} enum
-        uint8 revocationCounter; // Number of payment revocations
+        address account;            // Account who made the payment.
+        uint256 amount;             // Amount of tokens in the payment.
+        PaymentStatus status;       // Current status of the payment.
+        uint8 revocationCounter;    // Number of payment revocations.
+        uint256 compensationAmount; // TODO
+        uint256 refundAmount;       // TODO
+        uint16 cashbackRate;        // TODO
     }
 }
 
@@ -47,7 +50,7 @@ interface ICardPaymentProcessorTypes {
  * @dev The interface of the wrapper contract for the card payment operations.
  */
 interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
-    /// @dev Emitted when payment is made.
+    /// @dev Emitted when a payment is made.
     event MakePayment(
         bytes16 indexed authorizationId,
         bytes16 indexed correlationId,
@@ -57,7 +60,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         address sender
     );
 
-    /// @dev Emitted when payment is cleared.
+    /// @dev Emitted when a payment is cleared.
     event ClearPayment(
         bytes16 indexed authorizationId,
         address indexed account,
@@ -67,7 +70,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint8 revocationCounter
     );
 
-    /// @dev Emitted when payment is uncleared.
+    /// @dev Emitted when a payment is uncleared.
     event UnclearPayment(
         bytes16 indexed authorizationId,
         address indexed account,
@@ -77,7 +80,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint8 revocationCounter
     );
 
-    /// @dev Emitted when payment is revoked.
+    /// @dev Emitted when a payment is revoked.
     event RevokePayment(
         bytes16 indexed authorizationId,
         bytes16 indexed correlationId,
@@ -90,7 +93,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint8 revocationCounter
     );
 
-    /// @dev Emitted when payment is reversed.
+    /// @dev Emitted when a payment is reversed.
     event ReversePayment(
         bytes16 indexed authorizationId,
         bytes16 indexed correlationId,
@@ -103,7 +106,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint8 revocationCounter
     );
 
-    /// @dev Emitted when payment is confirmed.
+    /// @dev Emitted when a payment is confirmed.
     event ConfirmPayment(
         bytes16 indexed authorizationId,
         address indexed account,
@@ -111,6 +114,26 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint256 clearedBalance,
         uint8 revocationCounter
     );
+
+    /// @dev Emitted when a payment is refunded.
+    event RefundPayment(
+        bytes16 indexed authorizationId,
+        address indexed account,
+        uint256 refundAmount,
+        uint256 sentAmount,
+        PaymentStatus status
+    );
+
+    /// @dev Emitted when the cash-out account is changed.
+    event SetCashOutAccount(
+        address oldCashOutAccount,
+        address newCashOutAccount
+    );
+
+    /**
+     * @dev Returns the address of the cash-out account.
+     */
+    function cashOutAccount() external view returns (address);
 
     /**
      * @dev Returns the address of the underlying token.
@@ -292,9 +315,8 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * Emits a {ConfirmPayment} event for the payment.
      *
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param cashOutAccount The account to transfer cleared tokens to.
      */
-    function confirmPayment(bytes16 authorizationId, address cashOutAccount) external;
+    function confirmPayment(bytes16 authorizationId) external;
 
     /**
      * @dev Executes the final step of several card payments processing with token transferring.
@@ -306,7 +328,16 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * Emits a {ConfirmPayment} event for each payment.
      *
      * @param authorizationIds The card transaction authorization IDs from the off-chain card processing backend.
-     * @param cashOutAccount The account to transfer cleared tokens to.
      */
-    function confirmPayments(bytes16[] memory authorizationIds, address cashOutAccount) external;
+    function confirmPayments(bytes16[] memory authorizationIds) external;
+
+    /**
+     * @dev Makes a refund for a previously made card payment.
+     *
+     * Emits a {RefundPayment} event.
+     *
+     * @param amount The amount of tokens to refund.
+     * @param authorizationId The card transaction authorization ID.
+     */
+    function refundPayment(uint256 amount, bytes16 authorizationId) external;
 }
