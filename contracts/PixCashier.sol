@@ -212,6 +212,7 @@ contract PixCashier is
      *
      * - The contract must not be paused.
      * - The caller must have the {CASHIER_ROLE} role.
+     * - The `account` must must not be blacklisted.
      * - The provided `account`, `amount`, and `txId` values must not be zero.
      * - The cash-out operation with the provided `txId` must not be already pending.
      */
@@ -219,7 +220,7 @@ contract PixCashier is
         address account,
         uint256 amount,
         bytes32 txId
-    ) external whenNotPaused onlyRole(CASHIER_ROLE) {
+    ) external whenNotPaused onlyRole(CASHIER_ROLE) notBlacklisted(account) {
         if (account == address(0)) {
             revert ZeroAccount();
         }

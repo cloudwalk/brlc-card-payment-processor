@@ -358,6 +358,14 @@ describe("Contract 'PixCashier'", async () => {
       ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, cashierRole));
     });
 
+    it("Is reverted if the account is blacklisted", async () => {
+      await proveTx(pixCashier.grantRole(blacklisterRole, deployer.address));
+      await proveTx(pixCashier.blacklist(cashOut.account.address));
+      await expect(
+        pixCashier.connect(cashier).requestCashOutFrom(cashOut.account.address, cashOut.amount, cashOut.txId)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_ACCOUNT_IS_BLACKLISTED);
+    });
+
     it("Is reverted if the account address is zero", async () => {
       await expect(
         pixCashier.connect(cashier).requestCashOutFrom(ethers.constants.AddressZero, cashOut.amount, cashOut.txId)
