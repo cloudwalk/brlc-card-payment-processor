@@ -137,19 +137,6 @@ interface IPixCashier is IPixCashierTypes {
     ) external;
 
     /**
-     * @dev Initiates a cash-out operation.
-     *
-     * Transfers tokens from the caller to the contract.
-     * This function is expected to be called by any account.
-     *
-     * Emits a {CashOut} event.
-     *
-     * @param amount The amount of tokens to be cash-outed.
-     * @param txId The off-chain transaction identifier of the operation.
-     */
-    function requestCashOut(uint256 amount, bytes32 txId) external;
-
-    /**
      * @dev Initiates a cash-out operation from some other account.
      *
      * Transfers tokens from the account to the contract.
