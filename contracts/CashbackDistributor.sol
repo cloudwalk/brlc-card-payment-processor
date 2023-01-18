@@ -7,11 +7,12 @@ import { EnumerableSetUpgradeable } from "@openzeppelin/contracts-upgradeable/ut
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import { BlacklistControlUpgradeable } from "./base/BlacklistControlUpgradeable.sol";
-import { PauseControlUpgradeable } from "./base/PauseControlUpgradeable.sol";
-import { RescueControlUpgradeable } from "./base/RescueControlUpgradeable.sol";
+import { BlacklistableUpgradeable } from "@cloudwalkinc/brlc-contracts/contracts/access-control/BlacklistableUpgradeable.sol";
+import { PausableExtUpgradeable } from "@cloudwalkinc/brlc-contracts/contracts/access-control/PausableExtUpgradeable.sol";
+import { RescuableUpgradeable } from "@cloudwalkinc/brlc-contracts/contracts/access-control/RescuableUpgradeable.sol";
+import { StoragePlaceholder200 } from "@cloudwalkinc/brlc-contracts/contracts/storage/StoragePlaceholder200.sol";
+
 import { CashbackDistributorStorage } from "./CashbackDistributorStorage.sol";
-import { StoragePlaceholder200 } from "./base/StoragePlaceholder.sol";
 import { ICashbackDistributor } from "./interfaces/ICashbackDistributor.sol";
 
 /**
@@ -20,9 +21,9 @@ import { ICashbackDistributor } from "./interfaces/ICashbackDistributor.sol";
  */
 contract CashbackDistributor is
     AccessControlUpgradeable,
-    BlacklistControlUpgradeable,
-    PauseControlUpgradeable,
-    RescueControlUpgradeable,
+    BlacklistableUpgradeable,
+    PausableExtUpgradeable,
+    RescuableUpgradeable,
     StoragePlaceholder200,
     CashbackDistributorStorage,
     ICashbackDistributor
@@ -67,10 +68,10 @@ contract CashbackDistributor is
         __Context_init_unchained();
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
-        __BlacklistControl_init_unchained(OWNER_ROLE);
+        __Blacklistable_init_unchained(OWNER_ROLE);
         __Pausable_init_unchained();
-        __PauseControl_init_unchained(OWNER_ROLE);
-        __RescueControl_init_unchained(OWNER_ROLE);
+        __PausableExt_init_unchained(OWNER_ROLE);
+        __Rescuable_init_unchained(OWNER_ROLE);
 
         __CashbackDistributor_init_unchained();
     }
