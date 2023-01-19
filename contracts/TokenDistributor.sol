@@ -6,9 +6,10 @@ import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import { PauseControlUpgradeable } from "./base/PauseControlUpgradeable.sol";
-import { RescueControlUpgradeable } from "./base/RescueControlUpgradeable.sol";
-import { StoragePlaceholder200 } from "./base/StoragePlaceholder.sol";
+import { PausableExtUpgradeable } from "@cloudwalkinc/brlc-contracts/contracts/access-control/PausableExtUpgradeable.sol";
+import { RescuableUpgradeable } from "@cloudwalkinc/brlc-contracts/contracts/access-control/RescuableUpgradeable.sol";
+import { StoragePlaceholder200 } from "@cloudwalkinc/brlc-contracts/contracts/storage/StoragePlaceholder200.sol";
+
 import { ITokenDistributor } from "./interfaces/ITokenDistributor.sol";
 
 /**
@@ -20,8 +21,8 @@ import { ITokenDistributor } from "./interfaces/ITokenDistributor.sol";
  */
 contract TokenDistributor is
     AccessControlUpgradeable,
-    PauseControlUpgradeable,
-    RescueControlUpgradeable,
+    PausableExtUpgradeable,
+    RescuableUpgradeable,
     StoragePlaceholder200,
     ITokenDistributor
 {
@@ -65,8 +66,8 @@ contract TokenDistributor is
         __Context_init_unchained();
         __ERC165_init_unchained();
         __Pausable_init_unchained();
-        __PauseControl_init_unchained(OWNER_ROLE);
-        __RescueControl_init_unchained(OWNER_ROLE);
+        __PausableExt_init_unchained(OWNER_ROLE);
+        __Rescuable_init_unchained(OWNER_ROLE);
 
         __TokenDistributor_init_unchained();
     }

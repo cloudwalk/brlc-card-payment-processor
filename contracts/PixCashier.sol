@@ -7,10 +7,11 @@ import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/
 import { EnumerableSetUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import { BlacklistControlUpgradeable } from "./base/BlacklistControlUpgradeable.sol";
-import { PauseControlUpgradeable } from "./base/PauseControlUpgradeable.sol";
-import { RescueControlUpgradeable } from "./base/RescueControlUpgradeable.sol";
-import { StoragePlaceholder200 } from "./base/StoragePlaceholder.sol";
+import { BlacklistableUpgradeable } from "@cloudwalkinc/brlc-contracts/contracts/access-control/BlacklistableUpgradeable.sol";
+import { PausableExtUpgradeable } from "@cloudwalkinc/brlc-contracts/contracts/access-control/PausableExtUpgradeable.sol";
+import { RescuableUpgradeable } from "@cloudwalkinc/brlc-contracts/contracts/access-control/RescuableUpgradeable.sol";
+import { StoragePlaceholder200 } from "@cloudwalkinc/brlc-contracts/contracts/storage/StoragePlaceholder200.sol";
+
 import { PixCashierStorage } from "./PixCashierStorage.sol";
 import { IPixCashier } from "./interfaces/IPixCashier.sol";
 import { IERC20Mintable } from "./interfaces/IERC20Mintable.sol";
@@ -24,9 +25,9 @@ import { IERC20Mintable } from "./interfaces/IERC20Mintable.sol";
  */
 contract PixCashier is
     AccessControlUpgradeable,
-    BlacklistControlUpgradeable,
-    PauseControlUpgradeable,
-    RescueControlUpgradeable,
+    BlacklistableUpgradeable,
+    PausableExtUpgradeable,
+    RescuableUpgradeable,
     StoragePlaceholder200,
     PixCashierStorage,
     IPixCashier
@@ -87,10 +88,10 @@ contract PixCashier is
         __Context_init_unchained();
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
-        __BlacklistControl_init_unchained(OWNER_ROLE);
+        __Blacklistable_init_unchained(OWNER_ROLE);
         __Pausable_init_unchained();
-        __PauseControl_init_unchained(OWNER_ROLE);
-        __RescueControl_init_unchained(OWNER_ROLE);
+        __PausableExt_init_unchained(OWNER_ROLE);
+        __Rescuable_init_unchained(OWNER_ROLE);
 
         __PixCashier_init_unchained(token_);
     }
