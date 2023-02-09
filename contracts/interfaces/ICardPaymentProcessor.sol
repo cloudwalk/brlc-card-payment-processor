@@ -60,6 +60,14 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         address sender
     );
 
+    /// @dev Emitted when the amount of a payment is updated.
+    event UpdatePaymentAmount(
+        bytes16 indexed authorizationId,
+        address indexed account,
+        uint256 oldAmount,
+        uint256 newAmount
+    );
+
     /// @dev Emitted when a payment is cleared.
     event ClearPayment(
         bytes16 indexed authorizationId,
@@ -221,6 +229,22 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint256 amount,
         bytes16 authorizationId,
         bytes16 correlationId
+    ) external;
+
+    /**
+     * @dev Updates the amount of a previously made payment.
+     *
+     * Transfers the underlying tokens from the account to this contract or vise versa.
+     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
+     *
+     * Emits a {UpdatePaymentAmount} event.
+     *
+     * @param newAmount The new amount of the payment.
+     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     */
+    function updatePaymentAmount(
+        uint256 newAmount,
+        bytes16 authorizationId
     ) external;
 
     /**
