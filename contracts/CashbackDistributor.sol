@@ -205,6 +205,54 @@ contract CashbackDistributor is
     }
 
     /**
+     * @dev See {ICashbackDistributor-increaseCashback}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {DISTRIBUTOR_ROLE} role.
+     */
+    function increaseCashback(
+        uint256 nonce,
+        uint256 amount
+    ) external whenNotPaused onlyRole(DISTRIBUTOR_ROLE) returns (bool success) {
+        Cashback storage cashback = _cashbacks[nonce];
+
+        address sender = _msgSender();
+        IncreaseStatus status = IncreaseStatus.Success;
+
+        if (cashback.status != CashbackStatus.Success) {
+            status = IncreaseStatus.Inapplicable;
+        } else if (!_enabled) {
+            status = IncreaseStatus.Disabled;
+        } else if (isBlacklisted(cashback.recipient)) {
+            status = IncreaseStatus.Blacklisted;
+        } else if (IERC20Upgradeable(cashback.token).balanceOf(address(this)) < amount) {
+            status = IncreaseStatus.OutOfFunds;
+        }
+
+        emit IncreaseCashback(
+            cashback.token,
+            cashback.kind,
+            cashback.status,
+            status,
+            cashback.externalId,
+            cashback.recipient,
+            amount,
+            sender,
+            nonce
+        );
+
+        if (status == IncreaseStatus.Success) {
+            cashback.amount += amount;
+            _totalCashbackByTokenAndRecipient[cashback.token][cashback.recipient] += amount;
+            _totalCashbackByTokenAndExternalId[cashback.token][cashback.externalId] += amount;
+            IERC20Upgradeable(cashback.token).safeTransfer(cashback.recipient, amount);
+            success = true;
+        }
+    }
+
+    /**
      * @dev See {ICashbackDistributor-enable}.
      *
      * Requirements:
