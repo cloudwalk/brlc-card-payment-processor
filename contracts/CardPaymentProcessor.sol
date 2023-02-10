@@ -822,7 +822,16 @@ contract CardPaymentProcessor is
 
         Payment storage payment = _payments[authorizationId];
 
-        checkUnclearedStatus(payment.status);
+        PaymentStatus status = payment.status;
+        if (status == PaymentStatus.Nonexistent) {
+            revert PaymentNotExist();
+        }
+        if (status == PaymentStatus.Cleared) {
+            revert PaymentAlreadyCleared();
+        }
+        if (status != PaymentStatus.Uncleared) {
+            revert InappropriatePaymentStatus(status);
+        }
         payment.status = PaymentStatus.Cleared;
 
         address account = payment.account;
@@ -850,7 +859,16 @@ contract CardPaymentProcessor is
 
         Payment storage payment = _payments[authorizationId];
 
-        checkClearedStatus(payment.status);
+        PaymentStatus status = payment.status;
+        if (status == PaymentStatus.Nonexistent) {
+            revert PaymentNotExist();
+        }
+        if (status == PaymentStatus.Uncleared) {
+            revert PaymentAlreadyUncleared();
+        }
+        if (status != PaymentStatus.Cleared) {
+            revert InappropriatePaymentStatus(status);
+        }
         payment.status = PaymentStatus.Uncleared;
 
         address account = payment.account;
@@ -878,7 +896,13 @@ contract CardPaymentProcessor is
 
         Payment storage payment = _payments[authorizationId];
 
-        checkClearedStatus(payment.status);
+        PaymentStatus status = payment.status;
+        if (status == PaymentStatus.Nonexistent) {
+            revert PaymentNotExist();
+        }
+        if (status != PaymentStatus.Cleared) {
+            revert InappropriatePaymentStatus(status);
+        }
         payment.status = PaymentStatus.Confirmed;
 
         address account = payment.account;
@@ -1021,30 +1045,6 @@ contract CardPaymentProcessor is
             } else {
                 emit IncreaseCashbackFailure(distributor, amount, cashbackNonce);
             }
-        }
-    }
-
-    function checkClearedStatus(PaymentStatus status) internal pure {
-        if (status == PaymentStatus.Nonexistent) {
-            revert PaymentNotExist();
-        }
-        if (status == PaymentStatus.Uncleared) {
-            revert PaymentAlreadyUncleared();
-        }
-        if (status != PaymentStatus.Cleared) {
-            revert InappropriatePaymentStatus(status);
-        }
-    }
-
-    function checkUnclearedStatus(PaymentStatus status) internal pure {
-        if (status == PaymentStatus.Nonexistent) {
-            revert PaymentNotExist();
-        }
-        if (status == PaymentStatus.Cleared) {
-            revert PaymentAlreadyCleared();
-        }
-        if (status != PaymentStatus.Uncleared) {
-            revert InappropriatePaymentStatus(status);
         }
     }
 

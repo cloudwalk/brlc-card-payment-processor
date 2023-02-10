@@ -2601,7 +2601,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         cardPaymentProcessor.connect(executor).confirmPayment(payment.authorizationId)
-      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
+      ).to.be.revertedWithCustomError(
+        cardPaymentProcessor,
+        REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
+      ).withArgs(PaymentStatus.Uncleared);
     });
 
     it("Is reverted if the cash-out account is the zero address", async () => {
@@ -2733,7 +2736,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         cardPaymentProcessor.connect(executor).confirmPayments(authorizationIds)
-      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
+      ).to.be.revertedWithCustomError(
+        cardPaymentProcessor,
+        REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
+      ).withArgs(PaymentStatus.Uncleared);
     });
 
     it("Is reverted if the cash-out account is the zero address", async () => {
