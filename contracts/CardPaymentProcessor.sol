@@ -121,6 +121,9 @@ contract CardPaymentProcessor is
     /// @dev The requested refund amount does not meet the requirements.
     error InappropriateRefundAmount();
 
+    /// @dev The new amount of the payment does not meet the requirements.
+    error InappropriateNewPaymentAmount();
+
     // ------------------- Functions ---------------------------------
 
     /**
@@ -205,6 +208,79 @@ contract CardPaymentProcessor is
             revert ZeroAccount();
         }
         makePaymentInternal(_msgSender(), account, amount, authorizationId, correlationId);
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-updatePaymentAmount}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input authorization ID of the payment must not be zero.
+     * - The payment linked with the authorization ID must have the "uncleared" status.
+     * - The new amount must not exceed the existing refund amount.
+     */
+    function updatePaymentAmount(uint256 newAmount, bytes16 authorizationId)
+        external
+        whenNotPaused
+        onlyRole(EXECUTOR_ROLE)
+    {
+        if (authorizationId == 0) {
+            revert ZeroAuthorizationId();
+        }
+
+        Payment storage payment = _payments[authorizationId];
+        PaymentStatus status = payment.status;
+        address account = payment.account;
+        uint256 oldPaymentAmount = payment.amount;
+        uint256 refundAmount = payment.refundAmount;
+
+        if (status == PaymentStatus.Nonexistent) {
+            revert PaymentNotExist();
+        }
+        if (status != PaymentStatus.Uncleared) {
+            revert InappropriatePaymentStatus(status);
+        }
+        if (refundAmount > newAmount) {
+            revert InappropriateNewPaymentAmount();
+        }
+
+        uint256 newCompensationAmount = refundAmount +
+            calculateCashback(newAmount - refundAmount, payment.cashbackRate);
+        payment.amount = newAmount;
+
+        if (newAmount >= oldPaymentAmount) {
+            uint256 cashbackIncreaseAmount = newCompensationAmount - payment.compensationAmount;
+            uint256 paymentAmountDiff = newAmount - oldPaymentAmount;
+
+            payment.compensationAmount = newCompensationAmount;
+
+            _totalUnclearedBalance += paymentAmountDiff;
+            _unclearedBalances[account] += paymentAmountDiff;
+            IERC20Upgradeable(_token).safeTransferFrom(account, address(this), paymentAmountDiff);
+
+            increaseCashbackInternal(authorizationId, cashbackIncreaseAmount);
+        } else {
+            uint256 cashbackRevocationAmount = payment.compensationAmount - newCompensationAmount;
+            uint256 paymentAmountDiff = oldPaymentAmount - newAmount;
+            uint256 sentAmount =  paymentAmountDiff - cashbackRevocationAmount;
+
+            payment.compensationAmount = newCompensationAmount;
+
+            _totalUnclearedBalance -= paymentAmountDiff;
+            _unclearedBalances[account] -= paymentAmountDiff;
+            IERC20Upgradeable(_token).safeTransfer(account, sentAmount);
+
+            revokeCashbackInternal(authorizationId, cashbackRevocationAmount);
+        }
+
+        emit UpdatePaymentAmount(
+            authorizationId,
+            account,
+            oldPaymentAmount,
+            newAmount
+        );
     }
 
     /**
@@ -746,7 +822,16 @@ contract CardPaymentProcessor is
 
         Payment storage payment = _payments[authorizationId];
 
-        checkUnclearedStatus(payment.status);
+        PaymentStatus status = payment.status;
+        if (status == PaymentStatus.Nonexistent) {
+            revert PaymentNotExist();
+        }
+        if (status == PaymentStatus.Cleared) {
+            revert PaymentAlreadyCleared();
+        }
+        if (status != PaymentStatus.Uncleared) {
+            revert InappropriatePaymentStatus(status);
+        }
         payment.status = PaymentStatus.Cleared;
 
         address account = payment.account;
@@ -774,7 +859,16 @@ contract CardPaymentProcessor is
 
         Payment storage payment = _payments[authorizationId];
 
-        checkClearedStatus(payment.status);
+        PaymentStatus status = payment.status;
+        if (status == PaymentStatus.Nonexistent) {
+            revert PaymentNotExist();
+        }
+        if (status == PaymentStatus.Uncleared) {
+            revert PaymentAlreadyUncleared();
+        }
+        if (status != PaymentStatus.Cleared) {
+            revert InappropriatePaymentStatus(status);
+        }
         payment.status = PaymentStatus.Uncleared;
 
         address account = payment.account;
@@ -802,7 +896,13 @@ contract CardPaymentProcessor is
 
         Payment storage payment = _payments[authorizationId];
 
-        checkClearedStatus(payment.status);
+        PaymentStatus status = payment.status;
+        if (status == PaymentStatus.Nonexistent) {
+            revert PaymentNotExist();
+        }
+        if (status != PaymentStatus.Cleared) {
+            revert InappropriatePaymentStatus(status);
+        }
         payment.status = PaymentStatus.Confirmed;
 
         address account = payment.account;
@@ -936,27 +1036,15 @@ contract CardPaymentProcessor is
         }
     }
 
-    function checkClearedStatus(PaymentStatus status) internal pure {
-        if (status == PaymentStatus.Nonexistent) {
-            revert PaymentNotExist();
-        }
-        if (status == PaymentStatus.Uncleared) {
-            revert PaymentAlreadyUncleared();
-        }
-        if (status != PaymentStatus.Cleared) {
-            revert InappropriatePaymentStatus(status);
-        }
-    }
-
-    function checkUnclearedStatus(PaymentStatus status) internal pure {
-        if (status == PaymentStatus.Nonexistent) {
-            revert PaymentNotExist();
-        }
-        if (status == PaymentStatus.Cleared) {
-            revert PaymentAlreadyCleared();
-        }
-        if (status != PaymentStatus.Uncleared) {
-            revert InappropriatePaymentStatus(status);
+    function increaseCashbackInternal(bytes16 authorizationId, uint256 amount) internal {
+        address distributor = _cashbackDistributor;
+        uint256 cashbackNonce = _cashbacks[authorizationId].lastCashbackNonce;
+        if (cashbackNonce != 0 && distributor != address(0)) {
+            if (ICashbackDistributor(distributor).increaseCashback(cashbackNonce, amount)) {
+                emit IncreaseCashbackSuccess(distributor, amount, cashbackNonce);
+            } else {
+                emit IncreaseCashbackFailure(distributor, amount, cashbackNonce);
+            }
         }
     }
 

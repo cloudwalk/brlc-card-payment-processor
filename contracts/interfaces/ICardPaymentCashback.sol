@@ -47,7 +47,7 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
     event SendCashbackFailure(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
 
     /**
-     * @dev Emitted when a cashback revoke request succeeded.
+     * @dev Emitted when a cashback revocation request succeeded.
      * @param cashbackDistributor The address of the cashback distributor.
      * @param amount The amount of the revoked cashback.
      * @param nonce The nonce of the cashback.
@@ -55,12 +55,28 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
     event RevokeCashbackSuccess(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
 
     /**
-     * @dev Emitted when a cashback revoke request failed.
+     * @dev Emitted when a cashback revocation request failed.
      * @param cashbackDistributor The address of the cashback distributor.
      * @param amount The amount of the revoked cashback.
      * @param nonce The nonce of the cashback.
      */
     event RevokeCashbackFailure(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
+
+    /**
+     * @dev Emitted when a cashback increase request succeeded.
+     * @param cashbackDistributor The address of the cashback distributor.
+     * @param amount The amount of the cashback increase.
+     * @param nonce The nonce of the cashback.
+     */
+    event IncreaseCashbackSuccess(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
+
+    /**
+     * @dev Emitted when a cashback increase request failed.
+     * @param cashbackDistributor The address of the cashback distributor.
+     * @param amount The amount of the cashback increase.
+     * @param nonce The nonce of the cashback.
+     */
+    event IncreaseCashbackFailure(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
 
     /// @dev Emitted when cashback operations are enabled.
     event EnableCashback();

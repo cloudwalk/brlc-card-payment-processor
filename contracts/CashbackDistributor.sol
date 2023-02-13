@@ -37,6 +37,15 @@ contract CashbackDistributor is
     /// @dev The role of distributor that is allowed to execute the cashback operations.
     bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
 
+    /// @dev A helper structure to store context of function execution and avoid stack overflow error.
+    struct ExecutionContext {
+        address token;
+        CashbackStatus cashbackStatus;
+        bytes32 externalId;
+        address recipient;
+        address sender;
+    }
+
     // -------------------- Errors -----------------------------------
 
     /// @dev The cashback operations are already enabled.
@@ -169,37 +178,97 @@ contract CashbackDistributor is
         uint256 amount
     ) external whenNotPaused onlyRole(DISTRIBUTOR_ROLE) returns (bool success) {
         Cashback storage cashback = _cashbacks[nonce];
+        ExecutionContext memory context = ExecutionContext({
+            token : cashback.token,
+            cashbackStatus : cashback.status,
+            externalId : cashback.externalId,
+            recipient : cashback.recipient,
+            sender: _msgSender()
+        });
 
-        address sender = _msgSender();
         RevocationStatus revocationStatus = RevocationStatus.Success;
 
-        if (cashback.status != CashbackStatus.Success) {
+        if (context.cashbackStatus != CashbackStatus.Success) {
             revocationStatus = RevocationStatus.Inapplicable;
-        } else if (amount > IERC20Upgradeable(cashback.token).balanceOf(sender)) {
+        } else if (amount > IERC20Upgradeable(context.token).balanceOf(context.sender)) {
             revocationStatus = RevocationStatus.OutOfFunds;
-        } else if (amount > IERC20Upgradeable(cashback.token).allowance(sender, address(this))) {
+        } else if (amount > IERC20Upgradeable(context.token).allowance(context.sender, address(this))) {
             revocationStatus = RevocationStatus.OutOfAllowance;
         } else if (amount > cashback.amount - cashback.revokedAmount) {
             revocationStatus = RevocationStatus.OutOfBalance;
         }
 
         emit RevokeCashback(
-            cashback.token,
+            context.token,
             cashback.kind,
-            cashback.status,
+            context.cashbackStatus,
             revocationStatus,
-            cashback.externalId,
-            cashback.recipient,
+            context.externalId,
+            context.recipient,
             amount,
-            sender,
+            context.sender,
             nonce
         );
 
         if (revocationStatus == RevocationStatus.Success) {
             cashback.revokedAmount += amount;
-            _totalCashbackByTokenAndRecipient[cashback.token][cashback.recipient] -= amount;
-            _totalCashbackByTokenAndExternalId[cashback.token][cashback.externalId] -= amount;
-            IERC20Upgradeable(cashback.token).safeTransferFrom(sender, address(this), amount);
+            _totalCashbackByTokenAndRecipient[context.token][context.recipient] -= amount;
+            _totalCashbackByTokenAndExternalId[context.token][context.externalId] -= amount;
+            IERC20Upgradeable(context.token).safeTransferFrom(context.sender, address(this), amount);
+            success = true;
+        }
+    }
+
+    /**
+     * @dev See {ICashbackDistributor-increaseCashback}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {DISTRIBUTOR_ROLE} role.
+     */
+    function increaseCashback(
+        uint256 nonce,
+        uint256 amount
+    ) external whenNotPaused onlyRole(DISTRIBUTOR_ROLE) returns (bool success) {
+        Cashback storage cashback = _cashbacks[nonce];
+        ExecutionContext memory context = ExecutionContext({
+            token : cashback.token,
+            cashbackStatus : cashback.status,
+            externalId : cashback.externalId,
+            recipient : cashback.recipient,
+            sender: _msgSender()
+        });
+
+        IncreaseStatus status = IncreaseStatus.Success;
+
+        if (context.cashbackStatus != CashbackStatus.Success) {
+            status = IncreaseStatus.Inapplicable;
+        } else if (!_enabled) {
+            status = IncreaseStatus.Disabled;
+        } else if (isBlacklisted(context.recipient)) {
+            status = IncreaseStatus.Blacklisted;
+        } else if (IERC20Upgradeable(context.token).balanceOf(address(this)) < amount) {
+            status = IncreaseStatus.OutOfFunds;
+        }
+
+        emit IncreaseCashback(
+            context.token,
+            cashback.kind,
+            context.cashbackStatus,
+            status,
+            context.externalId,
+            context.recipient,
+            amount,
+            context.sender,
+            nonce
+        );
+
+        if (status == IncreaseStatus.Success) {
+            cashback.amount += amount;
+            _totalCashbackByTokenAndRecipient[context.token][context.recipient] += amount;
+            _totalCashbackByTokenAndExternalId[context.token][context.externalId] += amount;
+            IERC20Upgradeable(context.token).safeTransfer(context.recipient, amount);
             success = true;
         }
     }

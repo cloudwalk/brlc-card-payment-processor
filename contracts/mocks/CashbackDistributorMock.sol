@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.16;
 
+import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+
 import { ICashbackDistributor } from "../interfaces/ICashbackDistributor.sol";
 
 /**
@@ -15,8 +17,17 @@ contract CashbackDistributorMock is ICashbackDistributor {
     /// @dev The nonce part of the `sendCashback()` function result to return next time.
     uint256 public sendCashbackNonceResult;
 
-    /// @dev The success part of the `revokeCashback()` function result to return next time.
+    /// @dev The result of the `revokeCashback()` function to return next time.
     bool public revokeCashbackSuccessResult;
+
+    /// @dev The result of the `increaseCashback()` function to return next time.
+    bool public increaseCashbackSuccessResult;
+
+    /// @dev The recipient address of the last call of the {sendCashback} function.
+    address public lastCashbackRecipient;
+
+    /// @dev The token address of the last call of the {sendCashback} function.
+    address public lastCashbackToken;
 
     /**
      * @dev Emitted when the 'sendCashback()' function is called
@@ -36,16 +47,23 @@ contract CashbackDistributorMock is ICashbackDistributor {
     event RevokeCashbackMock(address sender, uint256 nonce, uint256 amount);
 
     /**
+     * @dev Emitted when the 'increaseCashback()' function is called
+     */
+    event IncreaseCashbackMock(address sender, uint256 nonce, uint256 amount);
+
+    /**
      * @dev Constructor that simply set values of all storage variables.
      */
     constructor(
         bool sendCashbackSuccessResult_,
         uint256 sendCashbackNonceResult_,
-        bool revokeCashbackSuccessResult_
+        bool revokeCashbackSuccessResult_,
+        bool increaseCashbackSuccessResult_
     ) {
         sendCashbackSuccessResult = sendCashbackSuccessResult_;
         sendCashbackNonceResult = sendCashbackNonceResult_;
         revokeCashbackSuccessResult = revokeCashbackSuccessResult_;
+        increaseCashbackSuccessResult = increaseCashbackSuccessResult_;
 
         // Calling stub functions just to provide 100% coverage
         enabled();
@@ -152,7 +170,12 @@ contract CashbackDistributorMock is ICashbackDistributor {
     /**
      * @dev See {ICashbackDistributor-sendCashback}.
      *
-     * Just a stub for testing. Returns the previously set values and emits an event with provided arguments.
+     * Just a stub for testing.
+     * Returns the previously set values and emits an event with provided arguments.
+     * Stores `token`, `msg.sender` and `recipient` for further usage.
+     * if the returned `success` part of the result is `true` sends the provided amount of tokens
+     * from this contract to `recipient`.
+     *
      */
     function sendCashback(
         address token,
@@ -163,17 +186,43 @@ contract CashbackDistributorMock is ICashbackDistributor {
     ) external returns (bool success, uint256 nonce) {
         success = sendCashbackSuccessResult;
         nonce = sendCashbackNonceResult;
+        lastCashbackToken = token;
+        lastCashbackRecipient = recipient;
         emit SendCashbackMock(msg.sender, token, kind, externalId, recipient, amount);
+        if (success) {
+           IERC20Upgradeable(token).transfer(recipient, amount);
+        }
     }
 
     /**
      * @dev See {ICashbackDistributor-revokeCashback}.
      *
-     * Just a stub for testing. Returns the previously set value and emits an event with provided arguments.
+     * Just a stub for testing.
+     * Returns the previously set value and emits an event with provided arguments.
+     * If the returned value is `true` sends the provided amount of tokens from `msg.sender` to this contract.
      */
     function revokeCashback(uint256 nonce, uint256 amount) external returns (bool success) {
         success = revokeCashbackSuccessResult;
         emit RevokeCashbackMock(msg.sender, nonce, amount);
+        if (success) {
+            IERC20Upgradeable(lastCashbackToken).transferFrom(msg.sender, address(this), amount);
+        }
+    }
+
+    /**
+     * @dev See {ICashbackDistributor-increaseCashback}.
+     *
+     * Just a stub for testing.
+     * Returns the previously set value and emits an event with provided arguments.
+     * If the returned value is `true` sends the provided amount of tokens
+     * from this contract to {lastCashbackRecipient}.
+     */
+    function increaseCashback(uint256 nonce, uint256 amount) external returns (bool success) {
+        success = increaseCashbackSuccessResult;
+        emit IncreaseCashbackMock(msg.sender, nonce, amount);
+        if (success) {
+            IERC20Upgradeable(lastCashbackToken).transfer(lastCashbackRecipient, amount);
+        }
     }
 
     /**
@@ -184,9 +233,16 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @dev Sets a new value for the success part of the `revokeCashback()` function result.
+     * @dev Sets a new value for the result of the `revokeCashback()` function.
      */
     function setRevokeCashbackSuccessResult(bool newRevokeCashbackSuccessResult) external {
         revokeCashbackSuccessResult = newRevokeCashbackSuccessResult;
+    }
+
+    /**
+     * @dev Sets a new value for the result of the `increaseCashback()` function.
+     */
+    function setIncreaseCashbackSuccessResult(bool newIncreaseCashbackSuccessResult) external {
+        increaseCashbackSuccessResult = newIncreaseCashbackSuccessResult;
     }
 }

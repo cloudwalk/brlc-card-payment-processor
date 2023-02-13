@@ -26,7 +26,7 @@ interface ICashbackDistributorTypes {
      * - Success ----- The cashback operation has been successfully sent.
      * - Blacklisted - The cashback operation has been refused because the target account is blacklisted.
      * - OutOfFunds -- The cashback operation has been refused because the contract has not enough tokens.
-     * - Disabled ---- The cashback operation has been refused because the cashback operations are disabled.
+     * - Disabled ---- The cashback operation has been refused because cashback operations are disabled.
      * - Revoked ----- Obsolete and not in use anymore.
      */
     enum CashbackStatus {
@@ -47,7 +47,7 @@ interface ICashbackDistributorTypes {
      * - Inapplicable --- The operation has been failed because the cashback has not relevant status.
      * - OutOfFunds ----- The operation has been failed because the caller has not enough tokens.
      * - OutOfAllowance - The operation has been failed because the caller has not enough allowance for the contract.
-     * - OutOfBalance --- The operation has been failed because the revocation amount is greater than the cashback amount.
+     * - OutOfBalance --- The operation has been failed because the revocation amount exceeds the cashback amount.
      */
     enum RevocationStatus {
         Unknown,        // 0
@@ -56,6 +56,26 @@ interface ICashbackDistributorTypes {
         OutOfFunds,     // 3
         OutOfAllowance, // 4
         OutOfBalance    // 5
+    }
+
+    /**
+     * @dev Statuses of a cashback increase operation as an enum.
+     *
+     * The possible values:
+     * - Nonexistent -- The operation does not exist (the default value).
+     * - Success ------ The operation has been successfully sent.
+     * - Blacklisted -- The operation has been refused because the target account is blacklisted.
+     * - OutOfFunds --- The operation has been refused because the contract has not enough tokens.
+     * - Disabled ----- The operation has been refused because cashback operations are disabled.
+     * - Inapplicable - The operation has been failed because the cashback has not relevant status.
+     */
+    enum IncreaseStatus {
+        Nonexistent, // 0
+        Success,     // 1
+        Blacklisted, // 2
+        OutOfFunds,  // 3
+        Disabled,    // 4
+        Inapplicable // 5
     }
 
     /// @dev Structure with data of a single cashback operation.
@@ -101,20 +121,44 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
     /**
      * @dev Emitted when a cashback operation is revoked.
      * @param token The token contract of the cashback operation.
-     * @param cashbackKind The kind of the cashback operation.
-     * @param cashbackStatus The status of the cashback operation before the revocation.
+     * @param cashbackKind The kind of the initial cashback operation.
+     * @param cashbackStatus The status of the initial cashback operation before the revocation operation.
      * @param status The status of the revocation.
-     * @param externalId The external identifier of the cashback operation.
+     * @param externalId The external identifier of the initial cashback operation.
      * @param recipient The account that received the cashback.
      * @param amount The amount of the revoked cashback.
      * @param sender The account that initiated the cashback revocation operation.
-     * @param nonce The nonce of the cashback operation.
+     * @param nonce The nonce of the initial cashback operation.
      */
     event RevokeCashback(
         address token,
         CashbackKind cashbackKind,
         CashbackStatus cashbackStatus,
         RevocationStatus indexed status,
+        bytes32 indexed externalId,
+        address indexed recipient,
+        uint256 amount,
+        address sender,
+        uint256 nonce
+    );
+
+    /**
+     * @dev Emitted when a cashback increase operation is executed.
+     * @param token The token contract of the cashback operation.
+     * @param cashbackKind The kind of the initial cashback operation.
+     * @param cashbackStatus The status of the initial cashback operation before the increase operation.
+     * @param status The status of the increase operation.
+     * @param externalId The external identifier of the initial cashback operation.
+     * @param recipient The account that received the cashback.
+     * @param amount The amount of the cashback increase.
+     * @param sender The account that initiated the cashback increase operation.
+     * @param nonce The nonce of the initial cashback operation.
+     */
+    event IncreaseCashback(
+        address token,
+        CashbackKind cashbackKind,
+        CashbackStatus cashbackStatus,
+        IncreaseStatus indexed status,
         bytes32 indexed externalId,
         address indexed recipient,
         uint256 amount,
@@ -173,6 +217,21 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      * @return success True if the cashback revocation was successful.
      */
     function revokeCashback(uint256 nonce, uint256 amount) external returns (bool success);
+
+    /**
+     * @dev Increases a previously sent cashback.
+     *
+     * Transfers the underlying tokens from the contract to the recipient if there are appropriate conditions.
+     * This function is expected to be called by a limited number of accounts
+     * that are allowed to execute cashback operations.
+     *
+     * Emits a {IncreaseCashback} event if the cashback is successfully increased.
+     *
+     * @param nonce The nonce of the cashback operation to increase.
+     * @param amount The amount of tokens to increase during the operation.
+     * @return success True if the cashback increase operation was successful.
+     */
+    function increaseCashback(uint256 nonce, uint256 amount) external returns (bool success);
 
     /**
      * @dev Enables the cashback operations.
