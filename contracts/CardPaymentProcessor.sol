@@ -254,25 +254,24 @@ contract CardPaymentProcessor is
             uint256 cashbackIncreaseAmount = newCompensationAmount - payment.compensationAmount;
             uint256 paymentAmountDiff = newAmount - oldPaymentAmount;
 
-            payment.compensationAmount = newCompensationAmount;
-
             _totalUnclearedBalance += paymentAmountDiff;
             _unclearedBalances[account] += paymentAmountDiff;
             IERC20Upgradeable(_token).safeTransferFrom(account, address(this), paymentAmountDiff);
 
-            increaseCashbackInternal(authorizationId, cashbackIncreaseAmount);
+            if (increaseCashbackInternal(authorizationId, cashbackIncreaseAmount)) {
+                payment.compensationAmount = newCompensationAmount;
+            }
         } else {
             uint256 cashbackRevocationAmount = payment.compensationAmount - newCompensationAmount;
             uint256 paymentAmountDiff = oldPaymentAmount - newAmount;
-            uint256 sentAmount =  paymentAmountDiff - cashbackRevocationAmount;
-
-            payment.compensationAmount = newCompensationAmount;
+            uint256 sentAmount = paymentAmountDiff - cashbackRevocationAmount;
 
             _totalUnclearedBalance -= paymentAmountDiff;
             _unclearedBalances[account] -= paymentAmountDiff;
             IERC20Upgradeable(_token).safeTransfer(account, sentAmount);
 
             revokeCashbackInternal(authorizationId, cashbackRevocationAmount);
+            payment.compensationAmount = newCompensationAmount;
         }
 
         emit UpdatePaymentAmount(
@@ -505,7 +504,7 @@ contract CardPaymentProcessor is
         }
 
         uint256 newCompensationAmount = newRefundAmount +
-        calculateCashback(paymentAmount - newRefundAmount, payment.cashbackRate);
+            calculateCashback(paymentAmount - newRefundAmount, payment.cashbackRate);
         uint256 sentAmount = newCompensationAmount - payment.compensationAmount;
         uint256 revokedCashbackAmount = amount - sentAmount;
 
@@ -1038,12 +1037,16 @@ contract CardPaymentProcessor is
         }
     }
 
-    function increaseCashbackInternal(bytes16 authorizationId, uint256 amount) internal {
+    function increaseCashbackInternal(
+        bytes16 authorizationId,
+        uint256 amount
+    ) internal returns (bool success) {
         address distributor = _cashbackDistributor;
         uint256 cashbackNonce = _cashbacks[authorizationId].lastCashbackNonce;
         if (cashbackNonce != 0 && distributor != address(0)) {
             if (ICashbackDistributor(distributor).increaseCashback(cashbackNonce, amount)) {
                 emit IncreaseCashbackSuccess(distributor, amount, cashbackNonce);
+                success = true;
             } else {
                 emit IncreaseCashbackFailure(distributor, amount, cashbackNonce);
             }

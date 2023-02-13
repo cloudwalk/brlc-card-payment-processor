@@ -356,9 +356,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     payment.compensationAmount = calculateCompensationAmount(payment);
   }
 
-  function setNewAmount(payment: TestPayment, newAmount: number) {
+  function setNewAmount(payment: TestPayment, newAmount: number, isCashbackIncreasingFails: boolean = false) {
     payment.amount = newAmount;
-    payment.compensationAmount = calculateCompensationAmount(payment);
+    if (!isCashbackIncreasingFails) {
+      payment.compensationAmount = calculateCompensationAmount(payment);
+    }
   }
 
   async function pauseContract(contract: Contract) {
@@ -1504,7 +1506,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         }
       }
 
-      setNewAmount(payment, newAmount);
+      setNewAmount(payment, newAmount, updatingCondition === UpdatingConditionType.CashbackEnabledButIncreasingFails);
       if (updatingCondition === UpdatingConditionType.CashbackEnabledButRevokingFails) {
         payment.unrevokedCashback = -cashbackChange;
       }
