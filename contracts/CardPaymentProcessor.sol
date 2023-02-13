@@ -254,25 +254,23 @@ contract CardPaymentProcessor is
             uint256 cashbackIncreaseAmount = newCompensationAmount - payment.compensationAmount;
             uint256 paymentAmountDiff = newAmount - oldPaymentAmount;
 
-            payment.compensationAmount = newCompensationAmount;
-
             _totalUnclearedBalance += paymentAmountDiff;
             _unclearedBalances[account] += paymentAmountDiff;
             IERC20Upgradeable(_token).safeTransferFrom(account, address(this), paymentAmountDiff);
 
-            increaseCashbackInternal(authorizationId, cashbackIncreaseAmount);
+            newCompensationAmount -= increaseCashbackInternal(authorizationId, cashbackIncreaseAmount);
+            payment.compensationAmount = newCompensationAmount;
         } else {
             uint256 cashbackRevocationAmount = payment.compensationAmount - newCompensationAmount;
             uint256 paymentAmountDiff = oldPaymentAmount - newAmount;
             uint256 sentAmount =  paymentAmountDiff - cashbackRevocationAmount;
-
-            payment.compensationAmount = newCompensationAmount;
 
             _totalUnclearedBalance -= paymentAmountDiff;
             _unclearedBalances[account] -= paymentAmountDiff;
             IERC20Upgradeable(_token).safeTransfer(account, sentAmount);
 
             revokeCashbackInternal(authorizationId, cashbackRevocationAmount);
+            payment.compensationAmount = newCompensationAmount;
         }
 
         emit UpdatePaymentAmount(
@@ -1038,7 +1036,10 @@ contract CardPaymentProcessor is
         }
     }
 
-    function increaseCashbackInternal(bytes16 authorizationId, uint256 amount) internal {
+    function increaseCashbackInternal(
+        bytes16 authorizationId,
+        uint256 amount
+    ) internal returns (uint256 unsentAmount){
         address distributor = _cashbackDistributor;
         uint256 cashbackNonce = _cashbacks[authorizationId].lastCashbackNonce;
         if (cashbackNonce != 0 && distributor != address(0)) {
@@ -1046,7 +1047,10 @@ contract CardPaymentProcessor is
                 emit IncreaseCashbackSuccess(distributor, amount, cashbackNonce);
             } else {
                 emit IncreaseCashbackFailure(distributor, amount, cashbackNonce);
+                unsentAmount = amount;
             }
+        } else {
+            unsentAmount = amount;
         }
     }
 
