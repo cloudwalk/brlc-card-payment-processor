@@ -221,11 +221,11 @@ contract CardPaymentProcessor is
      * - The payment linked with the authorization ID must have the "uncleared" status.
      * - The new amount must not exceed the existing refund amount.
      */
-    function updatePaymentAmount(uint256 newAmount, bytes16 authorizationId)
-        external
-        whenNotPaused
-        onlyRole(EXECUTOR_ROLE)
-    {
+    function updatePaymentAmount(
+        uint256 newAmount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
         }
@@ -277,6 +277,7 @@ contract CardPaymentProcessor is
 
         emit UpdatePaymentAmount(
             authorizationId,
+            correlationId,
             account,
             oldPaymentAmount,
             newAmount
@@ -478,11 +479,11 @@ contract CardPaymentProcessor is
      * - The caller must have the {EXECUTOR_ROLE} role.
      * - The input authorization ID of the payment must not be zero.
      */
-    function refundPayment(uint256 amount, bytes16 authorizationId)
-        external
-        whenNotPaused
-        onlyRole(EXECUTOR_ROLE)
-    {
+    function refundPayment(
+        uint256 amount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
         }
@@ -530,6 +531,7 @@ contract CardPaymentProcessor is
 
         emit RefundPayment(
             authorizationId,
+            correlationId,
             account,
             amount,
             sentAmount,

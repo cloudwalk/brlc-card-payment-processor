@@ -161,8 +161,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const REVOCATION_LIMIT = 123;
   const REVOCATION_LIMIT_DEFAULT_VALUE = 255;
   const ZERO_AUTHORIZATION_ID: string = createBytesString("00", BYTES16_LENGTH);
-  const PAYMENT_REVERSING_CORRELATION_ID_STUB: string = createBytesString("ABC1", BYTES16_LENGTH);
-  const PAYMENT_REVOKING_CORRELATION_ID_STUB: string = createBytesString("ABC2", BYTES16_LENGTH);
+  const PAYMENT_REFUNDING_CORRELATION_ID_STUB: string = createBytesString("C01", BYTES16_LENGTH);
+  const PAYMENT_REVERSING_CORRELATION_ID_STUB: string = createBytesString("C02", BYTES16_LENGTH);
+  const PAYMENT_REVOKING_CORRELATION_ID_STUB: string = createBytesString("C03", BYTES16_LENGTH);
+  const PAYMENT_UPDATING_CORRELATION_ID_STUB: string = createBytesString("C04", BYTES16_LENGTH);
   const CASHBACK_DISTRIBUTOR_ADDRESS_STUB1 = "0x0000000000000000000000000000000000000001";
   const CASHBACK_DISTRIBUTOR_ADDRESS_STUB2 = "0x0000000000000000000000000000000000000002";
   const MAX_CASHBACK_RATE_IN_PERMIL = 250; // 25%
@@ -1366,7 +1368,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         await proveTx(tokenMock.mint(payment.account.address, newAmount - payment.amount));
       }
       const refundAmount = Math.floor(payment.amount * 0.1);
-      await cardPaymentProcessor.connect(executor).refundPayment(refundAmount, payment.authorizationId);
+      await cardPaymentProcessor.connect(executor).refundPayment(
+        refundAmount,
+        payment.authorizationId,
+        PAYMENT_REFUNDING_CORRELATION_ID_STUB
+      );
       setRefundAmount(payment, refundAmount);
 
       await checkCardPaymentProcessorState(fixture, [payment]);
@@ -1401,8 +1407,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         await proveTx(cashbackDistributorMock.setIncreaseCashbackSuccessResult(false));
       }
 
-      const tx: TransactionResponse =
-        await cardPaymentProcessor.connect(executor).updatePaymentAmount(newAmount, payment.authorizationId);
+      const tx: TransactionResponse = await cardPaymentProcessor.connect(executor).updatePaymentAmount(
+        newAmount,
+        payment.authorizationId,
+        PAYMENT_UPDATING_CORRELATION_ID_STUB
+      );
       await expect(tx).to.changeTokenBalances(
         tokenMock,
         [cardPaymentProcessor, payment.account, cashOutAccount, cashbackDistributorMock],
@@ -1412,6 +1421,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         EVENT_NAME_UPDATE_PAYMENT_AMOUNT
       ).withArgs(
         payment.authorizationId,
+        PAYMENT_UPDATING_CORRELATION_ID_STUB,
         payment.account.address,
         payment.amount,
         newAmount
@@ -1546,7 +1556,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         await expect(
           cardPaymentProcessor.connect(executor).updatePaymentAmount(
             payment.amount,
-            payment.authorizationId
+            payment.authorizationId,
+            PAYMENT_UPDATING_CORRELATION_ID_STUB
           )
         ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
@@ -1556,7 +1567,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         await expect(
           cardPaymentProcessor.connect(deployer).updatePaymentAmount(
             payment.amount,
-            payment.authorizationId
+            payment.authorizationId,
+            PAYMENT_UPDATING_CORRELATION_ID_STUB
           )
         ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
       });
@@ -1566,7 +1578,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         await expect(
           cardPaymentProcessor.connect(executor).updatePaymentAmount(
             payment.amount,
-            ZERO_AUTHORIZATION_ID
+            ZERO_AUTHORIZATION_ID,
+            PAYMENT_UPDATING_CORRELATION_ID_STUB
           )
         ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
       });
@@ -1576,7 +1589,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         await expect(
           cardPaymentProcessor.connect(executor).updatePaymentAmount(
             payment.amount,
-            payment.authorizationId
+            payment.authorizationId,
+            PAYMENT_UPDATING_CORRELATION_ID_STUB
           )
         ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
       });
@@ -1585,13 +1599,18 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         const { fixture: { cardPaymentProcessor }, payment } = await beforeMakingPayment();
         await makePayments(cardPaymentProcessor, [payment]);
         const refundAmount = Math.floor(payment.amount * 0.5);
-        await proveTx(cardPaymentProcessor.connect(executor).refundPayment(refundAmount, payment.authorizationId));
+        await proveTx(cardPaymentProcessor.connect(executor).refundPayment(
+          refundAmount,
+          payment.authorizationId,
+          PAYMENT_REFUNDING_CORRELATION_ID_STUB
+        ));
         setRefundAmount(payment, refundAmount);
 
         await expect(
           cardPaymentProcessor.connect(executor).updatePaymentAmount(
             refundAmount - 1,
-            payment.authorizationId
+            payment.authorizationId,
+            PAYMENT_UPDATING_CORRELATION_ID_STUB
           )
         ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_NEW_PAYMENT_AMOUNT_IS_INAPPROPRIATE);
       });
@@ -1604,7 +1623,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         await expect(
           cardPaymentProcessor.connect(executor).updatePaymentAmount(
             payment.amount,
-            payment.authorizationId
+            payment.authorizationId,
+            PAYMENT_UPDATING_CORRELATION_ID_STUB
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessor,
@@ -2796,8 +2816,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           processorSentAmount = 0;
         }
 
-        const tx: TransactionResponse =
-          await cardPaymentProcessor.connect(executor).refundPayment(refundAmount, payment.authorizationId);
+        const tx: TransactionResponse = await cardPaymentProcessor.connect(executor).refundPayment(
+          refundAmount,
+          payment.authorizationId,
+          PAYMENT_REFUNDING_CORRELATION_ID_STUB
+        );
         await expect(tx).to.changeTokenBalances(
           tokenMock,
           [cardPaymentProcessor, payment.account, cashOutAccount, cashbackDistributorMock],
@@ -2807,6 +2830,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           EVENT_NAME_REFUND_PAYMENT
         ).withArgs(
           payment.authorizationId,
+          PAYMENT_REFUNDING_CORRELATION_ID_STUB,
           payment.account.address,
           payment.refundAmount,
           userSentAmount,
@@ -2876,7 +2900,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         await expect(
           cardPaymentProcessor.connect(executor).refundPayment(
             payment.refundAmount,
-            payment.authorizationId
+            payment.authorizationId,
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB
           )
         ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
@@ -2886,7 +2911,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         await expect(
           cardPaymentProcessor.connect(deployer).refundPayment(
             payment.refundAmount,
-            payment.authorizationId
+            payment.authorizationId,
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB
           )
         ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
       });
@@ -2896,7 +2922,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         await expect(
           cardPaymentProcessor.connect(executor).refundPayment(
             payment.refundAmount,
-            ZERO_AUTHORIZATION_ID
+            ZERO_AUTHORIZATION_ID,
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB
           )
         ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
       });
@@ -2906,7 +2933,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         await expect(
           cardPaymentProcessor.connect(executor).refundPayment(
             payment.refundAmount,
-            payment.authorizationId
+            payment.authorizationId,
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB
           )
         ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
       });
@@ -2919,7 +2947,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         await expect(
           cardPaymentProcessor.connect(executor).refundPayment(
             payment.refundAmount,
-            payment.authorizationId
+            payment.authorizationId,
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB
           )
         ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_REFUND_AMOUNT_IS_INAPPROPRIATE);
       });
@@ -2934,7 +2963,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         await expect(
           cardPaymentProcessor.connect(executor).refundPayment(
             payment.refundAmount,
-            payment.authorizationId
+            payment.authorizationId,
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB
           )
         ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASH_OUT_ACCOUNT_ADDRESS_IS_ZERO);
       });
@@ -2951,7 +2981,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         await expect(
           cardPaymentProcessor.connect(executor).refundPayment(
             payment.refundAmount,
-            payment.authorizationId
+            payment.authorizationId,
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessor,
@@ -2972,6 +3003,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           cardPaymentProcessor.connect(executor).refundPayment(
             payment.refundAmount,
             payment.authorizationId,
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessor,
@@ -3066,7 +3098,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       ).withArgs(payments[0].status);
 
       await expect(
-        cardPaymentProcessor.connect(executor).updatePaymentAmount(0, authorizationIds[0])
+        cardPaymentProcessor.connect(executor).updatePaymentAmount(
+          payments[0].amount,
+          authorizationIds[0],
+          PAYMENT_UPDATING_CORRELATION_ID_STUB)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
@@ -3322,14 +3357,22 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       async function updatePaymentAmount(newPaymentAmount: number) {
         await proveTx(
-          await cardPaymentProcessor.connect(executor).updatePaymentAmount(newPaymentAmount, payment.authorizationId)
+          await cardPaymentProcessor.connect(executor).updatePaymentAmount(
+            newPaymentAmount,
+            payment.authorizationId,
+            PAYMENT_UPDATING_CORRELATION_ID_STUB
+          )
         );
         setNewAmount(payment, newPaymentAmount);
       }
 
       async function refundPayment(refundAmount: number) {
         await proveTx(
-          await cardPaymentProcessor.connect(executor).refundPayment(refundAmount, payment.authorizationId)
+          await cardPaymentProcessor.connect(executor).refundPayment(
+            refundAmount,
+            payment.authorizationId,
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB
+          )
         );
         setRefundAmount(payment, (payment.refundAmount || 0) + refundAmount);
       }

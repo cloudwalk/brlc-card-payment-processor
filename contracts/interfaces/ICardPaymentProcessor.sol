@@ -63,6 +63,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /// @dev Emitted when the amount of a payment is updated.
     event UpdatePaymentAmount(
         bytes16 indexed authorizationId,
+        bytes16 indexed correlationId,
         address indexed account,
         uint256 oldAmount,
         uint256 newAmount
@@ -126,6 +127,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /// @dev Emitted when a payment is refunded.
     event RefundPayment(
         bytes16 indexed authorizationId,
+        bytes16 indexed correlationId,
         address indexed account,
         uint256 refundAmount,
         uint256 sentAmount,
@@ -203,7 +205,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      *
      * @param amount The amount of tokens to be transferred to this contract because of the payment.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to call of this function in the off-chain card processing backend.
+     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
     function makePayment(
         uint256 amount,
@@ -222,7 +224,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @param account The account on that behalf the payment is made.
      * @param amount The amount of tokens to be transferred to this contract because of the payment.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to call of this function in the off-chain card processing backend.
+     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
     function makePaymentFrom(
         address account,
@@ -241,10 +243,12 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      *
      * @param newAmount The new amount of the payment.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
     function updatePaymentAmount(
         uint256 newAmount,
-        bytes16 authorizationId
+        bytes16 authorizationId,
+        bytes16 correlationId
     ) external;
 
     /**
@@ -301,7 +305,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * Emits a {ReversePayment} event for the payment.
      *
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to call of this function in the off-chain card processing backend.
+     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param parentTxHash The hash of the transaction where the payment was made.
      */
     function reversePayment(
@@ -320,7 +324,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * Emits a {RevokePayment} event for the payment.
      *
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to call of this function in the off-chain card processing backend.
+     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param parentTxHash The hash of the transaction where the payment was made.
      */
     function revokePayment(
@@ -362,6 +366,11 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      *
      * @param amount The amount of tokens to refund.
      * @param authorizationId The card transaction authorization ID.
+     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
-    function refundPayment(uint256 amount, bytes16 authorizationId) external;
+    function refundPayment(
+        uint256 amount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) external;
 }
