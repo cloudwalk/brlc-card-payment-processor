@@ -258,8 +258,9 @@ contract CardPaymentProcessor is
             _unclearedBalances[account] += paymentAmountDiff;
             IERC20Upgradeable(_token).safeTransferFrom(account, address(this), paymentAmountDiff);
 
-            newCompensationAmount -= increaseCashbackInternal(authorizationId, cashbackIncreaseAmount);
-            payment.compensationAmount = newCompensationAmount;
+            if (increaseCashbackInternal(authorizationId, cashbackIncreaseAmount)) {
+                payment.compensationAmount = newCompensationAmount;
+            }
         } else {
             uint256 cashbackRevocationAmount = payment.compensationAmount - newCompensationAmount;
             uint256 paymentAmountDiff = oldPaymentAmount - newAmount;
@@ -1039,18 +1040,16 @@ contract CardPaymentProcessor is
     function increaseCashbackInternal(
         bytes16 authorizationId,
         uint256 amount
-    ) internal returns (uint256 unsentAmount) {
+    ) internal returns (bool success) {
         address distributor = _cashbackDistributor;
         uint256 cashbackNonce = _cashbacks[authorizationId].lastCashbackNonce;
         if (cashbackNonce != 0 && distributor != address(0)) {
             if (ICashbackDistributor(distributor).increaseCashback(cashbackNonce, amount)) {
                 emit IncreaseCashbackSuccess(distributor, amount, cashbackNonce);
+                success = true;
             } else {
                 emit IncreaseCashbackFailure(distributor, amount, cashbackNonce);
-                unsentAmount = amount;
             }
-        } else {
-            unsentAmount = amount;
         }
     }
 
