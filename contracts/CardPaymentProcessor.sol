@@ -263,7 +263,7 @@ contract CardPaymentProcessor is
         } else {
             uint256 cashbackRevocationAmount = payment.compensationAmount - newCompensationAmount;
             uint256 paymentAmountDiff = oldPaymentAmount - newAmount;
-            uint256 sentAmount =  paymentAmountDiff - cashbackRevocationAmount;
+            uint256 sentAmount = paymentAmountDiff - cashbackRevocationAmount;
 
             _totalUnclearedBalance -= paymentAmountDiff;
             _unclearedBalances[account] -= paymentAmountDiff;
@@ -503,7 +503,7 @@ contract CardPaymentProcessor is
         }
 
         uint256 newCompensationAmount = newRefundAmount +
-        calculateCashback(paymentAmount - newRefundAmount, payment.cashbackRate);
+            calculateCashback(paymentAmount - newRefundAmount, payment.cashbackRate);
         uint256 sentAmount = newCompensationAmount - payment.compensationAmount;
         uint256 revokedCashbackAmount = amount - sentAmount;
 
@@ -1039,7 +1039,7 @@ contract CardPaymentProcessor is
     function increaseCashbackInternal(
         bytes16 authorizationId,
         uint256 amount
-    ) internal returns (uint256 unsentAmount){
+    ) internal returns (uint256 unsentAmount) {
         address distributor = _cashbackDistributor;
         uint256 cashbackNonce = _cashbacks[authorizationId].lastCashbackNonce;
         if (cashbackNonce != 0 && distributor != address(0)) {

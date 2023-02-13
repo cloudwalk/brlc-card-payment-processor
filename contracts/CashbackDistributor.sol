@@ -179,10 +179,10 @@ contract CashbackDistributor is
     ) external whenNotPaused onlyRole(DISTRIBUTOR_ROLE) returns (bool success) {
         Cashback storage cashback = _cashbacks[nonce];
         ExecutionContext memory context = ExecutionContext({
-            token : cashback.token,
-            cashbackStatus : cashback.status,
-            externalId : cashback.externalId,
-            recipient : cashback.recipient,
+            token: cashback.token,
+            cashbackStatus: cashback.status,
+            externalId: cashback.externalId,
+            recipient: cashback.recipient,
             sender: _msgSender()
         });
 
@@ -233,10 +233,10 @@ contract CashbackDistributor is
     ) external whenNotPaused onlyRole(DISTRIBUTOR_ROLE) returns (bool success) {
         Cashback storage cashback = _cashbacks[nonce];
         ExecutionContext memory context = ExecutionContext({
-            token : cashback.token,
-            cashbackStatus : cashback.status,
-            externalId : cashback.externalId,
-            recipient : cashback.recipient,
+            token: cashback.token,
+            cashbackStatus: cashback.status,
+            externalId: cashback.externalId,
+            recipient: cashback.recipient,
             sender: _msgSender()
         });
 
@@ -374,7 +374,7 @@ contract CashbackDistributor is
     /**
      * @dev See {ICashbackDistributor-getTotalCashbackByTokenAndRecipient}.
      */
-    function getTotalCashbackByTokenAndRecipient(address token, address recipient) external view returns (uint256){
+    function getTotalCashbackByTokenAndRecipient(address token, address recipient) external view returns (uint256) {
         return _totalCashbackByTokenAndRecipient[token][recipient];
     }
 }
