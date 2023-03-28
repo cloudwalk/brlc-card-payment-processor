@@ -28,6 +28,7 @@ interface ICashbackDistributorTypes {
      * - OutOfFunds -- The cashback operation has been refused because the contract has not enough tokens.
      * - Disabled ---- The cashback operation has been refused because cashback operations are disabled.
      * - Revoked ----- Obsolete and not in use anymore.
+     * - Capped ------ The cashback operation has been refused because the cap for the period has been reached.
      */
     enum CashbackStatus {
         Nonexistent, // 0
@@ -35,7 +36,8 @@ interface ICashbackDistributorTypes {
         Blacklisted, // 2
         OutOfFunds,  // 3
         Disabled,    // 4
-        Revoked      // 5
+        Revoked,     // 5
+        Capped       // 6
     }
 
     /**
@@ -68,14 +70,16 @@ interface ICashbackDistributorTypes {
      * - OutOfFunds --- The operation has been refused because the contract has not enough tokens.
      * - Disabled ----- The operation has been refused because cashback operations are disabled.
      * - Inapplicable - The operation has been failed because the cashback has not relevant status.
+     * - Capped ------- The operation has been refused because the cap for the period has been reached.
      */
     enum IncreaseStatus {
-        Nonexistent, // 0
-        Success,     // 1
-        Blacklisted, // 2
-        OutOfFunds,  // 3
-        Disabled,    // 4
-        Inapplicable // 5
+        Nonexistent,  // 0
+        Success,      // 1
+        Blacklisted,  // 2
+        OutOfFunds,   // 3
+        Disabled,     // 4
+        Inapplicable, // 5
+        Capped        // 6
     }
 
     /// @dev Structure with data of a single cashback operation.

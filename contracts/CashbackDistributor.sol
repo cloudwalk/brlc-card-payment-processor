@@ -130,6 +130,8 @@ contract CashbackDistributor is
             status = CashbackStatus.Blacklisted;
         } else if (IERC20Upgradeable(token).balanceOf(address(this)) < amount) {
             status = CashbackStatus.OutOfFunds;
+        } else if (!updateCashbackCap(token, recipient, amount)) {
+            status = CashbackStatus.Capped;
         }
 
         address sender = _msgSender();
@@ -250,6 +252,8 @@ contract CashbackDistributor is
             status = IncreaseStatus.Blacklisted;
         } else if (IERC20Upgradeable(context.token).balanceOf(address(this)) < amount) {
             status = IncreaseStatus.OutOfFunds;
+        } else if (!updateCashbackCap(context.token, context.recipient, amount)) {
+            status = IncreaseStatus.Capped;
         }
 
         emit IncreaseCashback(
@@ -376,5 +380,28 @@ contract CashbackDistributor is
      */
     function getTotalCashbackByTokenAndRecipient(address token, address recipient) external view returns (uint256) {
         return _totalCashbackByTokenAndRecipient[token][recipient];
+    }
+
+    function getCashbackSinceLastReset(address token, address recipient) external view returns (uint256) {
+        return _cashbackSinceLastReset[token][recipient];
+    }
+
+    function getCashbackLastTimeReset(address token, address recipient) external view returns (uint256) {
+        return _cashbackLastTimeReset[token][recipient];
+    }
+
+    function updateCashbackCap(address token, address recipient, uint256 amount) internal returns (bool) {
+        if (amount > MAX_CASHBACK_FOR_PERIOD) {
+            return false;
+        } else if (block.timestamp - _cashbackLastTimeReset[token][recipient] > CASHBACK_RESET_PERIOD) {
+            _cashbackLastTimeReset[token][recipient] = block.timestamp;
+            _cashbackSinceLastReset[token][recipient] = amount;
+            return true;
+        } else if (_cashbackSinceLastReset[token][recipient] + amount <= MAX_CASHBACK_FOR_PERIOD) {
+            _cashbackSinceLastReset[token][recipient] += amount;
+            return true;
+        } else {
+            return false;
+        }
     }
 }
