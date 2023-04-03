@@ -14,14 +14,26 @@ contract CashbackDistributorMock is ICashbackDistributor {
     /// @dev The success part of the `sendCashback()` function result to return next time.
     bool public sendCashbackSuccessResult;
 
+    /**
+     * @dev The amount part of the `sendCashback()` function result to return next time if
+     * it is not negative and the success part of the function is `true`.
+     */
+    int256 public sendCashbackAmountResult;
+
     /// @dev The nonce part of the `sendCashback()` function result to return next time.
     uint256 public sendCashbackNonceResult;
 
     /// @dev The result of the `revokeCashback()` function to return next time.
     bool public revokeCashbackSuccessResult;
 
-    /// @dev The result of the `increaseCashback()` function to return next time.
+    /// @dev The success part of the `increaseCashback()` function result to return next time.
     bool public increaseCashbackSuccessResult;
+
+    /**
+     * @dev The amount part of the `increaseCashback()` function result to return next time if
+     * it is not negative and the success part of the function is `true`.
+     */
+    int256 public increaseCashbackAmountResult;
 
     /// @dev The recipient address of the last call of the {sendCashback} function.
     address public lastCashbackRecipient;
@@ -56,14 +68,18 @@ contract CashbackDistributorMock is ICashbackDistributor {
      */
     constructor(
         bool sendCashbackSuccessResult_,
+        int256 sendCashbackAmountResult_,
         uint256 sendCashbackNonceResult_,
         bool revokeCashbackSuccessResult_,
-        bool increaseCashbackSuccessResult_
+        bool increaseCashbackSuccessResult_,
+        int256 increaseCashbackAmountResult_
     ) {
         sendCashbackSuccessResult = sendCashbackSuccessResult_;
+        sendCashbackAmountResult = sendCashbackAmountResult_;
         sendCashbackNonceResult = sendCashbackNonceResult_;
         revokeCashbackSuccessResult = revokeCashbackSuccessResult_;
         increaseCashbackSuccessResult = increaseCashbackSuccessResult_;
+        increaseCashbackAmountResult = increaseCashbackAmountResult_;
 
         // Calling stub functions just to provide 100% coverage
         enabled();
@@ -183,14 +199,19 @@ contract CashbackDistributorMock is ICashbackDistributor {
         bytes32 externalId,
         address recipient,
         uint256 amount
-    ) external returns (bool success, uint256 nonce) {
+    ) external returns (bool success, uint256 sentAmount, uint256 nonce) {
         success = sendCashbackSuccessResult;
         nonce = sendCashbackNonceResult;
         lastCashbackToken = token;
         lastCashbackRecipient = recipient;
         emit SendCashbackMock(msg.sender, token, kind, externalId, recipient, amount);
         if (success) {
-           IERC20Upgradeable(token).transfer(recipient, amount);
+            if (sendCashbackAmountResult >= 0) {
+                sentAmount = uint256(sendCashbackAmountResult);
+            } else {
+                sentAmount = amount;
+            }
+            IERC20Upgradeable(token).transfer(recipient, sentAmount);
         }
     }
 
@@ -217,11 +238,16 @@ contract CashbackDistributorMock is ICashbackDistributor {
      * If the returned value is `true` sends the provided amount of tokens
      * from this contract to {lastCashbackRecipient}.
      */
-    function increaseCashback(uint256 nonce, uint256 amount) external returns (bool success) {
+    function increaseCashback(uint256 nonce, uint256 amount) external returns (bool success, uint256 sentAmount) {
         success = increaseCashbackSuccessResult;
         emit IncreaseCashbackMock(msg.sender, nonce, amount);
         if (success) {
-            IERC20Upgradeable(lastCashbackToken).transfer(lastCashbackRecipient, amount);
+            if (increaseCashbackAmountResult >= 0) {
+                sentAmount = uint256(increaseCashbackAmountResult);
+            } else {
+                sentAmount = amount;
+            }
+            IERC20Upgradeable(lastCashbackToken).transfer(lastCashbackRecipient, sentAmount);
         }
     }
 
@@ -233,6 +259,13 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
+     * @dev Sets a new value for the amount part of the `sendCashback()` function result.
+     */
+    function setSendCashbackAmountResult(int256 newSendCashbackAmountResult) external {
+        sendCashbackAmountResult = newSendCashbackAmountResult;
+    }
+
+    /**
      * @dev Sets a new value for the result of the `revokeCashback()` function.
      */
     function setRevokeCashbackSuccessResult(bool newRevokeCashbackSuccessResult) external {
@@ -240,9 +273,16 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @dev Sets a new value for the result of the `increaseCashback()` function.
+     * @dev Sets a new value for the success part of the `increaseCashback()` function.
      */
     function setIncreaseCashbackSuccessResult(bool newIncreaseCashbackSuccessResult) external {
         increaseCashbackSuccessResult = newIncreaseCashbackSuccessResult;
+    }
+
+    /**
+     * @dev Sets a new value for the amount part of the `increaseCashback()` function result.
+     */
+    function setIncreaseCashbackAmountResult(int256 newIncreaseCashbackAmountResult) external {
+        increaseCashbackAmountResult = newIncreaseCashbackAmountResult;
     }
 }
