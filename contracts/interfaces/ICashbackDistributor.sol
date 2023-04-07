@@ -23,11 +23,13 @@ interface ICashbackDistributorTypes {
      *
      * The possible values:
      * - Nonexistent - The cashback operation does not exist (the default value).
-     * - Success ----- The cashback operation has been successfully sent.
+     * - Success ----- The operation has been successfully executed (cashback sent fully).
      * - Blacklisted - The cashback operation has been refused because the target account is blacklisted.
      * - OutOfFunds -- The cashback operation has been refused because the contract has not enough tokens.
      * - Disabled ---- The cashback operation has been refused because cashback operations are disabled.
      * - Revoked ----- Obsolete and not in use anymore.
+     * - Capped ------ The cashback operation has been refused because the cap for the period has been reached.
+     * - Partial ----- The operation has been successfully executed (cashback sent partially).
      */
     enum CashbackStatus {
         Nonexistent, // 0
@@ -35,7 +37,9 @@ interface ICashbackDistributorTypes {
         Blacklisted, // 2
         OutOfFunds,  // 3
         Disabled,    // 4
-        Revoked      // 5
+        Revoked,     // 5
+        Capped,      // 6
+        Partial      // 7
     }
 
     /**
@@ -63,19 +67,23 @@ interface ICashbackDistributorTypes {
      *
      * The possible values:
      * - Nonexistent -- The operation does not exist (the default value).
-     * - Success ------ The operation has been successfully sent.
+     * - Success ------ The operation has been successfully executed (cashback sent fully).
      * - Blacklisted -- The operation has been refused because the target account is blacklisted.
      * - OutOfFunds --- The operation has been refused because the contract has not enough tokens.
      * - Disabled ----- The operation has been refused because cashback operations are disabled.
      * - Inapplicable - The operation has been failed because the cashback has not relevant status.
+     * - Capped ------- The operation has been refused because the cap for the period has been reached.
+     * - Partial ------ The operation has been successfully executed (cashback sent partially).
      */
     enum IncreaseStatus {
-        Nonexistent, // 0
-        Success,     // 1
-        Blacklisted, // 2
-        OutOfFunds,  // 3
-        Disabled,    // 4
-        Inapplicable // 5
+        Nonexistent,  // 0
+        Success,      // 1
+        Blacklisted,  // 2
+        OutOfFunds,   // 3
+        Disabled,     // 4
+        Inapplicable, // 5
+        Capped,       // 6
+        Partial       // 7
     }
 
     /// @dev Structure with data of a single cashback operation.
@@ -98,12 +106,17 @@ interface ICashbackDistributorTypes {
 interface ICashbackDistributor is ICashbackDistributorTypes {
     /**
      * @dev Emitted when a cashback operation is executed.
+     *
+     * NOTE: The `amount` field of the event contains the actual amount of sent cashback only if
+     * the operation was successful or partially successful according to the `status` field,
+     * otherwise the `amount` field contains the requested amount of cashback to send.
+     *
      * @param token The token contract of the cashback operation.
      * @param kind The kind of the cashback operation.
      * @param status The result of the cashback operation.
      * @param externalId The external identifier of the cashback operation.
      * @param recipient The account to which the cashback is intended.
-     * @param amount The amount of the cashback.
+     * @param amount The requested or actually sent amount of cashback (see the note above).
      * @param sender The account that initiated the cashback operation.
      * @param nonce The nonce of the cashback operation internally assigned by the contract.
      */
@@ -126,7 +139,7 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      * @param status The status of the revocation.
      * @param externalId The external identifier of the initial cashback operation.
      * @param recipient The account that received the cashback.
-     * @param amount The amount of the revoked cashback.
+     * @param amount The requested amount of cashback to revoke.
      * @param sender The account that initiated the cashback revocation operation.
      * @param nonce The nonce of the initial cashback operation.
      */
@@ -144,13 +157,18 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
 
     /**
      * @dev Emitted when a cashback increase operation is executed.
+     *
+     * NOTE: The `amount` field of the event contains the actual amount of additionally sent cashback only if
+     * the operation was successful or partially successful according to the `status` field,
+     * otherwise the `amount` field contains the requested amount of cashback to increase.
+     *
      * @param token The token contract of the cashback operation.
      * @param cashbackKind The kind of the initial cashback operation.
      * @param cashbackStatus The status of the initial cashback operation before the increase operation.
      * @param status The status of the increase operation.
      * @param externalId The external identifier of the initial cashback operation.
      * @param recipient The account that received the cashback.
-     * @param amount The amount of the cashback increase.
+     * @param amount The requested or actual amount of cashback increase (see the note above).
      * @param sender The account that initiated the cashback increase operation.
      * @param nonce The nonce of the initial cashback operation.
      */
@@ -191,8 +209,9 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      * @param kind The kind of the cashback operation.
      * @param externalId The external identifier of the cashback operation.
      * @param recipient The account to which the cashback is intended.
-     * @param amount The amount of tokens to send.
-     * @return success True if the cashback has been successfully sent.
+     * @param amount The requested amount of cashback to send.
+     * @return success True if the cashback has been fully or partially sent.
+     * @return sentAmount The amount of the actual cashback sent.
      * @return nonce The nonce of the newly created cashback operation.
      */
     function sendCashback(
@@ -201,7 +220,7 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
         bytes32 externalId,
         address recipient,
         uint256 amount
-    ) external returns (bool success, uint256 nonce);
+    ) external returns (bool success, uint256 sentAmount, uint256 nonce);
 
     /**
      * @dev Revokes a previously sent cashback.
@@ -212,8 +231,8 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      *
      * Emits a {RevokeCashback} event if the cashback is successfully revoked.
      *
-     * @param nonce The nonce of the cashback operation to revoke.
-     * @param amount The amount of tokens to revoke during the operation.
+     * @param nonce The nonce of the cashback operation.
+     * @param amount The requested amount of cashback to revoke.
      * @return success True if the cashback revocation was successful.
      */
     function revokeCashback(uint256 nonce, uint256 amount) external returns (bool success);
@@ -227,11 +246,12 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      *
      * Emits a {IncreaseCashback} event if the cashback is successfully increased.
      *
-     * @param nonce The nonce of the cashback operation to increase.
-     * @param amount The amount of tokens to increase during the operation.
-     * @return success True if the cashback increase operation was successful.
+     * @param nonce The nonce of the cashback operation.
+     * @param amount The requested amount of cashback increase.
+     * @return success True if the additional cashback has been fully or partially sent.
+     * @return sentAmount The amount of the actual cashback increase.
      */
-    function increaseCashback(uint256 nonce, uint256 amount) external returns (bool success);
+    function increaseCashback(uint256 nonce, uint256 amount) external returns (bool success, uint256 sentAmount);
 
     /**
      * @dev Enables the cashback operations.

@@ -251,16 +251,16 @@ contract CardPaymentProcessor is
         payment.amount = newAmount;
 
         if (newAmount >= oldPaymentAmount) {
-            uint256 cashbackIncreaseAmount = newCompensationAmount - payment.compensationAmount;
+            uint256 oldCompensationAmount = payment.compensationAmount;
+            uint256 cashbackIncreaseAmount = newCompensationAmount - oldCompensationAmount;
             uint256 paymentAmountDiff = newAmount - oldPaymentAmount;
 
             _totalUnclearedBalance += paymentAmountDiff;
             _unclearedBalances[account] += paymentAmountDiff;
             IERC20Upgradeable(_token).safeTransferFrom(account, address(this), paymentAmountDiff);
 
-            if (increaseCashbackInternal(authorizationId, cashbackIncreaseAmount)) {
-                payment.compensationAmount = newCompensationAmount;
-            }
+            cashbackIncreaseAmount = increaseCashbackInternal(authorizationId, cashbackIncreaseAmount);
+            payment.compensationAmount = oldCompensationAmount + cashbackIncreaseAmount;
         } else {
             uint256 cashbackRevocationAmount = payment.compensationAmount - newCompensationAmount;
             uint256 paymentAmountDiff = oldPaymentAmount - newAmount;
@@ -810,10 +810,7 @@ contract CardPaymentProcessor is
         );
 
         IERC20Upgradeable(_token).safeTransferFrom(account, address(this), amount);
-        (
-            payment.compensationAmount,
-            payment.cashbackRate
-        ) = sendCashbackInternal(account, amount, authorizationId);
+        (payment.compensationAmount, payment.cashbackRate) = sendCashbackInternal(account, amount, authorizationId);
     }
 
     function clearPaymentInternal(bytes16 authorizationId) internal returns (uint256 amount) {
@@ -1002,12 +999,14 @@ contract CardPaymentProcessor is
         address account,
         uint256 paymentAmount,
         bytes16 authorizationId
-    ) internal returns (uint256 cashbackAmount, uint16 cashbackRate_) {
+    ) internal returns (uint256 sentAmount, uint16 appliedCashbackRate) {
         address distributor = _cashbackDistributor;
         if (_cashbackEnabled && distributor != address(0)) {
-            cashbackRate_ = _cashbackRateInPermil;
-            cashbackAmount = calculateCashback(paymentAmount, cashbackRate_);
-            (bool success, uint256 cashbackNonce) = ICashbackDistributor(distributor).sendCashback(
+            bool success;
+            uint256 cashbackNonce;
+            appliedCashbackRate = _cashbackRateInPermil;
+            uint256 cashbackAmount = calculateCashback(paymentAmount, appliedCashbackRate);
+            (success, sentAmount, cashbackNonce) = ICashbackDistributor(distributor).sendCashback(
                 _token,
                 ICashbackDistributorTypes.CashbackKind.CardPayment,
                 authorizationId,
@@ -1016,11 +1015,10 @@ contract CardPaymentProcessor is
             );
             _cashbacks[authorizationId].lastCashbackNonce = cashbackNonce;
             if (success) {
-                emit SendCashbackSuccess(distributor, cashbackAmount, cashbackNonce);
+                emit SendCashbackSuccess(distributor, sentAmount, cashbackNonce);
             } else {
                 emit SendCashbackFailure(distributor, cashbackAmount, cashbackNonce);
-                cashbackAmount = 0;
-                cashbackRate_ = 0;
+                appliedCashbackRate = 0;
             }
         }
     }
@@ -1040,13 +1038,14 @@ contract CardPaymentProcessor is
     function increaseCashbackInternal(
         bytes16 authorizationId,
         uint256 amount
-    ) internal returns (bool success) {
+    ) internal returns (uint256 sentAmount) {
         address distributor = _cashbackDistributor;
         uint256 cashbackNonce = _cashbacks[authorizationId].lastCashbackNonce;
         if (cashbackNonce != 0 && distributor != address(0)) {
-            if (ICashbackDistributor(distributor).increaseCashback(cashbackNonce, amount)) {
-                emit IncreaseCashbackSuccess(distributor, amount, cashbackNonce);
-                success = true;
+            bool success;
+            (success, sentAmount) = ICashbackDistributor(distributor).increaseCashback(cashbackNonce, amount);
+            if (success) {
+                emit IncreaseCashbackSuccess(distributor, sentAmount, cashbackNonce);
             } else {
                 emit IncreaseCashbackFailure(distributor, amount, cashbackNonce);
             }

@@ -45,9 +45,11 @@ interface TestPayment {
 
 interface CashbackDistributorMockConfig {
   sendCashbackSuccessResult: boolean;
+  sendCashbackAmountResult: number;
   sendCashbackNonceResult: number;
   revokeCashbackSuccessResult: boolean;
   increaseCashbackSuccessResult: boolean;
+  increaseCashbackAmountResult: number;
 }
 
 interface Fixture {
@@ -281,16 +283,20 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   }> {
     const cashbackDistributorMockConfig: CashbackDistributorMockConfig = {
       sendCashbackSuccessResult: true,
+      sendCashbackAmountResult: -1,
       sendCashbackNonceResult: CASHBACK_NONCE,
       revokeCashbackSuccessResult: true,
       increaseCashbackSuccessResult: true,
+      increaseCashbackAmountResult: -1,
     };
 
     const cashbackDistributorMock: Contract = await cashbackDistributorMockFactory.deploy(
       cashbackDistributorMockConfig.sendCashbackSuccessResult,
+      cashbackDistributorMockConfig.sendCashbackAmountResult,
       cashbackDistributorMockConfig.sendCashbackNonceResult,
       cashbackDistributorMockConfig.revokeCashbackSuccessResult,
-      cashbackDistributorMockConfig.increaseCashbackSuccessResult
+      cashbackDistributorMockConfig.increaseCashbackSuccessResult,
+      cashbackDistributorMockConfig.increaseCashbackAmountResult
     );
     await cashbackDistributorMock.deployed();
 
@@ -863,113 +869,19 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   });
 
   describe("Function 'makePayment()'", async () => {
-    async function checkPaymentMakingWithCashback(fixture: Fixture, payment: TestPayment) {
-      const { cardPaymentProcessor, tokenMock, cashbackDistributorMock } = fixture;
-      await proveTx(fixture.cardPaymentProcessor.enableCashback());
-      setCashback(payment, fixture);
-      const cashbackAmount: number = calculateCashback(payment);
-
-      await checkCardPaymentProcessorState(fixture, [payment]);
-
-      const tx: TransactionResponse = await cardPaymentProcessor.connect(payment.account).makePayment(
-        payment.amount,
-        payment.authorizationId,
-        payment.correlationId
-      );
-      await expect(tx).to.changeTokenBalances(
-        tokenMock,
-        [cardPaymentProcessor, payment.account, cashbackDistributorMock],
-        [+payment.amount, -payment.amount + cashbackAmount, -cashbackAmount]
-      ).and.to.emit(
-        cardPaymentProcessor,
-        EVENT_NAME_MAKE_PAYMENT
-      ).withArgs(
-        payment.authorizationId,
-        payment.correlationId,
-        payment.account.address,
-        payment.amount,
-        payment.revocationCounter || 0,
-        payment.account.address
-      );
-      await expect(tx).and.to.emit(
-        cardPaymentProcessor,
-        EVENT_NAME_SEND_CASHBACK_SUCCESS
-      ).withArgs(
-        cashbackDistributorMock.address,
-        cashbackAmount,
-        payment.cashbackNonce || 0
-      );
-      await expect(tx).to.emit(
-        cashbackDistributorMock,
-        EVENT_NAME_SEND_CASHBACK_MOCK
-      ).withArgs(
-        cardPaymentProcessor.address,
-        tokenMock.address,
-        CashbackKind.CardPayment,
-        payment.authorizationId.padEnd(BYTES32_LENGTH * 2 + 2, "0"),
-        payment.account.address,
-        cashbackAmount
-      );
-
-      payment.status = PaymentStatus.Uncleared;
-      await checkCardPaymentProcessorState(fixture, [payment]);
-    }
-
+    /* Because the functions 'makePayment()' and 'makePaymentFrom()' use the same common internal function to execute,
+     * the main checks of the functions are provided in the section for the 'makePaymentFrom()' function.
+     * In this section, only specific checks for the 'makePayment()' function are provided.
+     */
     describe("Executes as expected if the cashback is enabled and the payment amount is", async () => {
       it("Nonzero", async () => {
         const { fixture, payment } = await beforeMakingPayment();
-        await checkPaymentMakingWithCashback(fixture, payment);
-      });
-
-      it("Zero", async () => {
-        const { fixture, payment } = await beforeMakingPayment();
-        payment.amount = 0;
-        payment.compensationAmount = calculateCompensationAmount(payment);
-        await checkPaymentMakingWithCashback(fixture, payment);
-      });
-
-      it("Nonzero even if the revocation limit of payments is zero", async () => {
-        const { fixture, payment } = await beforeMakingPayment();
-        await proveTx(fixture.cardPaymentProcessor.setRevocationLimit(0));
-        await checkPaymentMakingWithCashback(fixture, payment);
-      });
-    });
-
-    describe("Executes successfully if the payment amount is nonzero but does not send cashback if", async () => {
-      it("Cashback is disabled", async () => {
-        const { fixture, payment } = await beforeMakingPayment();
         const { cardPaymentProcessor, tokenMock, cashbackDistributorMock } = fixture;
+        await proveTx(fixture.cardPaymentProcessor.enableCashback());
+        setCashback(payment, fixture);
+        const cashbackAmount: number = calculateCashback(payment);
 
-        await expect(
-          cardPaymentProcessor.connect(payment.account).makePayment(
-            payment.amount,
-            payment.authorizationId,
-            payment.correlationId
-          )
-        ).to.changeTokenBalances(
-          tokenMock,
-          [cardPaymentProcessor, payment.account, cashbackDistributorMock],
-          [+payment.amount, -payment.amount, 0]
-        ).and.to.emit(
-          cardPaymentProcessor,
-          EVENT_NAME_MAKE_PAYMENT
-        ).and.not.to.emit(
-          cashbackDistributorMock,
-          EVENT_NAME_SEND_CASHBACK_MOCK
-        );
-
-        payment.status = PaymentStatus.Uncleared;
         await checkCardPaymentProcessorState(fixture, [payment]);
-      });
-
-      it("Cashback sending fails", async () => {
-        const { fixture, payment } = await beforeMakingPayment();
-        const { cardPaymentProcessor, tokenMock, cashbackDistributorMock } = fixture;
-        await proveTx(cashbackDistributorMock.setSendCashbackSuccessResult(false));
-        await proveTx(cardPaymentProcessor.enableCashback());
-
-        const cashbackAmount: number = calculateCashback(payment, CASHBACK_RATE_IN_PERMIL);
-        setCashbackNonce(payment, fixture);
 
         const tx: TransactionResponse = await cardPaymentProcessor.connect(payment.account).makePayment(
           payment.amount,
@@ -979,7 +891,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         await expect(tx).to.changeTokenBalances(
           tokenMock,
           [cardPaymentProcessor, payment.account, cashbackDistributorMock],
-          [+payment.amount, -payment.amount, 0]
+          [+payment.amount, -payment.amount + cashbackAmount, -cashbackAmount]
         ).and.to.emit(
           cardPaymentProcessor,
           EVENT_NAME_MAKE_PAYMENT
@@ -990,13 +902,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           payment.amount,
           payment.revocationCounter || 0,
           payment.account.address
-        ).and.not.to.emit(
+        );
+        await expect(tx).and.to.emit(
           cardPaymentProcessor,
           EVENT_NAME_SEND_CASHBACK_SUCCESS
-        );
-        await expect(tx).to.emit(
-          cardPaymentProcessor,
-          EVENT_NAME_SEND_CASHBACK_FAILURE
         ).withArgs(
           cashbackDistributorMock.address,
           cashbackAmount,
@@ -1011,7 +920,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           CashbackKind.CardPayment,
           payment.authorizationId.padEnd(BYTES32_LENGTH * 2 + 2, "0"),
           payment.account.address,
-          cashbackAmount,
+          cashbackAmount
         );
 
         payment.status = PaymentStatus.Uncleared;
@@ -1046,56 +955,35 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           )
         ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_ACCOUNT_IS_BLACKLISTED);
       });
-
-      it("The payment authorization ID is zero", async () => {
-        const { fixture: { cardPaymentProcessor }, payment } = await prepareForSinglePayment();
-        await expect(
-          cardPaymentProcessor.connect(payment.account).makePayment(
-            payment.amount,
-            ZERO_AUTHORIZATION_ID,
-            payment.correlationId
-          )
-        ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO);
-      });
-
-      it("The account has not enough token balance", async () => {
-        const { fixture: { cardPaymentProcessor }, payment } = await beforeMakingPayment();
-        const excessTokenAmount: number = payment.amount + 1;
-
-        await expect(
-          cardPaymentProcessor.connect(payment.account).makePayment(
-            excessTokenAmount,
-            payment.authorizationId,
-            payment.correlationId
-          )
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
-      });
-
-      it("The payment with the provided authorization ID already exists", async () => {
-        const { fixture: { cardPaymentProcessor }, payment } = await beforeMakingPayment();
-        await makePayments(cardPaymentProcessor, [payment]);
-        const otherMakingPaymentCorrelationsId: string = increaseBytesString(
-          payment.correlationId,
-          BYTES16_LENGTH
-        );
-
-        await expect(
-          cardPaymentProcessor.connect(payment.account).makePayment(
-            payment.amount + 1,
-            payment.authorizationId,
-            otherMakingPaymentCorrelationsId
-          )
-        ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
-      });
     });
   });
 
   describe("Function 'makePaymentFrom()'", async () => {
-    async function checkPaymentMakingFromWithCashback(fixture: Fixture, payment: TestPayment) {
+    enum CashbackSendingConditions {
+      Success = 0,
+      PartialWithNonZeroAmount = 1,
+      PartialWithZeroAmount = 2,
+    }
+
+    async function checkPaymentMakingFromWithCashback(
+      fixture: Fixture,
+      payment: TestPayment,
+      cashbackSendingConditions: CashbackSendingConditions
+    ) {
       const { cardPaymentProcessor, tokenMock, cashbackDistributorMock } = fixture;
       await proveTx(fixture.cardPaymentProcessor.enableCashback());
       setCashback(payment, fixture);
-      const cashbackAmount: number = calculateCashback(payment);
+      const requestedCashbackAmount: number = calculateCashback(payment);
+      let sentCashbackAmount = requestedCashbackAmount;
+      if (cashbackSendingConditions === CashbackSendingConditions.PartialWithZeroAmount) {
+        sentCashbackAmount = 0;
+        await proveTx(fixture.cashbackDistributorMock.setSendCashbackAmountResult(sentCashbackAmount));
+        payment.compensationAmount = sentCashbackAmount;
+      } else if (cashbackSendingConditions === CashbackSendingConditions.PartialWithNonZeroAmount) {
+        sentCashbackAmount = 1;
+        await proveTx(fixture.cashbackDistributorMock.setSendCashbackAmountResult(sentCashbackAmount));
+        payment.compensationAmount = sentCashbackAmount;
+      }
 
       await checkCardPaymentProcessorState(fixture, [payment]);
 
@@ -1108,7 +996,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(tx).to.changeTokenBalances(
         tokenMock,
         [cardPaymentProcessor, payment.account, executor, cashbackDistributorMock],
-        [+payment.amount, -payment.amount + cashbackAmount, 0, -cashbackAmount]
+        [+payment.amount, -payment.amount + sentCashbackAmount, 0, -sentCashbackAmount]
       ).and.to.emit(
         cardPaymentProcessor,
         EVENT_NAME_MAKE_PAYMENT
@@ -1125,7 +1013,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         EVENT_NAME_SEND_CASHBACK_SUCCESS
       ).withArgs(
         cashbackDistributorMock.address,
-        cashbackAmount,
+        sentCashbackAmount,
         payment.cashbackNonce || 0
       );
       await expect(tx).to.emit(
@@ -1137,7 +1025,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         CashbackKind.CardPayment,
         payment.authorizationId.padEnd(BYTES32_LENGTH * 2 + 2, "0"),
         payment.account.address,
-        cashbackAmount
+        requestedCashbackAmount
       );
 
       payment.status = PaymentStatus.Uncleared;
@@ -1147,20 +1035,34 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     describe("Executes as expected if the cashback is enabled and the payment amount is", async () => {
       it("Nonzero", async () => {
         const { fixture, payment } = await beforeMakingPayment();
-        await checkPaymentMakingFromWithCashback(fixture, payment);
+        await checkPaymentMakingFromWithCashback(fixture, payment, CashbackSendingConditions.Success);
       });
 
       it("Zero", async () => {
         const { fixture, payment } = await beforeMakingPayment();
         payment.amount = 0;
         payment.compensationAmount = calculateCompensationAmount(payment);
-        await checkPaymentMakingFromWithCashback(fixture, payment);
+        await checkPaymentMakingFromWithCashback(fixture, payment, CashbackSendingConditions.Success);
       });
 
       it("Nonzero even if the revocation limit of payments is zero", async () => {
         const { fixture, payment } = await beforeMakingPayment();
         await proveTx(fixture.cardPaymentProcessor.setRevocationLimit(0));
-        await checkPaymentMakingFromWithCashback(fixture, payment);
+        await checkPaymentMakingFromWithCashback(fixture, payment, CashbackSendingConditions.Success);
+      });
+
+      it("Nonzero and if cashback is partially sent with non-zero amount", async () => {
+        const { fixture, payment } = await beforeMakingPayment();
+        const sentCashbackAmount = 1;
+        await proveTx(fixture.cashbackDistributorMock.setSendCashbackAmountResult(sentCashbackAmount));
+        await checkPaymentMakingFromWithCashback(fixture, payment, CashbackSendingConditions.PartialWithNonZeroAmount);
+      });
+
+      it("Nonzero and if cashback is partially sent with zero amount", async () => {
+        const { fixture, payment } = await beforeMakingPayment();
+        const sentCashbackAmount = 0;
+        await proveTx(fixture.cashbackDistributorMock.setSendCashbackAmountResult(sentCashbackAmount));
+        await checkPaymentMakingFromWithCashback(fixture, payment, CashbackSendingConditions.PartialWithZeroAmount);
       });
     });
 
@@ -1347,7 +1249,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       CashbackDisabledBeforePaymentMaking = 1,
       CashbackDisabledAfterPaymentMaking = 2,
       CashbackEnabledButRevokingFails = 3,
-      CashbackEnabledButIncreasingFails = 4
+      CashbackEnabledButIncreasingFails = 4,
+      CashbackEnabledButIncreasingPartial = 5,
     }
 
     async function checkUpdating(newPaymentAmountType: NewPaymentAmountType, updatingCondition: UpdatingConditionType) {
@@ -1379,16 +1282,24 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await checkCardPaymentProcessorState(fixture, [payment]);
 
-      const cashbackChange = calculateCashbackChangeIfNewPaymentAmount(payment, newAmount);
+      let requestCashbackChange = calculateCashbackChangeIfNewPaymentAmount(payment, newAmount);
+      let actualCashbackChange = requestCashbackChange;
+      if (
+        updatingCondition === UpdatingConditionType.CashbackEnabledButIncreasingPartial
+        && requestCashbackChange > 2
+      ) {
+        actualCashbackChange = 1;
+        await proveTx(fixture.cashbackDistributorMock.setIncreaseCashbackAmountResult(actualCashbackChange));
+      }
       let processorBalanceChange = newAmount - payment.amount;
-      let accountBalanceChange = -processorBalanceChange + cashbackChange;
-      let distributorBalanceChange = -cashbackChange;
+      let accountBalanceChange = -processorBalanceChange + actualCashbackChange;
+      let distributorBalanceChange = -actualCashbackChange;
 
       if (
         newPaymentAmountType === NewPaymentAmountType.Less
         && updatingCondition === UpdatingConditionType.CashbackEnabledButRevokingFails
       ) {
-        processorBalanceChange -= cashbackChange;
+        processorBalanceChange -= actualCashbackChange;
         accountBalanceChange += 0;
         distributorBalanceChange = 0;
       }
@@ -1398,7 +1309,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         && updatingCondition === UpdatingConditionType.CashbackEnabledButIncreasingFails
       ) {
         processorBalanceChange += 0;
-        accountBalanceChange -= cashbackChange;
+        accountBalanceChange -= actualCashbackChange;
         distributorBalanceChange = 0;
       }
 
@@ -1448,7 +1359,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           ).withArgs(
             cardPaymentProcessor.address,
             payment.cashbackNonce || 0,
-            -cashbackChange
+            -requestCashbackChange
           );
 
           if (updatingCondition === UpdatingConditionType.CashbackEnabledButRevokingFails) {
@@ -1457,7 +1368,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               EVENT_NAME_REVOKE_CASHBACK_FAILURE
             ).withArgs(
               cashbackDistributorMock.address,
-              -cashbackChange,
+              -requestCashbackChange,
               payment.cashbackNonce || 0
             );
           } else {
@@ -1466,7 +1377,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               EVENT_NAME_REVOKE_CASHBACK_SUCCESS
             ).withArgs(
               cashbackDistributorMock.address,
-              -cashbackChange,
+              -actualCashbackChange,
               payment.cashbackNonce || 0
             );
           }
@@ -1481,7 +1392,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           ).withArgs(
             cardPaymentProcessor.address,
             payment.cashbackNonce || 0,
-            cashbackChange
+            requestCashbackChange
           );
 
           if (updatingCondition === UpdatingConditionType.CashbackEnabledButIncreasingFails) {
@@ -1490,7 +1401,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               EVENT_NAME_INCREASE_CASHBACK_FAILURE
             ).withArgs(
               cashbackDistributorMock.address,
-              cashbackChange,
+              requestCashbackChange,
               payment.cashbackNonce || 0
             );
           } else {
@@ -1499,7 +1410,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               EVENT_NAME_INCREASE_CASHBACK_SUCCESS
             ).withArgs(
               cashbackDistributorMock.address,
-              cashbackChange,
+              actualCashbackChange,
               payment.cashbackNonce || 0
             );
           }
@@ -1508,7 +1419,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       setNewAmount(payment, newAmount, updatingCondition === UpdatingConditionType.CashbackEnabledButIncreasingFails);
       if (updatingCondition === UpdatingConditionType.CashbackEnabledButRevokingFails) {
-        payment.unrevokedCashback = -cashbackChange;
+        payment.unrevokedCashback = -actualCashbackChange;
+      }
+      if (updatingCondition === UpdatingConditionType.CashbackEnabledButIncreasingPartial) {
+        payment.compensationAmount -= requestCashbackChange;
+        payment.compensationAmount += actualCashbackChange;
       }
       await checkCardPaymentProcessorState(fixture, [payment]);
     }
@@ -1546,6 +1461,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         });
         it("Enabled but cashback increasing fails", async () => {
           await checkUpdating(NewPaymentAmountType.More, UpdatingConditionType.CashbackEnabledButIncreasingFails);
+        });
+        it("Enabled but cashback increasing executes partially", async () => {
+          await checkUpdating(NewPaymentAmountType.More, UpdatingConditionType.CashbackEnabledButIncreasingPartial);
         });
       });
     });

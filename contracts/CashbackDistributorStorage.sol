@@ -35,6 +35,19 @@ abstract contract CashbackDistributorStorageV1 is ICashbackDistributorTypes {
 }
 
 /**
+ * @title CashbackDistributor storage version 2
+ */
+abstract contract CashbackDistributorStorageV2 {
+    uint256 public constant CASHBACK_RESET_PERIOD = 30 days;
+
+    uint256 public constant MAX_CASHBACK_FOR_PERIOD = 300 * 10**6;
+
+    mapping(address => mapping(address => uint256)) internal _cashbackLastTimeReset;
+
+    mapping(address => mapping(address => uint256)) internal _cashbackSinceLastReset;
+}
+
+/**
  * @title CashbackDistributor storage
  * @dev Contains storage variables of the {CashbackDistributor} contract.
  *
@@ -44,6 +57,6 @@ abstract contract CashbackDistributorStorageV1 is ICashbackDistributorTypes {
  * e.g. CashbackDistributorStorage<versionNumber>, so finally it would look like
  * "contract CashbackDistributorStorage is CashbackDistributorStorageV1, CashbackDistributorStorageV2".
  */
-abstract contract CashbackDistributorStorage is CashbackDistributorStorageV1 {
+abstract contract CashbackDistributorStorage is CashbackDistributorStorageV1, CashbackDistributorStorageV2 {
 
 }
