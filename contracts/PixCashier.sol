@@ -61,6 +61,8 @@ contract PixCashier is
     /// @dev The minting of tokens failed when processing an `cashIn` operation.
     error TokenMintingFailure();
 
+    error InvalidBatchArrays();
+
     /**
      * @dev The cash-out operation with the provided off-chain transaction identifier has an inappropriate status.
      * @param txId The off-chain transaction identifiers of the operation.
@@ -189,20 +191,30 @@ contract PixCashier is
         uint256 amount,
         bytes32 txId
     ) external whenNotPaused onlyRole(CASHIER_ROLE) {
-        if (account == address(0)) {
-            revert ZeroAccount();
-        }
-        if (amount == 0) {
-            revert ZeroAmount();
-        }
-        if (txId == 0) {
-            revert ZeroTxId();
+        _cashIn(account, amount, txId);
+    }
+
+    /**
+     * @dev See {IPixCashier-cashInBatch}.
+     *
+     * Requirements
+     *
+     * - The length of the each passed array must be equal.
+     * - The contract must not be paused.
+     * - The caller must have the {CASHIER_ROLE} role.
+     * - The provided `account`, `amount`, and `txId` values must not be zero.
+     */
+    function cashInBatch(
+        address[] memory accounts,
+        uint256[] memory amounts,
+        bytes32[] memory txIds
+    ) external whenNotPaused onlyRole(CASHIER_ROLE) {
+        if (!(accounts.length == amounts.length && accounts.length == txIds.length)) {
+            revert InvalidBatchArrays();
         }
 
-        emit CashIn(account, amount, txId);
-
-        if (!IERC20Mintable(_token).mint(account, amount)) {
-            revert TokenMintingFailure();
+        for (uint256 i = 0; i < accounts.length; i++) {
+            _cashIn(accounts[i], amounts[i], txIds[i]);
         }
     }
 
@@ -297,6 +309,28 @@ contract PixCashier is
 
         for (uint256 i = 0; i < len; i++) {
             _processCashOut(txIds[i], CashOutStatus.Reversed);
+        }
+    }
+
+    function _cashIn(
+        address account,
+        uint256 amount,
+        bytes32 txId
+    ) internal {
+        if (account == address(0)) {
+            revert ZeroAccount();
+        }
+        if (amount == 0) {
+            revert ZeroAmount();
+        }
+        if (txId == 0) {
+            revert ZeroTxId();
+        }
+
+        emit CashIn(account, amount, txId);
+
+        if (!IERC20Mintable(_token).mint(account, amount)) {
+            revert TokenMintingFailure();
         }
     }
 
