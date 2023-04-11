@@ -137,6 +137,24 @@ interface IPixCashier is IPixCashierTypes {
     ) external;
 
     /**
+     * @dev Executes a batch of cash-in operations.
+     *
+     * This function is expected to be called by a limited number of accounts
+     * that are allowed to execute cash-in operations.
+     *
+     * Emits {CashIn} events.
+     *
+     * @param accounts The array of the addresses of the tokens recipient.
+     * @param amounts The array of the token amounts to be received.
+     * @param txIds The array of the off-chain transaction identifiers of the operation.
+     */
+    function cashInBatch(
+        address[] memory accounts,
+        uint256[] memory amounts,
+        bytes32[] memory txIds
+    ) external;
+
+    /**
      * @dev Initiates a cash-out operation from some other account.
      *
      * Transfers tokens from the account to the contract.
