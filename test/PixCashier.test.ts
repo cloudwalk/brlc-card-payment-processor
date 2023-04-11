@@ -61,6 +61,8 @@ describe("Contract 'PixCashier'", async () => {
   const TRANSACTION_ID1 = ethers.utils.formatBytes32String("MOCK_TRANSACTION_ID1");
   const TRANSACTION_ID2 = ethers.utils.formatBytes32String("MOCK_TRANSACTION_ID2");
   const TRANSACTION_ID3 = ethers.utils.formatBytes32String("MOCK_TRANSACTION_ID3");
+  const TRANSACTIONS_ARRAY: string[] = [TRANSACTION_ID1, TRANSACTION_ID2, TRANSACTION_ID3];
+  const TOKEN_AMOUNTS: number[] = [100, 200, 300];
 
   const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
@@ -74,6 +76,7 @@ describe("Contract 'PixCashier'", async () => {
   const REVERT_ERROR_IF_TOKEN_MINTING_FAILURE = "TokenMintingFailure";
   const REVERT_ERROR_IF_INAPPROPRIATE_CASH_OUT_STATUS = "InappropriateCashOutStatus";
   const REVERT_ERROR_IF_EMPTY_TRANSACTION_IDS_ARRAY = "EmptyTransactionIdsArray";
+  const REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT = "InvalidBatchArrays";
 
   let PixCashier: ContractFactory;
   let pixCashier: Contract;
@@ -81,6 +84,8 @@ describe("Contract 'PixCashier'", async () => {
   let deployer: SignerWithAddress;
   let cashier: SignerWithAddress;
   let user: SignerWithAddress;
+  let secondUser: SignerWithAddress;
+  let thirdUser: SignerWithAddress;
   let ownerRole: string;
   let blacklisterRole: string;
   let pauserRole: string;
@@ -101,7 +106,7 @@ describe("Contract 'PixCashier'", async () => {
     await proveTx(pixCashier.initialize(tokenMock.address));
 
     // Accounts
-    [deployer, cashier, user] = await ethers.getSigners();
+    [deployer, cashier, user, secondUser, thirdUser] = await ethers.getSigners();
 
     // Roles
     ownerRole = (await pixCashier.OWNER_ROLE()).toLowerCase();
@@ -326,6 +331,111 @@ describe("Contract 'PixCashier'", async () => {
         user.address,
         tokenAmount,
         TRANSACTION_ID1
+      );
+    });
+  });
+
+  describe("Function 'cashInBatch()'", async () => {
+    beforeEach(async () => {
+      await proveTx(pixCashier.grantRole(cashierRole, cashier.address));
+    });
+
+    it("Is reverted if the contract is paused", async () => {
+      await proveTx(pixCashier.grantRole(pauserRole, deployer.address));
+      await proveTx(pixCashier.pause());
+      const users = [user.address, secondUser.address, thirdUser.address];
+      await expect(
+        pixCashier.connect(cashier).cashInBatch(users, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
+      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+    });
+
+    it("Is reverted if the caller does not have the cashier role", async () => {
+      const users = [user.address, secondUser.address, thirdUser.address];
+      await expect(
+        pixCashier.connect(deployer).cashInBatch(users, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, cashierRole));
+    });
+
+    it("Is reverted if one of the account addresses is zero", async () => {
+      const zeroAccountArray = [user.address, ethers.constants.AddressZero, user.address];
+      await expect(
+        pixCashier.connect(cashier).cashInBatch(zeroAccountArray, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_ACCOUNT_IS_ZERO);
+    });
+
+    it("Is reverted if one of the token amounts is zero", async () => {
+      const zeroAmountArray = [100, 200, 0];
+      const users = [user.address, secondUser.address, thirdUser.address];
+      await expect(
+        pixCashier.connect(cashier).cashInBatch(users, zeroAmountArray, TRANSACTIONS_ARRAY)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_AMOUNT_IS_ZERO);
+    });
+
+    it("Is reverted if one of the off-chain transaction IDs is zero", async () => {
+      const zeroTransactionIdArray = [TRANSACTION_ID1, ethers.constants.HashZero, TRANSACTION_ID3];
+      const users = [user.address, secondUser.address, thirdUser.address];
+      await expect(
+        pixCashier.connect(cashier).cashInBatch(users, TOKEN_AMOUNTS, zeroTransactionIdArray)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_TRANSACTION_ID_IS_ZERO);
+    });
+
+    it("Is reverted if the length of any passed arrays is different to others", async () => {
+      const users = [user.address, secondUser.address, thirdUser.address];
+      const moreUsers = [user.address, secondUser.address, thirdUser.address, user.address];
+      const moreAmounts = [100, 200, 300, 400];
+      const moreTransactins = [TRANSACTION_ID1, TRANSACTION_ID2, TRANSACTION_ID3, TRANSACTION_ID1];
+
+      await expect(
+        pixCashier.connect(cashier).cashInBatch(moreUsers, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
+
+      await expect(
+        pixCashier.connect(cashier).cashInBatch(users, moreAmounts, TRANSACTIONS_ARRAY)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
+
+      await expect(
+        pixCashier.connect(cashier).cashInBatch(users, TOKEN_AMOUNTS, moreTransactins)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
+    })
+
+    it("Is reverted if minting function returns 'false'", async () => {
+      await proveTx(tokenMock.setMintResult(false));
+      const users = [user.address, secondUser.address, thirdUser.address];
+      await expect(
+        pixCashier.connect(cashier).cashInBatch(users, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_TOKEN_MINTING_FAILURE);
+    });
+
+    it("Mints correct amount of tokens and emits the correct event", async () => {
+      const amountSum = 600;
+      const users = [user.address, secondUser.address, thirdUser.address];
+      await expect(
+        pixCashier.connect(cashier).cashInBatch(users, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
+      ).to.changeTokenBalances(
+        tokenMock,
+        [user, secondUser, thirdUser, pixCashier],
+        [+100, +200, +300, 0]
+      ).and.to.emit(
+        pixCashier,
+        "CashIn"
+      ).withArgs(
+        user.address,
+        100,
+        TRANSACTION_ID1
+      ).and.to.emit(
+        pixCashier,
+        "CashIn"
+      ).withArgs(
+        secondUser.address,
+        200,
+        TRANSACTION_ID2
+      ).and.to.emit(
+        pixCashier,
+        "CashIn"
+      ).withArgs(
+        thirdUser.address,
+        300,
+        TRANSACTION_ID3
       );
     });
   });
