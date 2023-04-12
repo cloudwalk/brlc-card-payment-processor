@@ -61,6 +61,7 @@ contract PixCashier is
     /// @dev The minting of tokens failed when processing an `cashIn` operation.
     error TokenMintingFailure();
 
+    /// @dev The length of the one of the batch arrays is different to the others.
     error InvalidBatchArrays();
 
     /**
