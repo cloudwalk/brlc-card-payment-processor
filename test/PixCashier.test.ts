@@ -309,6 +309,14 @@ describe("Contract 'PixCashier'", async () => {
       ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, cashierRole));
     });
 
+    it("Is reverted if the account is blacklisted", async () => {
+      await proveTx(pixCashier.grantRole(blacklisterRole, deployer.address));
+      await proveTx(pixCashier.blacklist(user.address));
+      await expect(
+        pixCashier.connect(cashier).cashIn(user.address, tokenAmount, TRANSACTION_ID1)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_ACCOUNT_IS_BLACKLISTED);
+    });
+
     it("Is reverted if the account address is zero", async () => {
       await expect(
         pixCashier.connect(cashier).cashIn(ethers.constants.AddressZero, tokenAmount, TRANSACTION_ID1)
@@ -393,6 +401,15 @@ describe("Contract 'PixCashier'", async () => {
       await expect(
         pixCashier.connect(cashier).cashInBatch(zeroAccountArray, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
       ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_ACCOUNT_IS_ZERO);
+    });
+
+    it("Is reverted if one of the accounts is blacklisted", async () => {
+      await proveTx(pixCashier.grantRole(blacklisterRole, deployer.address));
+      const users = [user.address, secondUser.address, thirdUser.address];
+      await proveTx(pixCashier.blacklist(secondUser.address));
+      await expect(
+        pixCashier.connect(cashier).cashInBatch(users, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_ACCOUNT_IS_BLACKLISTED);
     });
 
     it("Is reverted if one of the token amounts is zero", async () => {
