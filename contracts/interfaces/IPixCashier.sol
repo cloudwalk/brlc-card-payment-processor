@@ -216,7 +216,7 @@ interface IPixCashier is IPixCashierTypes {
      *
      * @param txIds The off-chain transaction identifiers of the operations.
      */
-    function confirmCashOuts(bytes32[] memory txIds) external;
+    function confirmCashOutBatch(bytes32[] memory txIds) external;
 
     /**
      * @dev Reverts a single cash-out operation.
@@ -242,5 +242,5 @@ interface IPixCashier is IPixCashierTypes {
      *
      * @param txIds The off-chain transaction identifiers of the operations.
      */
-    function reverseCashOuts(bytes32[] memory txIds) external;
+    function reverseCashOutBatch(bytes32[] memory txIds) external;
 }

@@ -286,7 +286,7 @@ contract PixCashier is
     }
 
     /**
-     * @dev See {IPixCashier-confirmCashOuts}.
+     * @dev See {IPixCashier-confirmCashOutBatch}.
      *
      * Requirements:
      *
@@ -296,7 +296,7 @@ contract PixCashier is
      * - All the values in the input `txIds` array must not be zero.
      * - All the cash-out operations corresponded the values in the input `txIds` array must have the pending status.
      */
-    function confirmCashOuts(bytes32[] memory txIds) external whenNotPaused onlyRole(CASHIER_ROLE) {
+    function confirmCashOutBatch(bytes32[] memory txIds) external whenNotPaused onlyRole(CASHIER_ROLE) {
         uint256 len = txIds.length;
         if (len == 0) {
             revert EmptyTransactionIdsArray();
@@ -322,7 +322,7 @@ contract PixCashier is
     }
 
     /**
-     * @dev See {IPixCashier-reverseCashOuts}.
+     * @dev See {IPixCashier-reverseCashOutBatch}.
      *
      * Requirements:
      *
@@ -332,7 +332,7 @@ contract PixCashier is
      * - All the values in the input `txIds` array must not be zero.
      * - All the cash-out operations corresponded the values in the input `txIds` array must have the pending status.
      */
-    function reverseCashOuts(bytes32[] memory txIds) external whenNotPaused onlyRole(CASHIER_ROLE) {
+    function reverseCashOutBatch(bytes32[] memory txIds) external whenNotPaused onlyRole(CASHIER_ROLE) {
         uint256 len = txIds.length;
         if (len == 0) {
             revert EmptyTransactionIdsArray();
