@@ -200,7 +200,7 @@ contract PixCashier is
      *
      * Requirements
      *
-     * - The length of the each passed array must be equal.
+     * - The length of each passed array must be equal.
      * - The contract must not be paused.
      * - The caller must have the {CASHIER_ROLE} role.
      * - The provided `account`, `amount`, and `txId` values must not be zero.
@@ -226,8 +226,8 @@ contract PixCashier is
      *
      * - The contract must not be paused.
      * - The caller must have the {CASHIER_ROLE} role.
-     * - The `account` must must not be blacklisted.
-     * - The provided `account`, `amount`, and `txId` values must not be zero.
+     * - The `account` must not be blacklisted.
+     * - The `account`, `amount`, and `txId` values must not be zero.
      * - The cash-out operation with the provided `txId` must not be already pending.
      */
     function requestCashOutFrom(
@@ -248,9 +248,9 @@ contract PixCashier is
      *
      * - The contract must not be paused.
      * - The caller must have the {CASHIER_ROLE} role.
-     * - The each `account` in the array must must not be blacklisted.
-     * - The each provided `account`, `amount`, and `txId` values in the arrays must not be zero.
-     * - The cash-out operation with the each of the provided `txId` must not be already pending.
+     * - Each `account` in the provided array must not be blacklisted.
+     * - Each `account`, `amount`, and `txId` values in the provided arrays must not be zero.
+     * - Each cash-out operation with the provided `txId` in the array must not be already pending.
      */
     function requestCashOutFromBatch(
         address[] memory accounts,
@@ -260,9 +260,10 @@ contract PixCashier is
         if (accounts.length != amounts.length || accounts.length != txIds.length) {
             revert InvalidBatchArrays();
         }
+
         for (uint256 i = 0; i < accounts.length; i++) {
             if (accounts[i] == address(0)) {
-            revert ZeroAccount();
+                revert ZeroAccount();
             }
             if (isBlacklisted(accounts[i])) {
                 revert BlacklistedAccount(accounts[i]);

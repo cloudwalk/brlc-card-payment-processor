@@ -416,7 +416,7 @@ describe("Contract 'PixCashier'", async () => {
       const users = [user.address, secondUser.address, thirdUser.address];
       const moreUsers = [user.address, secondUser.address, thirdUser.address, user.address];
       const moreAmounts = [100, 200, 300, 400];
-      const moreTransactins = [TRANSACTION_ID1, TRANSACTION_ID2, TRANSACTION_ID3, TRANSACTION_ID1];
+      const moreTransactions = [TRANSACTION_ID1, TRANSACTION_ID2, TRANSACTION_ID3, TRANSACTION_ID1];
 
       await expect(
         pixCashier.connect(cashier).cashInBatch(moreUsers, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
@@ -427,7 +427,7 @@ describe("Contract 'PixCashier'", async () => {
       ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
 
       await expect(
-        pixCashier.connect(cashier).cashInBatch(users, TOKEN_AMOUNTS, moreTransactins)
+        pixCashier.connect(cashier).cashInBatch(users, TOKEN_AMOUNTS, moreTransactions)
       ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
     })
 
@@ -638,7 +638,7 @@ describe("Contract 'PixCashier'", async () => {
       const users = [user.address, secondUser.address, thirdUser.address];
       const moreUsers = [user.address, secondUser.address, thirdUser.address, user.address];
       const moreAmounts = [100, 200, 300, 400];
-      const moreTransactins = [TRANSACTION_ID1, TRANSACTION_ID2, TRANSACTION_ID3, TRANSACTION_ID1];
+      const moreTransactions = [TRANSACTION_ID1, TRANSACTION_ID2, TRANSACTION_ID3, TRANSACTION_ID1];
 
       await expect(
         pixCashier.connect(cashier).requestCashOutFromBatch(moreUsers, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
@@ -649,7 +649,7 @@ describe("Contract 'PixCashier'", async () => {
       ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
 
       await expect(
-        pixCashier.connect(cashier).requestCashOutFromBatch(users, TOKEN_AMOUNTS, moreTransactins)
+        pixCashier.connect(cashier).requestCashOutFromBatch(users, TOKEN_AMOUNTS, moreTransactions)
       ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
     })
 
