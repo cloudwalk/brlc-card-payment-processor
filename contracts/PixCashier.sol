@@ -335,6 +335,9 @@ contract PixCashier is
         }
     }
 
+    /**
+     * See {PixCashier-cashIn}.
+     */
     function _cashIn(
         address account,
         uint256 amount,
@@ -360,6 +363,9 @@ contract PixCashier is
         }
     }
 
+    /**
+     * See {PixCashier-requestCashOut}.
+     */
     function _requestCashOut(
         address sender,
         address account,
@@ -408,6 +414,9 @@ contract PixCashier is
         );
     }
 
+    /**
+     * See {PixCashier-confirmCashOut and reverseCashOut}.
+     */
     function _processCashOut(bytes32 txId, CashOutStatus targetStatus) internal {
         if (txId == 0) {
             revert ZeroTxId();
