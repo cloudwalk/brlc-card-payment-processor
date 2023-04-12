@@ -242,6 +242,33 @@ contract PixCashier is
     }
 
     /**
+     * @dev See {IPixCashier-requestCashOutFromBatch}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {CASHIER_ROLE} role.
+     * - The each `account` in the array must must not be blacklisted.
+     * - The each provided `account`, `amount`, and `txId` values in the arrays must not be zero.
+     * - The cash-out operation with the each of the provided `txId` must not be already pending.
+     */
+    function requestCashOutFromBatch(
+        address[] memory accounts,
+        uint256[] memory amounts,
+        bytes32[] memory txIds
+    ) external whenNotPaused onlyRole(CASHIER_ROLE) {
+        for (uint256 i = 0; i < accounts.length; i++) {
+            if (accounts[i] == address(0)) {
+            revert ZeroAccount();
+            }
+            if (isBlacklisted(accounts[i])) {
+                revert BlacklistedAccount(accounts[i]);
+            }
+            _requestCashOut(_msgSender(), accounts[i], amounts[i], txIds[i]);
+        }
+    }
+
+    /**
      * @dev See {IPixCashier-confirmCashOut}.
      *
      * Requirements:
