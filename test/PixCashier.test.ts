@@ -634,6 +634,25 @@ describe("Contract 'PixCashier'", async () => {
       ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, cashierRole));
     });
 
+    it("Is reverted if the length of any passed arrays is different to others", async () => {
+      const users = [user.address, secondUser.address, thirdUser.address];
+      const moreUsers = [user.address, secondUser.address, thirdUser.address, user.address];
+      const moreAmounts = [100, 200, 300, 400];
+      const moreTransactins = [TRANSACTION_ID1, TRANSACTION_ID2, TRANSACTION_ID3, TRANSACTION_ID1];
+
+      await expect(
+        pixCashier.connect(cashier).requestCashOutFromBatch(moreUsers, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
+
+      await expect(
+        pixCashier.connect(cashier).requestCashOutFromBatch(users, moreAmounts, TRANSACTIONS_ARRAY)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
+
+      await expect(
+        pixCashier.connect(cashier).requestCashOutFromBatch(users, TOKEN_AMOUNTS, moreTransactins)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
+    })
+
     it("Is reverted if the account is blacklisted", async () => {
       await proveTx(pixCashier.grantRole(blacklisterRole, deployer.address));
       await proveTx(pixCashier.blacklist(secondCashOut.account.address));

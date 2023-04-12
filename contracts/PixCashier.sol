@@ -257,6 +257,9 @@ contract PixCashier is
         uint256[] memory amounts,
         bytes32[] memory txIds
     ) external whenNotPaused onlyRole(CASHIER_ROLE) {
+        if (accounts.length != amounts.length || accounts.length != txIds.length) {
+            revert InvalidBatchArrays();
+        }
         for (uint256 i = 0; i < accounts.length; i++) {
             if (accounts[i] == address(0)) {
             revert ZeroAccount();
