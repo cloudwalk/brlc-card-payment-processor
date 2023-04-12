@@ -341,7 +341,6 @@ describe("Contract 'PixCashier'", async () => {
     });
 
     it("Mints correct amount of tokens and emits the correct event", async () => {
-      const amountSum = 600;
       const users = [user.address, secondUser.address, thirdUser.address];
       await expect(
         pixCashier.connect(cashier).cashInBatch(users, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
