@@ -234,10 +234,6 @@ contract PixCashier is
         address account,
         uint256 amount,
         bytes32 txId
-    ) external whenNotPaused onlyRole(CASHIER_ROLE) notBlacklisted(account) {
-        if (account == address(0)) {
-            revert ZeroAccount();
-        }
     ) external whenNotPaused onlyRole(CASHIER_ROLE) {
         _requestCashOut(_msgSender(), account, amount, txId);
     }
@@ -263,12 +259,6 @@ contract PixCashier is
         }
 
         for (uint256 i = 0; i < accounts.length; i++) {
-            if (accounts[i] == address(0)) {
-                revert ZeroAccount();
-            }
-            if (isBlacklisted(accounts[i])) {
-                revert BlacklistedAccount(accounts[i]);
-            }
             _requestCashOut(_msgSender(), accounts[i], amounts[i], txIds[i]);
         }
     }
@@ -381,6 +371,12 @@ contract PixCashier is
         }
         if (txId == 0) {
             revert ZeroTxId();
+        }
+        if (account == address(0)) {
+            revert ZeroAccount();
+        }
+        if (isBlacklisted(account)) {
+            revert BlacklistedAccount(account);
         }
 
         CashOut storage operation = _cashOuts[txId];
