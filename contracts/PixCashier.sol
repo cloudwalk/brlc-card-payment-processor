@@ -238,6 +238,7 @@ contract PixCashier is
         if (account == address(0)) {
             revert ZeroAccount();
         }
+    ) external whenNotPaused onlyRole(CASHIER_ROLE) {
         _requestCashOut(_msgSender(), account, amount, txId);
     }
 
@@ -357,6 +358,9 @@ contract PixCashier is
         }
         if (txId == 0) {
             revert ZeroTxId();
+        }
+        if (isBlacklisted(account)) {
+            revert BlacklistedAccount(account);
         }
 
         emit CashIn(account, amount, txId);
