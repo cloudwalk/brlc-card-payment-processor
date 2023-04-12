@@ -372,14 +372,14 @@ contract PixCashier is
         uint256 amount,
         bytes32 txId
     ) internal {
+        if (account == address(0)) {
+            revert ZeroAccount();
+        }
         if (amount == 0) {
             revert ZeroAmount();
         }
         if (txId == 0) {
             revert ZeroTxId();
-        }
-        if (account == address(0)) {
-            revert ZeroAccount();
         }
         if (isBlacklisted(account)) {
             revert BlacklistedAccount(account);
