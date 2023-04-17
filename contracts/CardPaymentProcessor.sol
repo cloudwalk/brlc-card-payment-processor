@@ -191,6 +191,18 @@ contract CardPaymentProcessor is
     }
 
     /**
+     * @dev A version of the function without the `extraAmount` parameter for backward compatibility.
+     */
+    function makePayment(
+        uint256 amount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) external whenNotPaused notBlacklisted(_msgSender()) {
+        address sender = _msgSender();
+        makePaymentInternal(sender, sender, amount, 0, authorizationId, correlationId);
+    }
+
+    /**
      * @dev See {ICardPaymentProcessor-makePaymentFor}.
      *
      * Requirements:
@@ -216,6 +228,21 @@ contract CardPaymentProcessor is
     }
 
     /**
+     * @dev A version of the function without the `extraAmount` parameter for backward compatibility.
+     */
+    function makePaymentFrom(
+        address account,
+        uint256 amount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        if (account == address(0)) {
+            revert ZeroAccount();
+        }
+        makePaymentInternal(_msgSender(), account, amount, 0, authorizationId, correlationId);
+    }
+
+    /**
      * @dev See {ICardPaymentProcessor-updatePaymentAmount}.
      *
      * Requirements:
@@ -236,6 +263,17 @@ contract CardPaymentProcessor is
         bytes16 correlationId
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         updatePaymentAmountInternal(newBaseAmount, newExtraAmount, authorizationId, correlationId);
+    }
+
+    /**
+     * @dev A version of the function without the `newExtraAmount` parameter for backward compatibility.
+     */
+    function updatePaymentAmount(
+        uint256 newAmount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        updatePaymentAmountInternal(newAmount, _payments[authorizationId].extraAmount, authorizationId, correlationId);
     }
 
     /**
@@ -441,6 +479,17 @@ contract CardPaymentProcessor is
         bytes16 correlationId
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         refundPaymentInternal(refundAmount, newExtraAmount, authorizationId, correlationId);
+    }
+
+    /**
+     * @dev A version of the function without the `newExtraAmount` parameter for backward compatibility.
+     */
+    function refundPayment(
+        uint256 refundAmount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        refundPaymentInternal(refundAmount, _payments[authorizationId].extraAmount, authorizationId, correlationId);
     }
 
     /**
