@@ -61,6 +61,9 @@ contract PixCashier is
     /// @dev The minting of tokens failed when processing an `cashIn` operation.
     error TokenMintingFailure();
 
+    /// @dev The length of the one of the batch arrays is different to the others.
+    error InvalidBatchArrays();
+
     /**
      * @dev The cash-out operation with the provided off-chain transaction identifier has an inappropriate status.
      * @param txId The off-chain transaction identifiers of the operation.
@@ -189,20 +192,30 @@ contract PixCashier is
         uint256 amount,
         bytes32 txId
     ) external whenNotPaused onlyRole(CASHIER_ROLE) {
-        if (account == address(0)) {
-            revert ZeroAccount();
-        }
-        if (amount == 0) {
-            revert ZeroAmount();
-        }
-        if (txId == 0) {
-            revert ZeroTxId();
+        _cashIn(account, amount, txId);
+    }
+
+    /**
+     * @dev See {IPixCashier-cashInBatch}.
+     *
+     * Requirements
+     *
+     * - The length of each passed array must be equal.
+     * - The contract must not be paused.
+     * - The caller must have the {CASHIER_ROLE} role.
+     * - The provided `account`, `amount`, and `txId` values must not be zero.
+     */
+    function cashInBatch(
+        address[] memory accounts,
+        uint256[] memory amounts,
+        bytes32[] memory txIds
+    ) external whenNotPaused onlyRole(CASHIER_ROLE) {
+        if (accounts.length != amounts.length || accounts.length != txIds.length) {
+            revert InvalidBatchArrays();
         }
 
-        emit CashIn(account, amount, txId);
-
-        if (!IERC20Mintable(_token).mint(account, amount)) {
-            revert TokenMintingFailure();
+        for (uint256 i = 0; i < accounts.length; i++) {
+            _cashIn(accounts[i], amounts[i], txIds[i]);
         }
     }
 
@@ -213,19 +226,41 @@ contract PixCashier is
      *
      * - The contract must not be paused.
      * - The caller must have the {CASHIER_ROLE} role.
-     * - The `account` must must not be blacklisted.
-     * - The provided `account`, `amount`, and `txId` values must not be zero.
+     * - The `account` must not be blacklisted.
+     * - The `account`, `amount`, and `txId` values must not be zero.
      * - The cash-out operation with the provided `txId` must not be already pending.
      */
     function requestCashOutFrom(
         address account,
         uint256 amount,
         bytes32 txId
-    ) external whenNotPaused onlyRole(CASHIER_ROLE) notBlacklisted(account) {
-        if (account == address(0)) {
-            revert ZeroAccount();
-        }
+    ) external whenNotPaused onlyRole(CASHIER_ROLE) {
         _requestCashOut(_msgSender(), account, amount, txId);
+    }
+
+    /**
+     * @dev See {IPixCashier-requestCashOutFromBatch}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {CASHIER_ROLE} role.
+     * - Each `account` in the provided array must not be blacklisted.
+     * - Each `account`, `amount`, and `txId` values in the provided arrays must not be zero.
+     * - Each cash-out operation with the provided `txId` in the array must not be already pending.
+     */
+    function requestCashOutFromBatch(
+        address[] memory accounts,
+        uint256[] memory amounts,
+        bytes32[] memory txIds
+    ) external whenNotPaused onlyRole(CASHIER_ROLE) {
+        if (accounts.length != amounts.length || accounts.length != txIds.length) {
+            revert InvalidBatchArrays();
+        }
+
+        for (uint256 i = 0; i < accounts.length; i++) {
+            _requestCashOut(_msgSender(), accounts[i], amounts[i], txIds[i]);
+        }
     }
 
     /**
@@ -243,7 +278,7 @@ contract PixCashier is
     }
 
     /**
-     * @dev See {IPixCashier-confirmCashOuts}.
+     * @dev See {IPixCashier-confirmCashOutBatch}.
      *
      * Requirements:
      *
@@ -253,7 +288,7 @@ contract PixCashier is
      * - All the values in the input `txIds` array must not be zero.
      * - All the cash-out operations corresponded the values in the input `txIds` array must have the pending status.
      */
-    function confirmCashOuts(bytes32[] memory txIds) external whenNotPaused onlyRole(CASHIER_ROLE) {
+    function confirmCashOutBatch(bytes32[] memory txIds) external whenNotPaused onlyRole(CASHIER_ROLE) {
         uint256 len = txIds.length;
         if (len == 0) {
             revert EmptyTransactionIdsArray();
@@ -279,7 +314,7 @@ contract PixCashier is
     }
 
     /**
-     * @dev See {IPixCashier-reverseCashOuts}.
+     * @dev See {IPixCashier-reverseCashOutBatch}.
      *
      * Requirements:
      *
@@ -289,7 +324,7 @@ contract PixCashier is
      * - All the values in the input `txIds` array must not be zero.
      * - All the cash-out operations corresponded the values in the input `txIds` array must have the pending status.
      */
-    function reverseCashOuts(bytes32[] memory txIds) external whenNotPaused onlyRole(CASHIER_ROLE) {
+    function reverseCashOutBatch(bytes32[] memory txIds) external whenNotPaused onlyRole(CASHIER_ROLE) {
         uint256 len = txIds.length;
         if (len == 0) {
             revert EmptyTransactionIdsArray();
@@ -300,17 +335,54 @@ contract PixCashier is
         }
     }
 
+    /**
+     * @dev See {PixCashier-cashIn}.
+     */
+    function _cashIn(
+        address account,
+        uint256 amount,
+        bytes32 txId
+    ) internal {
+        if (account == address(0)) {
+            revert ZeroAccount();
+        }
+        if (amount == 0) {
+            revert ZeroAmount();
+        }
+        if (txId == 0) {
+            revert ZeroTxId();
+        }
+        if (isBlacklisted(account)) {
+            revert BlacklistedAccount(account);
+        }
+
+        emit CashIn(account, amount, txId);
+
+        if (!IERC20Mintable(_token).mint(account, amount)) {
+            revert TokenMintingFailure();
+        }
+    }
+
+    /**
+     * @dev See {PixCashier-requestCashOut}.
+     */
     function _requestCashOut(
         address sender,
         address account,
         uint256 amount,
         bytes32 txId
     ) internal {
+        if (account == address(0)) {
+            revert ZeroAccount();
+        }
         if (amount == 0) {
             revert ZeroAmount();
         }
         if (txId == 0) {
             revert ZeroTxId();
+        }
+        if (isBlacklisted(account)) {
+            revert BlacklistedAccount(account);
         }
 
         CashOut storage operation = _cashOuts[txId];
@@ -342,6 +414,9 @@ contract PixCashier is
         );
     }
 
+    /**
+     * @dev See {PixCashier-confirmCashOut} and {PixCashier-reverseCashOut}.
+     */
     function _processCashOut(bytes32 txId, CashOutStatus targetStatus) internal {
         if (txId == 0) {
             revert ZeroTxId();
