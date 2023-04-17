@@ -122,7 +122,10 @@ contract CardPaymentProcessor is
     error InappropriateRefundAmount();
 
     /// @dev The new amount of the payment does not meet the requirements.
-    error InappropriateNewPaymentAmount();
+    error InappropriateNewBasPaymentAmount();
+
+    /// @dev The new extra amount of the payment does not meet the requirements.
+    error InappropriateNewExtraPaymentAmount();
 
     // ------------------- Functions ---------------------------------
 
@@ -178,12 +181,13 @@ contract CardPaymentProcessor is
      * - The payment's revocation counter must be equal to zero or less than the configured revocation limit.
      */
     function makePayment(
-        uint256 amount,
+        uint256 baseAmount,
+        uint256 extraAmount,
         bytes16 authorizationId,
         bytes16 correlationId
     ) external whenNotPaused notBlacklisted(_msgSender()) {
         address sender = _msgSender();
-        makePaymentInternal(sender, sender, amount, authorizationId, correlationId);
+        makePaymentInternal(sender, sender, baseAmount, extraAmount, authorizationId, correlationId);
     }
 
     /**
@@ -200,14 +204,15 @@ contract CardPaymentProcessor is
      */
     function makePaymentFrom(
         address account,
-        uint256 amount,
+        uint256 baseAmount,
+        uint256 extraAmount,
         bytes16 authorizationId,
         bytes16 correlationId
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (account == address(0)) {
             revert ZeroAccount();
         }
-        makePaymentInternal(_msgSender(), account, amount, authorizationId, correlationId);
+        makePaymentInternal(_msgSender(), account, baseAmount, extraAmount, authorizationId, correlationId);
     }
 
     /**
@@ -219,68 +224,18 @@ contract CardPaymentProcessor is
      * - The caller must have the {EXECUTOR_ROLE} role.
      * - The input authorization ID of the payment must not be zero.
      * - The payment linked with the authorization ID must have the "uncleared" status.
-     * - The new amount must not exceed the existing refund amount.
+     * - The new base amount must not exceed the existing refund amount.
+     * - If the base amount of the payment increases the extra amount must increase too or keep unchanged.
+     * - If the base amount of the payment decreases the extra amount must decrease too or keep unchanged.
+     * - If the base amount of the payment does not change the extra amount is allowed to change in any way.
      */
     function updatePaymentAmount(
-        uint256 newAmount,
+        uint256 newBaseAmount,
+        uint256 newExtraAmount,
         bytes16 authorizationId,
         bytes16 correlationId
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        if (authorizationId == 0) {
-            revert ZeroAuthorizationId();
-        }
-
-        Payment storage payment = _payments[authorizationId];
-        PaymentStatus status = payment.status;
-        address account = payment.account;
-        uint256 oldPaymentAmount = payment.amount;
-        uint256 refundAmount = payment.refundAmount;
-
-        if (status == PaymentStatus.Nonexistent) {
-            revert PaymentNotExist();
-        }
-        if (status != PaymentStatus.Uncleared) {
-            revert InappropriatePaymentStatus(status);
-        }
-        if (refundAmount > newAmount) {
-            revert InappropriateNewPaymentAmount();
-        }
-
-        uint256 newCompensationAmount = refundAmount +
-            calculateCashback(newAmount - refundAmount, payment.cashbackRate);
-        payment.amount = newAmount;
-
-        if (newAmount >= oldPaymentAmount) {
-            uint256 oldCompensationAmount = payment.compensationAmount;
-            uint256 cashbackIncreaseAmount = newCompensationAmount - oldCompensationAmount;
-            uint256 paymentAmountDiff = newAmount - oldPaymentAmount;
-
-            _totalUnclearedBalance += paymentAmountDiff;
-            _unclearedBalances[account] += paymentAmountDiff;
-            IERC20Upgradeable(_token).safeTransferFrom(account, address(this), paymentAmountDiff);
-
-            cashbackIncreaseAmount = increaseCashbackInternal(authorizationId, cashbackIncreaseAmount);
-            payment.compensationAmount = oldCompensationAmount + cashbackIncreaseAmount;
-        } else {
-            uint256 cashbackRevocationAmount = payment.compensationAmount - newCompensationAmount;
-            uint256 paymentAmountDiff = oldPaymentAmount - newAmount;
-            uint256 sentAmount = paymentAmountDiff - cashbackRevocationAmount;
-
-            _totalUnclearedBalance -= paymentAmountDiff;
-            _unclearedBalances[account] -= paymentAmountDiff;
-            IERC20Upgradeable(_token).safeTransfer(account, sentAmount);
-
-            revokeCashbackInternal(authorizationId, cashbackRevocationAmount);
-            payment.compensationAmount = newCompensationAmount;
-        }
-
-        emit UpdatePaymentAmount(
-            authorizationId,
-            correlationId,
-            account,
-            oldPaymentAmount,
-            newAmount
-        );
+        updatePaymentAmountInternal(newBaseAmount, newExtraAmount, authorizationId, correlationId);
     }
 
     /**
@@ -294,10 +249,10 @@ contract CardPaymentProcessor is
      * - The payment linked with the authorization ID must have the "uncleared" status.
      */
     function clearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        uint256 amount = clearPaymentInternal(authorizationId);
+        uint256 totalAmount = clearPaymentInternal(authorizationId);
 
-        _totalUnclearedBalance = _totalUnclearedBalance - amount;
-        _totalClearedBalance = _totalClearedBalance + amount;
+        _totalUnclearedBalance = _totalUnclearedBalance - totalAmount;
+        _totalClearedBalance = _totalClearedBalance + totalAmount;
     }
 
     /**
@@ -316,14 +271,14 @@ contract CardPaymentProcessor is
             revert EmptyAuthorizationIdsArray();
         }
 
-        uint256 totalAmount = 0;
+        uint256 cumulativeTotalAmount = 0;
         uint256 len = authorizationIds.length;
         for (uint256 i = 0; i < len; i++) {
-            totalAmount += clearPaymentInternal(authorizationIds[i]);
+            cumulativeTotalAmount += clearPaymentInternal(authorizationIds[i]);
         }
 
-        _totalUnclearedBalance = _totalUnclearedBalance - totalAmount;
-        _totalClearedBalance = _totalClearedBalance + totalAmount;
+        _totalUnclearedBalance = _totalUnclearedBalance - cumulativeTotalAmount;
+        _totalClearedBalance = _totalClearedBalance + cumulativeTotalAmount;
     }
 
     /**
@@ -337,10 +292,10 @@ contract CardPaymentProcessor is
      * - The payment linked with the authorization ID must have the "cleared" status.
      */
     function unclearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        uint256 amount = unclearPaymentInternal(authorizationId);
+        uint256 totalAmount = unclearPaymentInternal(authorizationId);
 
-        _totalClearedBalance = _totalClearedBalance - amount;
-        _totalUnclearedBalance = _totalUnclearedBalance + amount;
+        _totalClearedBalance = _totalClearedBalance - totalAmount;
+        _totalUnclearedBalance = _totalUnclearedBalance + totalAmount;
     }
 
     /**
@@ -359,14 +314,14 @@ contract CardPaymentProcessor is
             revert EmptyAuthorizationIdsArray();
         }
 
-        uint256 totalAmount = 0;
+        uint256 cumulativeTotalAmount = 0;
         uint256 len = authorizationIds.length;
         for (uint256 i = 0; i < len; i++) {
-            totalAmount = totalAmount + unclearPaymentInternal(authorizationIds[i]);
+            cumulativeTotalAmount += unclearPaymentInternal(authorizationIds[i]);
         }
 
-        _totalClearedBalance = _totalClearedBalance - totalAmount;
-        _totalUnclearedBalance = _totalUnclearedBalance + totalAmount;
+        _totalClearedBalance = _totalClearedBalance - cumulativeTotalAmount;
+        _totalUnclearedBalance = _totalUnclearedBalance + cumulativeTotalAmount;
     }
 
     /**
@@ -477,65 +432,15 @@ contract CardPaymentProcessor is
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
      * - The input authorization ID of the payment must not be zero.
+     * - The new extra amount must not be greater that the current one.
      */
     function refundPayment(
-        uint256 amount,
+        uint256 refundAmount,
+        uint256 newExtraAmount,
         bytes16 authorizationId,
         bytes16 correlationId
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        if (authorizationId == 0) {
-            revert ZeroAuthorizationId();
-        }
-
-        Payment storage payment = _payments[authorizationId];
-        PaymentStatus status = payment.status;
-        address account = payment.account;
-        uint256 paymentAmount = payment.amount;
-        uint256 newRefundAmount = payment.refundAmount + amount;
-
-        if (status == PaymentStatus.Nonexistent) {
-            revert PaymentNotExist();
-        }
-        if (status != PaymentStatus.Uncleared && status != PaymentStatus.Cleared && status != PaymentStatus.Confirmed) {
-            revert InappropriatePaymentStatus(status);
-        }
-        if (newRefundAmount > paymentAmount) {
-            revert InappropriateRefundAmount();
-        }
-
-        uint256 newCompensationAmount = newRefundAmount +
-            calculateCashback(paymentAmount - newRefundAmount, payment.cashbackRate);
-        uint256 sentAmount = newCompensationAmount - payment.compensationAmount;
-        uint256 revokedCashbackAmount = amount - sentAmount;
-
-        payment.refundAmount = newRefundAmount;
-        payment.compensationAmount = newCompensationAmount;
-
-        if (status == PaymentStatus.Uncleared) {
-            _totalUnclearedBalance -= amount;
-            _unclearedBalances[account] -= amount;
-            IERC20Upgradeable(_token).safeTransfer(account, sentAmount);
-        } else if (status == PaymentStatus.Cleared) {
-            _totalClearedBalance -= amount;
-            _clearedBalances[account] -= amount;
-            IERC20Upgradeable(_token).safeTransfer(account, sentAmount);
-        } else { // status == PaymentStatus.ConfirmPayment
-            address cashOutAccount_ = requireCashOutAccount();
-            IERC20Upgradeable token = IERC20Upgradeable(_token);
-            token.safeTransferFrom(cashOutAccount_, account, sentAmount);
-            token.safeTransferFrom(cashOutAccount_, address(this), revokedCashbackAmount);
-        }
-
-        revokeCashbackInternal(authorizationId, revokedCashbackAmount);
-
-        emit RefundPayment(
-            authorizationId,
-            correlationId,
-            account,
-            amount,
-            sentAmount,
-            status
-        );
+        refundPaymentInternal(refundAmount, newExtraAmount, authorizationId, correlationId);
     }
 
     /**
@@ -770,7 +675,8 @@ contract CardPaymentProcessor is
     function makePaymentInternal(
         address sender,
         address account,
-        uint256 amount,
+        uint256 baseAmount,
+        uint256 extraAmount,
         bytes16 authorizationId,
         bytes16 correlationId
     ) internal {
@@ -793,27 +699,136 @@ contract CardPaymentProcessor is
             revert RevocationLimitReached(_revocationLimit);
         }
 
+        uint256 sumAmount = baseAmount + extraAmount;
         payment.account = account;
-        payment.amount = amount;
+        payment.baseAmount = baseAmount;
         payment.status = PaymentStatus.Uncleared;
 
-        _unclearedBalances[account] = _unclearedBalances[account] + amount;
-        _totalUnclearedBalance = _totalUnclearedBalance + amount;
+        _unclearedBalances[account] = _unclearedBalances[account] + sumAmount;
+        _totalUnclearedBalance = _totalUnclearedBalance + sumAmount;
 
         emit MakePayment(
             authorizationId,
             correlationId,
             account,
-            amount,
+            sumAmount,
             revocationCounter,
             sender
         );
 
-        IERC20Upgradeable(_token).safeTransferFrom(account, address(this), amount);
-        (payment.compensationAmount, payment.cashbackRate) = sendCashbackInternal(account, amount, authorizationId);
+        // We do not call a related existent internal function here to safe some gas and
+        // because `payment.extraAmount` can be already set at this point if the payment was revoked.
+        if (extraAmount > 0) {
+            emit PaymentExtraAmountChanged(
+                authorizationId,
+                account,
+                sumAmount,
+                extraAmount,
+                0
+            );
+            payment.extraAmount = extraAmount;
+        } else if (payment.extraAmount != 0) {
+            payment.extraAmount = 0;
+        }
+
+        IERC20Upgradeable(_token).safeTransferFrom(account, address(this), sumAmount);
+        (payment.compensationAmount, payment.cashbackRate) = sendCashbackInternal(account, baseAmount, authorizationId);
     }
 
-    function clearPaymentInternal(bytes16 authorizationId) internal returns (uint256 amount) {
+    function updatePaymentAmountInternal(
+        uint256 newBaseAmount,
+        uint256 newExtraAmount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) internal {
+        if (authorizationId == 0) {
+            revert ZeroAuthorizationId();
+        }
+
+        Payment storage payment = _payments[authorizationId];
+        PaymentStatus status = payment.status;
+        address account = payment.account;
+        uint256 oldSumPaymentAmount = payment.baseAmount + payment.extraAmount;
+        uint256 refundAmount = payment.refundAmount;
+
+        if (status == PaymentStatus.Nonexistent) {
+            revert PaymentNotExist();
+        }
+        if (status != PaymentStatus.Uncleared) {
+            revert InappropriatePaymentStatus(status);
+        }
+        if (refundAmount > newBaseAmount) {
+            revert InappropriateNewBasPaymentAmount();
+        }
+
+        uint256 newCompensationAmount = refundAmount +
+        calculateCashback(newBaseAmount - refundAmount, payment.cashbackRate);
+        uint256 newSumPaymentAmount = newBaseAmount + newExtraAmount;
+        payment.baseAmount = newBaseAmount;
+
+        if (newSumPaymentAmount >= oldSumPaymentAmount) {
+            uint256 paymentAmountDiff = newSumPaymentAmount - oldSumPaymentAmount;
+
+            _totalUnclearedBalance += paymentAmountDiff;
+            _unclearedBalances[account] += paymentAmountDiff;
+
+            if (newCompensationAmount >= payment.compensationAmount) {
+                uint256 oldCompensationAmount = payment.compensationAmount;
+                uint256 cashbackIncreaseAmount = newCompensationAmount - oldCompensationAmount;
+
+                IERC20Upgradeable(_token).safeTransferFrom(account, address(this), paymentAmountDiff);
+                cashbackIncreaseAmount = increaseCashbackInternal(authorizationId, cashbackIncreaseAmount);
+                payment.compensationAmount = oldCompensationAmount + cashbackIncreaseAmount;
+            } else {
+                uint256 cashbackRevocationAmount = payment.compensationAmount - newCompensationAmount;
+
+                paymentAmountDiff += cashbackRevocationAmount;
+                payment.compensationAmount = newCompensationAmount;
+
+                IERC20Upgradeable(_token).safeTransferFrom(account, address(this), paymentAmountDiff);
+                revokeCashbackInternal(authorizationId, cashbackRevocationAmount);
+            }
+        } else {
+            uint256 paymentAmountDiff = oldSumPaymentAmount - newSumPaymentAmount;
+
+            _totalUnclearedBalance -= paymentAmountDiff;
+            _unclearedBalances[account] -= paymentAmountDiff;
+
+            if (newCompensationAmount >= payment.compensationAmount) {
+                uint256 oldCompensationAmount = payment.compensationAmount;
+                uint256 cashbackIncreaseAmount = newCompensationAmount - oldCompensationAmount;
+
+                IERC20Upgradeable(_token).safeTransfer(account, paymentAmountDiff);
+                cashbackIncreaseAmount = increaseCashbackInternal(authorizationId, cashbackIncreaseAmount);
+                payment.compensationAmount = oldCompensationAmount + cashbackIncreaseAmount;
+            } else {
+                uint256 cashbackRevocationAmount = payment.compensationAmount - newCompensationAmount;
+                uint256 sentAmount = paymentAmountDiff - cashbackRevocationAmount;
+
+                payment.compensationAmount = newCompensationAmount;
+
+                IERC20Upgradeable(_token).safeTransfer(account, sentAmount);
+                revokeCashbackInternal(authorizationId, cashbackRevocationAmount);
+            }
+        }
+
+        emit UpdatePaymentAmount(
+            authorizationId,
+            correlationId,
+            account,
+            oldSumPaymentAmount,
+            newSumPaymentAmount
+        );
+        updateExtraAmountInternal(
+            authorizationId,
+            account,
+            newSumPaymentAmount,
+            newExtraAmount,
+            payment
+        );
+    }
+
+    function clearPaymentInternal(bytes16 authorizationId) internal returns (uint256 totalAmount) {
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
         }
@@ -833,24 +848,24 @@ contract CardPaymentProcessor is
         payment.status = PaymentStatus.Cleared;
 
         address account = payment.account;
-        amount = payment.amount - payment.refundAmount;
+        totalAmount = payment.baseAmount + payment.extraAmount - payment.refundAmount;
 
-        uint256 newUnclearedBalance = _unclearedBalances[account] - amount;
+        uint256 newUnclearedBalance = _unclearedBalances[account] - totalAmount;
         _unclearedBalances[account] = newUnclearedBalance;
-        uint256 newClearedBalance = _clearedBalances[account] + amount;
+        uint256 newClearedBalance = _clearedBalances[account] + totalAmount;
         _clearedBalances[account] = newClearedBalance;
 
         emit ClearPayment(
             authorizationId,
             account,
-            amount,
+            totalAmount,
             newClearedBalance,
             newUnclearedBalance,
             payment.revocationCounter
         );
     }
 
-    function unclearPaymentInternal(bytes16 authorizationId) internal returns (uint256 amount) {
+    function unclearPaymentInternal(bytes16 authorizationId) internal returns (uint256 totalAmount) {
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
         }
@@ -870,24 +885,24 @@ contract CardPaymentProcessor is
         payment.status = PaymentStatus.Uncleared;
 
         address account = payment.account;
-        amount = payment.amount - payment.refundAmount;
+        totalAmount = payment.baseAmount + payment.extraAmount - payment.refundAmount;
 
-        uint256 newClearedBalance = _clearedBalances[account] - amount;
+        uint256 newClearedBalance = _clearedBalances[account] - totalAmount;
         _clearedBalances[account] = newClearedBalance;
-        uint256 newUnclearedBalance = _unclearedBalances[account] + amount;
+        uint256 newUnclearedBalance = _unclearedBalances[account] + totalAmount;
         _unclearedBalances[account] = newUnclearedBalance;
 
         emit UnclearPayment(
             authorizationId,
             account,
-            amount,
+            totalAmount,
             newClearedBalance,
             newUnclearedBalance,
             payment.revocationCounter
         );
     }
 
-    function confirmPaymentInternal(bytes16 authorizationId) internal returns (uint256 amount) {
+    function confirmPaymentInternal(bytes16 authorizationId) internal returns (uint256 totalAmount) {
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
         }
@@ -904,16 +919,16 @@ contract CardPaymentProcessor is
         payment.status = PaymentStatus.Confirmed;
 
         address account = payment.account;
-        amount = payment.amount - payment.refundAmount;
-        uint256 newClearedBalance = _clearedBalances[account] - amount;
+        totalAmount = payment.baseAmount + payment.extraAmount - payment.refundAmount;
+        uint256 newClearedBalance = _clearedBalances[account] - totalAmount;
         _clearedBalances[account] = newClearedBalance;
 
-        emit ConfirmPayment(authorizationId, account, amount, newClearedBalance, payment.revocationCounter);
+        emit ConfirmPayment(authorizationId, account, totalAmount, newClearedBalance, payment.revocationCounter);
     }
 
     struct CancelPaymentVars {
         address account;
-        uint256 remainingPaymentAmount;
+        uint256 paymentTotalAmount;
         uint256 revokedCashbackAmount;
         uint256 sentAmount;
     }
@@ -940,16 +955,16 @@ contract CardPaymentProcessor is
 
         CancelPaymentVars memory cancellation;
         cancellation.account = payment.account;
-        cancellation.sentAmount = payment.amount - payment.compensationAmount;
-        cancellation.remainingPaymentAmount = payment.amount - payment.refundAmount;
-        cancellation.revokedCashbackAmount = cancellation.remainingPaymentAmount - cancellation.sentAmount;
+        cancellation.sentAmount = payment.baseAmount + payment.extraAmount - payment.compensationAmount;
+        cancellation.paymentTotalAmount = payment.baseAmount + payment.extraAmount - payment.refundAmount;
+        cancellation.revokedCashbackAmount = cancellation.paymentTotalAmount - cancellation.sentAmount;
 
         if (status == PaymentStatus.Uncleared) {
-            _totalUnclearedBalance -= cancellation.remainingPaymentAmount;
-            _unclearedBalances[cancellation.account] -= cancellation.remainingPaymentAmount;
+            _totalUnclearedBalance -= cancellation.paymentTotalAmount;
+            _unclearedBalances[cancellation.account] -= cancellation.paymentTotalAmount;
         } else if (status == PaymentStatus.Cleared) {
-            _totalClearedBalance -= cancellation.remainingPaymentAmount;
-            _clearedBalances[cancellation.account] -= cancellation.remainingPaymentAmount;
+            _totalClearedBalance -= cancellation.paymentTotalAmount;
+            _clearedBalances[cancellation.account] -= cancellation.paymentTotalAmount;
         } else {
             revert InappropriatePaymentStatus(status);
         }
@@ -995,9 +1010,79 @@ contract CardPaymentProcessor is
         revokeCashbackInternal(authorizationId, cancellation.revokedCashbackAmount);
     }
 
+    function refundPaymentInternal(
+        uint256 refundAmount,
+        uint256 newExtraAmount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) internal {
+        if (authorizationId == 0) {
+            revert ZeroAuthorizationId();
+        }
+
+        Payment storage payment = _payments[authorizationId];
+        PaymentStatus status = payment.status;
+        uint256 basePaymentAmount = payment.baseAmount;
+        uint256 newRefundAmount = payment.refundAmount + refundAmount;
+
+        if (status == PaymentStatus.Nonexistent) {
+            revert PaymentNotExist();
+        }
+        if (status != PaymentStatus.Uncleared && status != PaymentStatus.Cleared && status != PaymentStatus.Confirmed) {
+            revert InappropriatePaymentStatus(status);
+        }
+        if (newRefundAmount > basePaymentAmount) {
+            revert InappropriateRefundAmount();
+        }
+        if (newExtraAmount > payment.extraAmount) {
+            revert InappropriateNewExtraPaymentAmount();
+        }
+
+        uint256 newCompensationAmount = newRefundAmount +
+        calculateCashback(basePaymentAmount - newRefundAmount, payment.cashbackRate);
+        uint256 sentAmount = newCompensationAmount - payment.compensationAmount + payment.extraAmount - newExtraAmount;
+        uint256 revokedCashbackAmount = refundAmount - (newCompensationAmount - payment.compensationAmount);
+
+        payment.refundAmount = newRefundAmount;
+        payment.compensationAmount = newCompensationAmount;
+
+        if (status == PaymentStatus.Uncleared) {
+            _totalUnclearedBalance -= refundAmount + payment.extraAmount - newExtraAmount;
+            _unclearedBalances[payment.account] -= refundAmount + payment.extraAmount - newExtraAmount;
+            IERC20Upgradeable(_token).safeTransfer(payment.account, sentAmount);
+        } else if (status == PaymentStatus.Cleared) {
+            _totalClearedBalance -= refundAmount + payment.extraAmount - newExtraAmount;
+            _clearedBalances[payment.account] -= refundAmount + payment.extraAmount - newExtraAmount;
+            IERC20Upgradeable(_token).safeTransfer(payment.account, sentAmount);
+        } else { // status == PaymentStatus.ConfirmPayment
+            address cashOutAccount_ = requireCashOutAccount();
+            IERC20Upgradeable token = IERC20Upgradeable(_token);
+            token.safeTransferFrom(cashOutAccount_, payment.account, sentAmount);
+            token.safeTransferFrom(cashOutAccount_, address(this), revokedCashbackAmount);
+        }
+
+        revokeCashbackInternal(authorizationId, revokedCashbackAmount);
+
+        emit RefundPayment(
+            authorizationId,
+            correlationId,
+            payment.account,
+            refundAmount,
+            sentAmount,
+            status
+        );
+        updateExtraAmountInternal(
+            authorizationId,
+            payment.account,
+            basePaymentAmount + newExtraAmount,
+            newExtraAmount,
+            payment
+        );
+    }
+
     function sendCashbackInternal(
         address account,
-        uint256 paymentAmount,
+        uint256 basePaymentAmount,
         bytes16 authorizationId
     ) internal returns (uint256 sentAmount, uint16 appliedCashbackRate) {
         address distributor = _cashbackDistributor;
@@ -1005,7 +1090,7 @@ contract CardPaymentProcessor is
             bool success;
             uint256 cashbackNonce;
             appliedCashbackRate = _cashbackRateInPermil;
-            uint256 cashbackAmount = calculateCashback(paymentAmount, appliedCashbackRate);
+            uint256 cashbackAmount = calculateCashback(basePaymentAmount, appliedCashbackRate);
             (success, sentAmount, cashbackNonce) = ICashbackDistributor(distributor).sendCashback(
                 _token,
                 ICashbackDistributorTypes.CashbackKind.CardPayment,
@@ -1061,5 +1146,25 @@ contract CardPaymentProcessor is
 
     function calculateCashback(uint256 amount, uint256 cashbackRateInPermil) internal pure returns (uint256) {
         return amount * cashbackRateInPermil / 1000;
+    }
+
+    function updateExtraAmountInternal(
+        bytes16 authorizationId,
+        address account,
+        uint256 sumAmount,
+        uint256 newExtraAmount,
+        Payment storage payment
+    ) internal {
+        uint256 oldExtraAmount = payment.extraAmount;
+        if (oldExtraAmount != newExtraAmount) {
+            emit PaymentExtraAmountChanged (
+                authorizationId,
+                account,
+                sumAmount,
+                newExtraAmount,
+                oldExtraAmount
+            );
+            payment.extraAmount = newExtraAmount;
+        }
     }
 }
