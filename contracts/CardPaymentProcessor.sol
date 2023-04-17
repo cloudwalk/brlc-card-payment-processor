@@ -122,7 +122,7 @@ contract CardPaymentProcessor is
     error InappropriateRefundAmount();
 
     /// @dev The new amount of the payment does not meet the requirements.
-    error InappropriateNewBasPaymentAmount();
+    error InappropriateNewBasePaymentAmount();
 
     /// @dev The new extra amount of the payment does not meet the requirements.
     error InappropriateNewExtraPaymentAmount();
@@ -807,7 +807,7 @@ contract CardPaymentProcessor is
             revert InappropriatePaymentStatus(status);
         }
         if (refundAmount > newBaseAmount) {
-            revert InappropriateNewBasPaymentAmount();
+            revert InappropriateNewBasePaymentAmount();
         }
 
         uint256 newCompensationAmount = refundAmount +

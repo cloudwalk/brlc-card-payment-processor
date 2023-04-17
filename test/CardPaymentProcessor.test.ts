@@ -1620,7 +1620,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const REVERT_ERROR_IF_CASHBACK_ALREADY_DISABLED = "CashbackAlreadyDisabled";
   const REVERT_ERROR_IF_CASH_OUT_ACCOUNT_ADDRESS_IS_ZERO = "ZeroCashOutAccount";
   const REVERT_ERROR_IF_REFUND_AMOUNT_IS_INAPPROPRIATE = "InappropriateRefundAmount";
-  const REVERT_ERROR_IF_NEW_BASE_PAYMENT_AMOUNT_IS_INAPPROPRIATE = "InappropriateNewBasPaymentAmount";
+  const REVERT_ERROR_IF_NEW_BASE_PAYMENT_AMOUNT_IS_INAPPROPRIATE = "InappropriateNewBasePaymentAmount";
   const REVERT_ERROR_IF_NEW_EXTRA_PAYMENT_AMOUNT_IS_INAPPROPRIATE = "InappropriateNewExtraPaymentAmount";
 
   const ownerRole: string = ethers.utils.id("OWNER_ROLE");
