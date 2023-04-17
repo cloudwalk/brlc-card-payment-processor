@@ -36,12 +36,13 @@ interface ICardPaymentProcessorTypes {
     /// @dev Structure with data of a single payment.
     struct Payment {
         address account;            // Account who made the payment.
-        uint256 amount;             // Amount of tokens in the payment.
+        uint256 baseAmount;         // Base amount of tokens in the payment.
         PaymentStatus status;       // Current status of the payment.
         uint8 revocationCounter;    // Number of payment revocations.
         uint256 compensationAmount; // The total amount of compensation to the account related to the payment
         uint256 refundAmount;       // The total amount of all refunds related to the payment
         uint16 cashbackRate;        // The rate of cashback of the payment
+        uint256 extraAmount;        // The extra amount of tokens in the payment, without a cashback.
     }
 }
 
@@ -55,9 +56,17 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         bytes16 indexed authorizationId,
         bytes16 indexed correlationId,
         address indexed account,
-        uint256 amount,
+        uint256 sumAmount,
         uint8 revocationCounter,
         address sender
+    );
+
+    event PaymentExtraAmountChanged(
+        bytes16 indexed authorizationId,
+        address indexed account,
+        uint256 sumAmount,
+        uint256 newExtraAmount,
+        uint256 oldExtraAmount
     );
 
     /// @dev Emitted when the amount of a payment is updated.
@@ -65,15 +74,15 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         bytes16 indexed authorizationId,
         bytes16 indexed correlationId,
         address indexed account,
-        uint256 oldAmount,
-        uint256 newAmount
+        uint256 oldSumAmount,
+        uint256 newSumAmount
     );
 
     /// @dev Emitted when a payment is cleared.
     event ClearPayment(
         bytes16 indexed authorizationId,
         address indexed account,
-        uint256 amount,
+        uint256 totalAmount,
         uint256 clearedBalance,
         uint256 unclearedBalance,
         uint8 revocationCounter
@@ -83,7 +92,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     event UnclearPayment(
         bytes16 indexed authorizationId,
         address indexed account,
-        uint256 amount,
+        uint256 totalAmount,
         uint256 clearedBalance,
         uint256 unclearedBalance,
         uint8 revocationCounter
@@ -94,7 +103,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         bytes16 indexed authorizationId,
         bytes16 indexed correlationId,
         address indexed account,
-        uint256 amount,
+        uint256 sentAmount,
         uint256 clearedBalance,
         uint256 unclearedBalance,
         bool wasPaymentCleared,
@@ -107,7 +116,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         bytes16 indexed authorizationId,
         bytes16 indexed correlationId,
         address indexed account,
-        uint256 amount,
+        uint256 sentAmount,
         uint256 clearedBalance,
         uint256 unclearedBalance,
         bool wasPaymentCleared,
@@ -119,7 +128,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     event ConfirmPayment(
         bytes16 indexed authorizationId,
         address indexed account,
-        uint256 amount,
+        uint256 totalAmount,
         uint256 clearedBalance,
         uint8 revocationCounter
     );
@@ -202,13 +211,16 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * This function is expected to be called by any account.
      *
      * Emits a {MakePayment} event.
+     * Emits a {PaymentExtraAmountChanged} event if `extraAmount` is not zero.
      *
-     * @param amount The amount of tokens to be transferred to this contract because of the payment.
+     * @param baseAmount The base amount of tokens to transfer because of the payment.
+     * @param extraAmount The extra amount of tokens to transfer because of the payment. No cashback is applied.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
     function makePayment(
-        uint256 amount,
+        uint256 baseAmount,
+        uint256 extraAmount,
         bytes16 authorizationId,
         bytes16 correlationId
     ) external;
@@ -220,33 +232,39 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {MakePayment} event.
+     * Emits a {PaymentExtraAmountChanged} event if `extraAmount` is not zero.
      *
      * @param account The account on that behalf the payment is made.
-     * @param amount The amount of tokens to be transferred to this contract because of the payment.
+     * @param baseAmount The base amount of tokens to transfer because of the payment.
+     * @param extraAmount The extra amount of tokens to transfer because of the payment. No cashback is applied.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
     function makePaymentFrom(
         address account,
-        uint256 amount,
+        uint256 baseAmount,
+        uint256 extraAmount,
         bytes16 authorizationId,
         bytes16 correlationId
     ) external;
 
     /**
-     * @dev Updates the amount of a previously made payment.
+     * @dev Updates the base amount and extra amount of a previously made payment.
      *
      * Transfers the underlying tokens from the account to this contract or vise versa.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {UpdatePaymentAmount} event.
+     * Emits a {PaymentExtraAmountChanged} event if `extraAmount` of the payment is changed.
      *
-     * @param newAmount The new amount of the payment.
+     * @param newBaseAmount The new base amount of the payment.
+     * @param newExtraAmount The new extra amount of the payment. No cashback is applied.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
     function updatePaymentAmount(
-        uint256 newAmount,
+        uint256 newBaseAmount,
+        uint256 newExtraAmount,
         bytes16 authorizationId,
         bytes16 correlationId
     ) external;
@@ -363,13 +381,16 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @dev Makes a refund for a previously made card payment.
      *
      * Emits a {RefundPayment} event.
+     * Emits a {PaymentExtraAmountChanged} event if `extraAmount` of the payment is changed.
      *
-     * @param amount The amount of tokens to refund.
+     * @param refundAmount The amount of tokens to refund.
+     * @param newExtraAmount. A new extra amount of the payment after the refund operation.
      * @param authorizationId The card transaction authorization ID.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
     function refundPayment(
-        uint256 amount,
+        uint256 refundAmount,
+        uint256 newExtraAmount,
         bytes16 authorizationId,
         bytes16 correlationId
     ) external;
