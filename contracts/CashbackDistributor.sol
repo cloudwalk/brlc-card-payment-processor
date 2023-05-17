@@ -45,6 +45,7 @@ contract CashbackDistributor is
         address recipient;
         address sender;
         uint256 nonce;
+        uint256 newAmount;
     }
 
     // -------------------- Errors -----------------------------------
@@ -194,7 +195,8 @@ contract CashbackDistributor is
             externalId: cashback.externalId,
             recipient: cashback.recipient,
             sender: _msgSender(),
-            nonce: nonce
+            nonce: nonce,
+            newAmount: cashback.revokedAmount
         });
 
         RevocationStatus revocationStatus = RevocationStatus.Success;
@@ -205,8 +207,10 @@ contract CashbackDistributor is
             revocationStatus = RevocationStatus.OutOfFunds;
         } else if (amount > IERC20Upgradeable(context.token).allowance(context.sender, address(this))) {
             revocationStatus = RevocationStatus.OutOfAllowance;
-        } else if (amount > cashback.amount - cashback.revokedAmount) {
+        } else if (amount > cashback.amount - context.newAmount) {
             revocationStatus = RevocationStatus.OutOfBalance;
+        } else {
+            context.newAmount += amount;
         }
 
         emit RevokeCashback(
@@ -217,12 +221,13 @@ contract CashbackDistributor is
             context.externalId,
             context.recipient,
             amount,
+            revocationStatus == RevocationStatus.Inapplicable ? 0 : cashback.amount - context.newAmount, // totalAmount
             context.sender,
             context.nonce
         );
 
         if (revocationStatus == RevocationStatus.Success) {
-            cashback.revokedAmount += amount;
+            cashback.revokedAmount = context.newAmount;
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] -= amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] -= amount;
             IERC20Upgradeable(context.token).safeTransferFrom(context.sender, address(this), amount);
@@ -249,7 +254,8 @@ contract CashbackDistributor is
             externalId: cashback.externalId,
             recipient: cashback.recipient,
             sender: _msgSender(),
-            nonce: nonce
+            nonce: nonce,
+            newAmount: cashback.amount
         });
 
         IncreaseStatus status = IncreaseStatus.Success;
@@ -266,9 +272,12 @@ contract CashbackDistributor is
             (bool accepted, uint256 acceptedAmount) = updateCashbackCap(context.token, context.recipient, amount);
             if (!accepted) {
                 status = IncreaseStatus.Capped;
-            } else if (acceptedAmount < amount) {
-                status = IncreaseStatus.Partial;
-                amount = acceptedAmount;
+            } else {
+                if (acceptedAmount < amount) {
+                    status = IncreaseStatus.Partial;
+                    amount = acceptedAmount;
+                }
+                context.newAmount += amount;
             }
         }
 
@@ -280,12 +289,13 @@ contract CashbackDistributor is
             context.externalId,
             context.recipient,
             amount,
+            status == IncreaseStatus.Inapplicable ? 0 : context.newAmount - cashback.revokedAmount, // totalAmount
             context.sender,
             context.nonce
         );
 
         if (status == IncreaseStatus.Success || status == IncreaseStatus.Partial) {
-            cashback.amount += amount;
+            cashback.amount = context.newAmount;
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] += amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] += amount;
             IERC20Upgradeable(context.token).safeTransfer(context.recipient, amount);
