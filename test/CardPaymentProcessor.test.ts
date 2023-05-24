@@ -1245,6 +1245,7 @@ class TestContext {
           EVENT_NAME_PAYMENT_EXTRA_AMOUNT_CHANGED
         ).withArgs(
           checkEventField("authorizationId", operation.authorizationId),
+          checkEventField("correlationId", operation.correlationId),
           checkEventField("account", operation.account.address),
           checkEventField("sumAmount", operation.newBaseAmount + operation.newExtraAmount),
           checkEventField("newExtraAmount", operation.newExtraAmount),
@@ -1550,6 +1551,8 @@ class TestContext {
       checkEventField("account", operation.account.address),
       checkEventField("oldSumAmount", operation.oldBaseAmount + operation.oldExtraAmount),
       checkEventField("newSumAmount", operation.newBaseAmount + operation.newExtraAmount),
+      checkEventField("oldBaseAmount", operation.oldBaseAmount),
+      checkEventField("newBaseAmount", operation.newBaseAmount),
     );
 
     if (!!operation.sponsor) {
