@@ -72,12 +72,11 @@ contract PixCashier is
     error InappropriateCashOutStatus(bytes32 txId, CashOutStatus status);
 
     /**
-     * @dev The cash-out operation with the provided off-chain transaction identifier cannot be reused.
+     * @dev The cash-out operation with the provided txId cannot executed for the given account.
      * @param txId The off-chain transaction identifiers of the operation.
-     * @param status The current status of the operation.
-     * @param account The previous account on that behalf the operation was made.
+     * @param account The account that must be used for the operation.
      */
-    error WrongCashOutReusing(bytes32 txId, CashOutStatus status, address account);
+    error InappropriateCashOutAccount(bytes32 txId, address account);
 
     // -------------------- Functions --------------------------------
 
@@ -398,7 +397,7 @@ contract PixCashier is
         if (status == CashOutStatus.Pending || status == CashOutStatus.Confirmed) {
             revert InappropriateCashOutStatus(txId, status);
         } else if (status == CashOutStatus.Reversed && operation.account != account) {
-            revert WrongCashOutReusing(txId, status, operation.account);
+            revert InappropriateCashOutAccount(txId, operation.account);
         }
 
         operation.account = account;
