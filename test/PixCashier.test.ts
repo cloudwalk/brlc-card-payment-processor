@@ -74,6 +74,7 @@ describe("Contract 'PixCashier'", async () => {
   const REVERT_ERROR_IF_AMOUNT_IS_ZERO = "ZeroAmount";
   const REVERT_ERROR_IF_TRANSACTION_ID_IS_ZERO = "ZeroTxId";
   const REVERT_ERROR_IF_TOKEN_MINTING_FAILURE = "TokenMintingFailure";
+  const REVERT_ERROR_IF_INAPPROPRIATE_CASH_OUT_ACCOUNT = "InappropriateCashOutAccount";
   const REVERT_ERROR_IF_INAPPROPRIATE_CASH_OUT_STATUS = "InappropriateCashOutStatus";
   const REVERT_ERROR_IF_EMPTY_TRANSACTION_IDS_ARRAY = "EmptyTransactionIdsArray";
   const REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT = "InvalidBatchArrays";
@@ -546,6 +547,30 @@ describe("Contract 'PixCashier'", async () => {
         pixCashier,
         REVERT_ERROR_IF_INAPPROPRIATE_CASH_OUT_STATUS
       ).withArgs(cashOut.txId, CashOutStatus.Pending);
+    });
+
+    it("Is reverted if the cash-out with the provided txId is already confirmed", async () => {
+      await proveTx(tokenMock.mint(cashOut.account.address, cashOut.amount));
+      await pixCashier.connect(cashier).requestCashOutFrom(cashOut.account.address, cashOut.amount, cashOut.txId);
+      await pixCashier.connect(cashier).confirmCashOut(cashOut.txId);
+      expect(
+        pixCashier.connect(cashier).requestCashOutFrom(cashOut.account.address, cashOut.amount, cashOut.txId)
+      ).to.be.revertedWithCustomError(
+        pixCashier,
+        REVERT_ERROR_IF_INAPPROPRIATE_CASH_OUT_STATUS
+      ).withArgs(cashOut.txId, CashOutStatus.Confirmed);
+    });
+
+    it("Is reverted if txId of a reversed cash-out operation is reused for another account", async () => {
+      await proveTx(tokenMock.mint(cashOut.account.address, cashOut.amount));
+      await pixCashier.connect(cashier).requestCashOutFrom(cashOut.account.address, cashOut.amount, cashOut.txId);
+      await pixCashier.connect(cashier).reverseCashOut(cashOut.txId);
+      expect(
+        pixCashier.connect(cashier).requestCashOutFrom(deployer.address, cashOut.amount, cashOut.txId)
+      ).to.be.revertedWithCustomError(
+        pixCashier,
+        REVERT_ERROR_IF_INAPPROPRIATE_CASH_OUT_ACCOUNT
+      ).withArgs(cashOut.txId, cashOut.account.address);
     });
 
     it("Is reverted if the user has not enough tokens", async () => {
@@ -1194,13 +1219,6 @@ describe("Contract 'PixCashier'", async () => {
       ).withArgs(cashOut.txId, CashOutStatus.Confirmed);
 
       expect(await tokenMock.balanceOf(cashOut.account.address)).to.equal(cashInTokenAmount - cashOut.amount);
-
-      // After confirming a cash-out with the same txId can be requested again.
-      cashOut.amount = cashInTokenAmount - cashOut.amount;
-      await requestCashOuts([cashOut]);
-      cashOut.status = CashOutStatus.Pending;
-      await checkPixCashierState([cashOut], 1);
-      expect(await tokenMock.balanceOf(cashOut.account.address)).to.equal(0);
     });
   });
 });

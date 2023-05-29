@@ -71,6 +71,13 @@ contract PixCashier is
      */
     error InappropriateCashOutStatus(bytes32 txId, CashOutStatus status);
 
+    /**
+     * @dev The cash-out operation with the provided txId cannot executed for the given account.
+     * @param txId The off-chain transaction identifiers of the operation.
+     * @param account The account that must be used for the operation.
+     */
+    error InappropriateCashOutAccount(bytes32 txId, address account);
+
     // -------------------- Functions --------------------------------
 
     /**
@@ -387,8 +394,10 @@ contract PixCashier is
 
         CashOut storage operation = _cashOuts[txId];
         CashOutStatus status = operation.status;
-        if (status == CashOutStatus.Pending) {
+        if (status == CashOutStatus.Pending || status == CashOutStatus.Confirmed) {
             revert InappropriateCashOutStatus(txId, status);
+        } else if (status == CashOutStatus.Reversed && operation.account != account) {
+            revert InappropriateCashOutAccount(txId, operation.account);
         }
 
         operation.account = account;
