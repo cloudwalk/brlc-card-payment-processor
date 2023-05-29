@@ -140,6 +140,7 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      * @param externalId The external identifier of the initial cashback operation.
      * @param recipient The account that received the cashback.
      * @param amount The requested amount of cashback to revoke.
+     * @param totalAmount The total amount of cashback that the recipient has after this operation.
      * @param sender The account that initiated the cashback revocation operation.
      * @param nonce The nonce of the initial cashback operation.
      */
@@ -151,6 +152,7 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
         bytes32 indexed externalId,
         address indexed recipient,
         uint256 amount,
+        uint256 totalAmount,
         address sender,
         uint256 nonce
     );
@@ -169,6 +171,7 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      * @param externalId The external identifier of the initial cashback operation.
      * @param recipient The account that received the cashback.
      * @param amount The requested or actual amount of cashback increase (see the note above).
+     * @param totalAmount The total amount of cashback that the recipient has after this operation.
      * @param sender The account that initiated the cashback increase operation.
      * @param nonce The nonce of the initial cashback operation.
      */
@@ -180,6 +183,7 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
         bytes32 indexed externalId,
         address indexed recipient,
         uint256 amount,
+        uint256 totalAmount,
         address sender,
         uint256 nonce
     );
