@@ -100,7 +100,7 @@ contract CardPaymentProcessor is
     /// @dev A new cashback rate is the same as previously set one.
     error CashbackRateUnchanged();
 
-    /// @dev A new cashback rate exceeds the allowed maximum.
+    /// @dev The provided cashback rate exceeds the allowed maximum.
     error CashbackRateExcess();
 
     /// @dev The cashback operations are already enabled.
@@ -127,11 +127,15 @@ contract CardPaymentProcessor is
     /// @dev The new extra amount of the payment does not meet the requirements.
     error InappropriateNewExtraPaymentAmount();
 
+    /// @dev The function cannot be executed for a subsidized payment with the non-zero refund amount.
+    error SubsidizedPaymentWithNonZeroRefundAmount();
+
     // ------------------- Functions ---------------------------------
 
     /**
-     * @dev The initialize function of the upgradable contract.
-     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
+     * @dev The initializer of the upgradable contract.
+     *
+     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable .
      *
      * Requirements:
      *
@@ -143,6 +147,11 @@ contract CardPaymentProcessor is
         __CardPaymentProcessor_init(token_);
     }
 
+    /**
+     * @dev The internal initializer of the upgradable contract.
+     *
+     * See {CardPaymentProcessor-initialize}.
+     */
     function __CardPaymentProcessor_init(address token_) internal onlyInitializing {
         __Context_init_unchained();
         __ERC165_init_unchained();
@@ -155,6 +164,11 @@ contract CardPaymentProcessor is
         __CardPaymentProcessor_init_unchained(token_);
     }
 
+    /**
+     * @dev The internal unchained initializer of the upgradable contract.
+     *
+     * See {CardPaymentProcessor-initialize}.
+     */
     function __CardPaymentProcessor_init_unchained(address token_) internal onlyInitializing {
         if (token_ == address(0)) {
             revert ZeroTokenAddress();
@@ -167,6 +181,19 @@ contract CardPaymentProcessor is
         _setRoleAdmin(EXECUTOR_ROLE, OWNER_ROLE);
 
         _setupRole(OWNER_ROLE, _msgSender());
+    }
+
+    /// @dev Contains parameters of a payment making operation.
+    struct MakingOperation {
+        address sender;
+        address account;
+        uint256 baseAmount;
+        uint256 extraAmount;
+        bytes16 authorizationId;
+        bytes16 correlationId;
+        address sponsor;
+        uint256 subsidyLimit;
+        int16   cashbackRateInPermil;
     }
 
     /**
@@ -187,7 +214,50 @@ contract CardPaymentProcessor is
         bytes16 correlationId
     ) external whenNotPaused notBlacklisted(_msgSender()) {
         address sender = _msgSender();
-        makePaymentInternal(sender, sender, baseAmount, extraAmount, authorizationId, correlationId);
+        MakingOperation memory operation = MakingOperation({
+            sender: sender,
+            account: sender,
+            baseAmount: baseAmount,
+            extraAmount: extraAmount,
+            authorizationId: authorizationId,
+            correlationId: correlationId,
+            sponsor: address(0),
+            subsidyLimit: 0,
+            cashbackRateInPermil: -1
+        });
+        makePaymentInternal(operation);
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-makePaymentWithoutCashback}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must must not be blacklisted.
+     * - The authorization ID of the payment must not be zero.
+     * - The payment linked with the authorization ID must not exist or be revoked.
+     * - The payment's revocation counter must be equal to zero or less than the configured revocation limit.
+     */
+    function makePaymentWithoutCashback(
+        uint256 baseAmount,
+        uint256 extraAmount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) external whenNotPaused notBlacklisted(_msgSender()) {
+        address sender = _msgSender();
+        MakingOperation memory operation = MakingOperation({
+            sender: sender,
+            account: sender,
+            baseAmount: baseAmount,
+            extraAmount: extraAmount,
+            authorizationId: authorizationId,
+            correlationId: correlationId,
+            sponsor: address(0),
+            subsidyLimit: 0,
+            cashbackRateInPermil: 0
+        });
+        makePaymentInternal(operation);
     }
 
     /**
@@ -199,7 +269,18 @@ contract CardPaymentProcessor is
         bytes16 correlationId
     ) external whenNotPaused notBlacklisted(_msgSender()) {
         address sender = _msgSender();
-        makePaymentInternal(sender, sender, amount, 0, authorizationId, correlationId);
+        MakingOperation memory operation = MakingOperation({
+            sender: sender,
+            account: sender,
+            baseAmount: amount,
+            extraAmount: 0,
+            authorizationId: authorizationId,
+            correlationId: correlationId,
+            sponsor: address(0),
+            subsidyLimit: 0,
+            cashbackRateInPermil: -1
+        });
+        makePaymentInternal(operation);
     }
 
     /**
@@ -224,7 +305,18 @@ contract CardPaymentProcessor is
         if (account == address(0)) {
             revert ZeroAccount();
         }
-        makePaymentInternal(_msgSender(), account, baseAmount, extraAmount, authorizationId, correlationId);
+        MakingOperation memory operation = MakingOperation({
+            sender: _msgSender(),
+            account: account,
+            baseAmount: baseAmount,
+            extraAmount: extraAmount,
+            authorizationId: authorizationId,
+            correlationId: correlationId,
+            sponsor: address(0),
+            subsidyLimit: 0,
+            cashbackRateInPermil: -1
+        });
+        makePaymentInternal(operation);
     }
 
     /**
@@ -239,7 +331,61 @@ contract CardPaymentProcessor is
         if (account == address(0)) {
             revert ZeroAccount();
         }
-        makePaymentInternal(_msgSender(), account, amount, 0, authorizationId, correlationId);
+        MakingOperation memory operation = MakingOperation({
+            sender: _msgSender(),
+            account: account,
+            baseAmount: amount,
+            extraAmount: 0,
+            authorizationId: authorizationId,
+            correlationId: correlationId,
+            sponsor: address(0),
+            subsidyLimit: 0,
+            cashbackRateInPermil: -1
+        });
+        makePaymentInternal(operation);
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-makePaymentFor}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The payment account address must not be zero.
+     * - The authorization ID of the payment must not be zero.
+     * - The payment linked with the authorization ID must not exist or be revoked.
+     * - The payment's revocation counter must be equal to zero or less than the configured revocation limit.
+     * - The requested cashback rate must not exceed the maximum allowable cashback rate defined in the contract.
+     */
+    function makePaymentFor(
+        address account,
+        uint256 baseAmount,
+        uint256 extraAmount,
+        bytes16 authorizationId,
+        bytes16 correlationId,
+        address sponsor,
+        uint256 subsidyLimit,
+        int16  cashbackRateInPermil
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        if (account == address(0)) {
+            revert ZeroAccount();
+        }
+        if (cashbackRateInPermil > 0 && uint16(cashbackRateInPermil) > MAX_CASHBACK_RATE_IN_PERMIL) {
+            revert CashbackRateExcess();
+        }
+        MakingOperation memory operation = MakingOperation({
+            sender: _msgSender(),
+            account: account,
+            baseAmount: baseAmount,
+            extraAmount: extraAmount,
+            authorizationId: authorizationId,
+            correlationId: correlationId,
+            sponsor: sponsor,
+            subsidyLimit: subsidyLimit,
+            cashbackRateInPermil: cashbackRateInPermil
+        });
+        makePaymentInternal(operation);
     }
 
     /**
@@ -423,11 +569,7 @@ contract CardPaymentProcessor is
      * - The input authorization ID of the payment must not be zero.
      * - The payment linked with the authorization ID must have the "cleared" status.
      */
-    function confirmPayment(bytes16 authorizationId)
-        public
-        whenNotPaused
-        onlyRole(EXECUTOR_ROLE)
-    {
+    function confirmPayment(bytes16 authorizationId) public whenNotPaused onlyRole(EXECUTOR_ROLE) {
         uint256 amount = confirmPaymentInternal(authorizationId);
         _totalClearedBalance -= amount;
         IERC20Upgradeable(_token).safeTransfer(requireCashOutAccount(), amount);
@@ -444,11 +586,7 @@ contract CardPaymentProcessor is
      * - All authorization IDs in the input array must not be zero.
      * - All payments linked with the authorization IDs must have the "cleared" status.
      */
-    function confirmPayments(bytes16[] memory authorizationIds)
-        public
-        whenNotPaused
-        onlyRole(EXECUTOR_ROLE)
-    {
+    function confirmPayments(bytes16[] memory authorizationIds) public whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (authorizationIds.length == 0) {
             revert EmptyAuthorizationIdsArray();
         }
@@ -721,19 +859,13 @@ contract CardPaymentProcessor is
         emit SetCashOutAccount(oldCashOutAccount, newCashOutAccount);
     }
 
-    function makePaymentInternal(
-        address sender,
-        address account,
-        uint256 baseAmount,
-        uint256 extraAmount,
-        bytes16 authorizationId,
-        bytes16 correlationId
-    ) internal {
-        if (authorizationId == 0) {
+    /// @dev Making a payment. See {ICardPaymentCashback-makePaymentSubsidized}.
+    function makePaymentInternal(MakingOperation memory operation) internal {
+        if (operation.authorizationId == 0) {
             revert ZeroAuthorizationId();
         }
 
-        Payment storage payment = _payments[authorizationId];
+        Payment storage payment = _payments[operation.authorizationId];
 
         PaymentStatus status = payment.status;
         if (
@@ -748,42 +880,87 @@ contract CardPaymentProcessor is
             revert RevocationLimitReached(_revocationLimit);
         }
 
-        uint256 sumAmount = baseAmount + extraAmount;
-        payment.account = account;
-        payment.baseAmount = baseAmount;
+        uint256 sumAmount = operation.baseAmount + operation.extraAmount;
+        payment.account = operation.account;
+        payment.baseAmount = operation.baseAmount;
         payment.status = PaymentStatus.Uncleared;
 
-        _unclearedBalances[account] = _unclearedBalances[account] + sumAmount;
-        _totalUnclearedBalance = _totalUnclearedBalance + sumAmount;
+        if (operation.sponsor != address(0)) {
+            payment.sponsor = operation.sponsor;
+            payment.subsidyLimit = operation.subsidyLimit;
+        } else {
+            operation.subsidyLimit = 0;
+            resetSubsidizedPaymentFields(payment);
+        }
+
+        _unclearedBalances[operation.account] += sumAmount;
+        _totalUnclearedBalance += sumAmount;
 
         emit MakePayment(
-            authorizationId,
-            correlationId,
-            account,
+            operation.authorizationId,
+            operation.correlationId,
+            operation.account,
             sumAmount,
             revocationCounter,
-            sender
+            operation.sender
         );
 
         // We do not call a related existent internal function here to safe some gas and
         // because `payment.extraAmount` can be already set at this point if the payment was revoked.
-        if (extraAmount > 0) {
+        if (operation.extraAmount > 0) {
             emit PaymentExtraAmountChanged(
-                authorizationId,
-                account,
+                operation.authorizationId,
+                operation.account,
                 sumAmount,
-                extraAmount,
+                operation.extraAmount,
                 0
             );
-            payment.extraAmount = extraAmount;
+            payment.extraAmount = operation.extraAmount;
         } else if (payment.extraAmount != 0) {
             payment.extraAmount = 0;
         }
 
-        IERC20Upgradeable(_token).safeTransferFrom(account, address(this), sumAmount);
-        (payment.compensationAmount, payment.cashbackRate) = sendCashbackInternal(account, baseAmount, authorizationId);
+        (uint256 accountSumAmount, uint256 sponsorSumAmount) = defineSumAmountParts(sumAmount, operation.subsidyLimit);
+        uint256 accountBaseAmount = defineAccountBaseAmount(operation.baseAmount, operation.subsidyLimit);
+        IERC20Upgradeable token = IERC20Upgradeable(_token);
+
+        token.safeTransferFrom(operation.account, address(this), accountSumAmount);
+        if (operation.sponsor != address(0)) {
+            emit MakePaymentSubsidized(
+                operation.authorizationId,
+                operation.correlationId,
+                operation.sponsor,
+                operation.subsidyLimit,
+                sponsorSumAmount,
+                bytes("")
+            );
+
+            token.safeTransferFrom(operation.sponsor, address(this), sponsorSumAmount);
+        }
+        (payment.compensationAmount, payment.cashbackRate) = sendCashbackInternal(
+            operation.account,
+            accountBaseAmount,
+            operation.authorizationId,
+            operation.cashbackRateInPermil
+        );
     }
 
+    /// @dev Contains parameters for a payment updating operation.
+    struct UpdatingOperation {
+        uint256 oldPaymentSumAmount;
+        uint256 newPaymentSumAmount;
+        uint256 oldSponsorSumAmount;
+        uint256 newSponsorSumAmount;
+        uint256 oldCompensationAmount;
+        uint256 paymentTotalAmountChange;
+        uint256 accountBalanceChange;
+        uint256 sponsorBalanceChange;
+        uint256 cashbackAmountChange;
+        bool paymentSumAmountDecreased;
+        bool cashbackDecreased;
+    }
+
+    /// @dev Updates the base amount and extra amount of a payment. See {ICardPaymentCashback-updatePaymentAmount}.
     function updatePaymentAmountInternal(
         uint256 newBaseAmount,
         uint256 newExtraAmount,
@@ -796,8 +973,6 @@ contract CardPaymentProcessor is
 
         Payment storage payment = _payments[authorizationId];
         PaymentStatus status = payment.status;
-        address account = payment.account;
-        uint256 oldSumPaymentAmount = payment.baseAmount + payment.extraAmount;
         uint256 refundAmount = payment.refundAmount;
 
         if (status == PaymentStatus.Nonexistent) {
@@ -809,74 +984,138 @@ contract CardPaymentProcessor is
         if (refundAmount > newBaseAmount) {
             revert InappropriateNewBasePaymentAmount();
         }
+        UpdatingOperation memory operation = defineUpdatePaymentOperation(
+            newBaseAmount,
+            newExtraAmount,
+            refundAmount,
+            payment
+        );
 
-        uint256 newCompensationAmount = refundAmount +
-        calculateCashback(newBaseAmount - refundAmount, payment.cashbackRate);
-        uint256 newSumPaymentAmount = newBaseAmount + newExtraAmount;
         payment.baseAmount = newBaseAmount;
 
-        if (newSumPaymentAmount >= oldSumPaymentAmount) {
-            uint256 paymentAmountDiff = newSumPaymentAmount - oldSumPaymentAmount;
-
-            _totalUnclearedBalance += paymentAmountDiff;
-            _unclearedBalances[account] += paymentAmountDiff;
-
-            if (newCompensationAmount >= payment.compensationAmount) {
-                uint256 oldCompensationAmount = payment.compensationAmount;
-                uint256 cashbackIncreaseAmount = newCompensationAmount - oldCompensationAmount;
-
-                IERC20Upgradeable(_token).safeTransferFrom(account, address(this), paymentAmountDiff);
-                cashbackIncreaseAmount = increaseCashbackInternal(authorizationId, cashbackIncreaseAmount);
-                payment.compensationAmount = oldCompensationAmount + cashbackIncreaseAmount;
-            } else {
-                uint256 cashbackRevocationAmount = payment.compensationAmount - newCompensationAmount;
-
-                paymentAmountDiff += cashbackRevocationAmount;
-                payment.compensationAmount = newCompensationAmount;
-
-                IERC20Upgradeable(_token).safeTransferFrom(account, address(this), paymentAmountDiff);
-                revokeCashbackInternal(authorizationId, cashbackRevocationAmount);
-            }
-        } else {
-            uint256 paymentAmountDiff = oldSumPaymentAmount - newSumPaymentAmount;
-
-            _totalUnclearedBalance -= paymentAmountDiff;
-            _unclearedBalances[account] -= paymentAmountDiff;
-
-            if (newCompensationAmount >= payment.compensationAmount) {
-                uint256 oldCompensationAmount = payment.compensationAmount;
-                uint256 cashbackIncreaseAmount = newCompensationAmount - oldCompensationAmount;
-
-                IERC20Upgradeable(_token).safeTransfer(account, paymentAmountDiff);
-                cashbackIncreaseAmount = increaseCashbackInternal(authorizationId, cashbackIncreaseAmount);
-                payment.compensationAmount = oldCompensationAmount + cashbackIncreaseAmount;
-            } else {
-                uint256 cashbackRevocationAmount = payment.compensationAmount - newCompensationAmount;
-                uint256 sentAmount = paymentAmountDiff - cashbackRevocationAmount;
-
-                payment.compensationAmount = newCompensationAmount;
-
-                IERC20Upgradeable(_token).safeTransfer(account, sentAmount);
-                revokeCashbackInternal(authorizationId, cashbackRevocationAmount);
-            }
-        }
+        address account = payment.account;
+        address sponsor = payment.sponsor;
+        IERC20Upgradeable token = IERC20Upgradeable(_token);
 
         emit UpdatePaymentAmount(
             authorizationId,
             correlationId,
             account,
-            oldSumPaymentAmount,
-            newSumPaymentAmount
+            operation.oldPaymentSumAmount,
+            operation.newPaymentSumAmount
         );
+        if (sponsor != address(0)) {
+            emit UpdatePaymentSubsidized(
+                authorizationId,
+                correlationId,
+                sponsor,
+                operation.oldSponsorSumAmount,
+                operation.newSponsorSumAmount,
+                bytes("")
+            );
+        }
         updateExtraAmountInternal(
             authorizationId,
             account,
-            newSumPaymentAmount,
+            operation.newPaymentSumAmount,
             newExtraAmount,
             payment
         );
+
+        if (operation.paymentSumAmountDecreased) {
+            _totalUnclearedBalance -= operation.paymentTotalAmountChange;
+            _unclearedBalances[account] -= operation.paymentTotalAmountChange;
+            token.safeTransfer(account, operation.accountBalanceChange);
+            if (sponsor != address(0)) {
+                token.safeTransfer(sponsor, operation.sponsorBalanceChange);
+            }
+        } else {
+            _totalUnclearedBalance += operation.paymentTotalAmountChange;
+            _unclearedBalances[account] += operation.paymentTotalAmountChange;
+            token.safeTransferFrom(account, address(this), operation.accountBalanceChange);
+            if (sponsor != address(0)) {
+                token.safeTransferFrom(sponsor, address(this), operation.sponsorBalanceChange);
+            }
+        }
+        if (operation.cashbackDecreased) {
+            revokeCashbackInternal(authorizationId, operation.cashbackAmountChange);
+            payment.compensationAmount = operation.oldCompensationAmount - operation.cashbackAmountChange;
+        } else {
+            uint256 cashbackIncreaseAmount = increaseCashbackInternal(authorizationId, operation.cashbackAmountChange);
+            payment.compensationAmount = operation.oldCompensationAmount + cashbackIncreaseAmount;
+        }
     }
 
+    /// @dev Returns a structure with parameters for a payment updating operation.
+    function defineUpdatePaymentOperation(
+        uint256 newBaseAmount,
+        uint256 newExtraAmount,
+        uint256 paymentRefundAmount,
+        Payment storage payment
+    ) internal view returns (UpdatingOperation memory) {
+        if (payment.sponsor != address(0) && paymentRefundAmount != 0) {
+            revert SubsidizedPaymentWithNonZeroRefundAmount();
+        }
+        uint256 oldPaymentSumAmount = payment.baseAmount + payment.extraAmount;
+        uint256 newPaymentSumAmount = newBaseAmount + newExtraAmount;
+        uint256 subsidyLimit = payment.subsidyLimit;
+        uint256 newAccountBaseAmount = defineAccountBaseAmount(newBaseAmount, subsidyLimit);
+        uint256 newCompensationAmount = paymentRefundAmount +
+            calculateCashback(newAccountBaseAmount - paymentRefundAmount, payment.cashbackRate);
+        uint256 oldCompensationAmount = payment.compensationAmount;
+        uint256 newAccountSumAmount;
+        uint256 newSponsorSumAmount;
+        uint256 oldAccountSumAmount;
+        uint256 oldSponsorSumAmount;
+        (newAccountSumAmount, newSponsorSumAmount) = defineSumAmountParts(newPaymentSumAmount, subsidyLimit);
+        (oldAccountSumAmount, oldSponsorSumAmount) = defineSumAmountParts(oldPaymentSumAmount, subsidyLimit);
+
+        UpdatingOperation memory operation = UpdatingOperation({
+            oldPaymentSumAmount: oldPaymentSumAmount,
+            newPaymentSumAmount: newPaymentSumAmount,
+            oldSponsorSumAmount: oldSponsorSumAmount,
+            newSponsorSumAmount: newSponsorSumAmount,
+            oldCompensationAmount: oldCompensationAmount,
+            paymentTotalAmountChange: 0,
+            accountBalanceChange: 0,
+            sponsorBalanceChange: 0,
+            cashbackAmountChange: 0,
+            paymentSumAmountDecreased: false,
+            cashbackDecreased: false
+        });
+
+        if (newPaymentSumAmount < oldPaymentSumAmount) {
+            operation.paymentSumAmountDecreased = true;
+            operation.paymentTotalAmountChange = oldPaymentSumAmount - newPaymentSumAmount;
+            operation.sponsorBalanceChange = oldSponsorSumAmount - newSponsorSumAmount;
+
+            if (newCompensationAmount < oldCompensationAmount) {
+                operation.cashbackDecreased = true;
+                operation.cashbackAmountChange = oldCompensationAmount - newCompensationAmount;
+                operation.accountBalanceChange =
+                    oldAccountSumAmount - newAccountSumAmount - operation.cashbackAmountChange;
+            } else {
+                operation.cashbackAmountChange = newCompensationAmount - oldCompensationAmount;
+                operation.accountBalanceChange = oldAccountSumAmount - newAccountSumAmount;
+            }
+        } else {
+            operation.paymentTotalAmountChange = newPaymentSumAmount - oldPaymentSumAmount;
+            operation.sponsorBalanceChange = newSponsorSumAmount - oldSponsorSumAmount;
+
+            if (newCompensationAmount < oldCompensationAmount) {
+                operation.cashbackDecreased = true;
+                operation.cashbackAmountChange = oldCompensationAmount - newCompensationAmount;
+                operation.accountBalanceChange =
+                    newAccountSumAmount - oldAccountSumAmount + operation.cashbackAmountChange;
+            } else {
+                operation.cashbackAmountChange = newCompensationAmount - oldCompensationAmount;
+                operation.accountBalanceChange = newAccountSumAmount - oldAccountSumAmount;
+            }
+        }
+        return operation;
+    }
+
+    /// @dev Clears a payment. See {ICardPaymentCashback-clearPayment}.
     function clearPaymentInternal(bytes16 authorizationId) internal returns (uint256 totalAmount) {
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
@@ -912,8 +1151,18 @@ contract CardPaymentProcessor is
             newUnclearedBalance,
             payment.revocationCounter
         );
+
+        address sponsor = payment.sponsor;
+        if (sponsor != address(0)) {
+            emit ClearPaymentSubsidized(
+                authorizationId,
+                sponsor,
+                bytes("")
+            );
+        }
     }
 
+    /// @dev Unclears a payment. See {ICardPaymentCashback-unclearPayment}.
     function unclearPaymentInternal(bytes16 authorizationId) internal returns (uint256 totalAmount) {
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
@@ -949,8 +1198,18 @@ contract CardPaymentProcessor is
             newUnclearedBalance,
             payment.revocationCounter
         );
+
+        address sponsor = payment.sponsor;
+        if (sponsor != address(0)) {
+            emit UnclearPaymentSubsidized(
+                authorizationId,
+                sponsor,
+                bytes("")
+            );
+        }
     }
 
+    /// @dev Confirms a payment. See {ICardPaymentCashback-confirmPayment}.
     function confirmPaymentInternal(bytes16 authorizationId) internal returns (uint256 totalAmount) {
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
@@ -973,15 +1232,27 @@ contract CardPaymentProcessor is
         _clearedBalances[account] = newClearedBalance;
 
         emit ConfirmPayment(authorizationId, account, totalAmount, newClearedBalance, payment.revocationCounter);
+
+        address sponsor = payment.sponsor;
+        if (sponsor != address(0)) {
+            emit ConfirmPaymentSubsidized(
+                authorizationId,
+                sponsor,
+                bytes("")
+            );
+        }
     }
 
-    struct CancelPaymentVars {
-        address account;
+    /// @dev Contains parameters of a payment canceling operation.
+    struct CancelingOperation {
         uint256 paymentTotalAmount;
+        uint256 accountSentAmount;
+        uint256 sponsorSentAmount;
+        uint256 totalSentAmount;
         uint256 revokedCashbackAmount;
-        uint256 sentAmount;
     }
 
+    /// @dev Cancels a payment. For parameters see {ICardPaymentCashback-revokePayment}.
     function cancelPaymentInternal(
         bytes16 authorizationId,
         bytes16 correlationId,
@@ -1002,25 +1273,22 @@ contract CardPaymentProcessor is
             revert PaymentNotExist();
         }
 
-        CancelPaymentVars memory cancellation;
-        cancellation.account = payment.account;
-        cancellation.sentAmount = payment.baseAmount + payment.extraAmount - payment.compensationAmount;
-        cancellation.paymentTotalAmount = payment.baseAmount + payment.extraAmount - payment.refundAmount;
-        cancellation.revokedCashbackAmount = cancellation.paymentTotalAmount - cancellation.sentAmount;
+        CancelingOperation memory operation = defineCancellationOperation(payment);
 
+        address account = payment.account;
         if (status == PaymentStatus.Uncleared) {
-            _totalUnclearedBalance -= cancellation.paymentTotalAmount;
-            _unclearedBalances[cancellation.account] -= cancellation.paymentTotalAmount;
+            _totalUnclearedBalance -= operation.paymentTotalAmount;
+            _unclearedBalances[account] -= operation.paymentTotalAmount;
         } else if (status == PaymentStatus.Cleared) {
-            _totalClearedBalance -= cancellation.paymentTotalAmount;
-            _clearedBalances[cancellation.account] -= cancellation.paymentTotalAmount;
+            _totalClearedBalance -= operation.paymentTotalAmount;
+            _clearedBalances[account] -= operation.paymentTotalAmount;
         } else {
             revert InappropriatePaymentStatus(status);
         }
 
-        payment.compensationAmount = 0;
-        payment.refundAmount = 0;
+        resetCompensationAndRefundFields(payment);
 
+        address sponsor = payment.sponsor;
         if (targetStatus == PaymentStatus.Revoked) {
             payment.status = PaymentStatus.Revoked;
             _paymentRevocationFlags[parentTxHash] = true;
@@ -1030,14 +1298,24 @@ contract CardPaymentProcessor is
             emit RevokePayment(
                 authorizationId,
                 correlationId,
-                cancellation.account,
-                cancellation.sentAmount,
-                _clearedBalances[cancellation.account],
-                _unclearedBalances[cancellation.account],
+                account,
+                operation.totalSentAmount,
+                _clearedBalances[account],
+                _unclearedBalances[account],
                 status == PaymentStatus.Cleared,
                 parentTxHash,
                 newRevocationCounter
             );
+
+            if (sponsor != address(0)) {
+                emit RevokePaymentSubsidized(
+                    authorizationId,
+                    correlationId,
+                    sponsor,
+                    operation.sponsorSentAmount,
+                    bytes("")
+                );
+            }
         } else {
             payment.status = PaymentStatus.Reversed;
             _paymentReversionFlags[parentTxHash] = true;
@@ -1045,20 +1323,73 @@ contract CardPaymentProcessor is
             emit ReversePayment(
                 authorizationId,
                 correlationId,
-                cancellation.account,
-                cancellation.sentAmount,
-                _clearedBalances[cancellation.account],
-                _unclearedBalances[cancellation.account],
+                account,
+                operation.totalSentAmount,
+                _clearedBalances[account],
+                _unclearedBalances[account],
                 status == PaymentStatus.Cleared,
                 parentTxHash,
                 payment.revocationCounter
             );
+
+            if (sponsor != address(0)) {
+                emit ReversePaymentSubsidized(
+                    authorizationId,
+                    correlationId,
+                    sponsor,
+                    operation.sponsorSentAmount,
+                    bytes("")
+                );
+            }
         }
 
-        IERC20Upgradeable(_token).safeTransfer(cancellation.account, cancellation.sentAmount);
-        revokeCashbackInternal(authorizationId, cancellation.revokedCashbackAmount);
+        IERC20Upgradeable token = IERC20Upgradeable(_token);
+
+        token.safeTransfer(account, operation.accountSentAmount);
+        if (sponsor != address(0)) {
+            token.safeTransfer(sponsor, operation.sponsorSentAmount);
+        }
+        revokeCashbackInternal(authorizationId, operation.revokedCashbackAmount);
     }
 
+    /// @dev Returns a structure with parameters for a payment cancellation operation.
+    function defineCancellationOperation(Payment storage payment) internal view returns (CancelingOperation memory) {
+        uint256 paymentBaseAmount = payment.baseAmount;
+        uint256 paymentRefundAmount = payment.refundAmount;
+        uint256 subsidyLimit = payment.subsidyLimit;
+        uint256 sponsorRefundAmount = defineSponsorRefundAmount(paymentRefundAmount, paymentBaseAmount, subsidyLimit);
+        uint256 paymentSumAmount = paymentBaseAmount + payment.extraAmount;
+        (uint256 accountSumAmount, uint256 sponsorSumAmount) = defineSumAmountParts(paymentSumAmount, subsidyLimit);
+        uint256 paymentTotalAmount = paymentSumAmount - paymentRefundAmount;
+        uint256 accountSentAmount = accountSumAmount - (payment.compensationAmount - sponsorRefundAmount);
+        uint256 sponsorSentAmount = sponsorSumAmount - sponsorRefundAmount;
+
+        CancelingOperation memory operation = CancelingOperation({
+            paymentTotalAmount: paymentTotalAmount,
+            accountSentAmount: accountSentAmount,
+            sponsorSentAmount: sponsorSentAmount,
+            totalSentAmount: accountSentAmount + sponsorSentAmount,
+            revokedCashbackAmount: paymentTotalAmount - accountSentAmount - sponsorSentAmount
+        });
+
+        return operation;
+    }
+
+    /// @dev Contains parameters of a payment refunding operation.
+    struct RefundingOperation {
+        uint256 paymentRefundAmount;
+        uint256 sponsorRefundAmount;
+        uint256 newPaymentRefundAmount;
+        uint256 newPaymentSumAmount;
+        uint256 paymentTotalAmountDiff;
+        uint256 newCompensationAmount;
+        uint256 accountSentAmount;
+        uint256 sponsorSentAmount;
+        uint256 totalSentAmount;
+        uint256 revokedCashbackAmount;
+    }
+
+    /// @dev Makes a refund for a payment. See {ICardPaymentCashback-refundPayment}.
     function refundPaymentInternal(
         uint256 refundAmount,
         uint256 newExtraAmount,
@@ -1071,8 +1402,6 @@ contract CardPaymentProcessor is
 
         Payment storage payment = _payments[authorizationId];
         PaymentStatus status = payment.status;
-        uint256 basePaymentAmount = payment.baseAmount;
-        uint256 newRefundAmount = payment.refundAmount + refundAmount;
 
         if (status == PaymentStatus.Nonexistent) {
             revert PaymentNotExist();
@@ -1080,65 +1409,139 @@ contract CardPaymentProcessor is
         if (status != PaymentStatus.Uncleared && status != PaymentStatus.Cleared && status != PaymentStatus.Confirmed) {
             revert InappropriatePaymentStatus(status);
         }
-        if (newRefundAmount > basePaymentAmount) {
+        if (payment.refundAmount + refundAmount > payment.baseAmount) {
             revert InappropriateRefundAmount();
         }
         if (newExtraAmount > payment.extraAmount) {
             revert InappropriateNewExtraPaymentAmount();
         }
 
-        uint256 newCompensationAmount = newRefundAmount +
-        calculateCashback(basePaymentAmount - newRefundAmount, payment.cashbackRate);
-        uint256 sentAmount = newCompensationAmount - payment.compensationAmount + payment.extraAmount - newExtraAmount;
-        uint256 revokedCashbackAmount = refundAmount - (newCompensationAmount - payment.compensationAmount);
+        RefundingOperation memory operation = defineRefundingOperation(refundAmount, newExtraAmount, payment);
 
-        payment.refundAmount = newRefundAmount;
-        payment.compensationAmount = newCompensationAmount;
+        payment.refundAmount = operation.newPaymentRefundAmount;
+        payment.compensationAmount = operation.newCompensationAmount;
 
+        address account = payment.account;
+        address sponsor = payment.sponsor;
+        IERC20Upgradeable token = IERC20Upgradeable(_token);
         if (status == PaymentStatus.Uncleared) {
-            _totalUnclearedBalance -= refundAmount + payment.extraAmount - newExtraAmount;
-            _unclearedBalances[payment.account] -= refundAmount + payment.extraAmount - newExtraAmount;
-            IERC20Upgradeable(_token).safeTransfer(payment.account, sentAmount);
+            _totalUnclearedBalance -= operation.paymentTotalAmountDiff;
+            _unclearedBalances[account] -= operation.paymentTotalAmountDiff;
+            token.safeTransfer(account, operation.accountSentAmount);
+            if (sponsor != address(0)) {
+                token.safeTransfer(sponsor, operation.sponsorSentAmount);
+            }
         } else if (status == PaymentStatus.Cleared) {
-            _totalClearedBalance -= refundAmount + payment.extraAmount - newExtraAmount;
-            _clearedBalances[payment.account] -= refundAmount + payment.extraAmount - newExtraAmount;
-            IERC20Upgradeable(_token).safeTransfer(payment.account, sentAmount);
+            _totalClearedBalance -= operation.paymentTotalAmountDiff;
+            _clearedBalances[account] -= operation.paymentTotalAmountDiff;
+            token.safeTransfer(account, operation.accountSentAmount);
+            if (sponsor != address(0)) {
+                token.safeTransfer(sponsor, operation.sponsorSentAmount);
+            }
         } else { // status == PaymentStatus.ConfirmPayment
             address cashOutAccount_ = requireCashOutAccount();
-            IERC20Upgradeable token = IERC20Upgradeable(_token);
-            token.safeTransferFrom(cashOutAccount_, payment.account, sentAmount);
-            token.safeTransferFrom(cashOutAccount_, address(this), revokedCashbackAmount);
+            token.safeTransferFrom(cashOutAccount_, account, operation.accountSentAmount);
+            if (sponsor != address(0)) {
+                token.safeTransferFrom(cashOutAccount_, sponsor, operation.sponsorSentAmount);
+            }
+            token.safeTransferFrom(cashOutAccount_, address(this), operation.revokedCashbackAmount);
         }
 
-        revokeCashbackInternal(authorizationId, revokedCashbackAmount);
+        revokeCashbackInternal(authorizationId, operation.revokedCashbackAmount);
 
         emit RefundPayment(
             authorizationId,
             correlationId,
-            payment.account,
+            account,
             refundAmount,
-            sentAmount,
+            operation.totalSentAmount,
             status
         );
+        if (sponsor != address(0)) {
+            emit RefundPaymentSubsidized(
+                authorizationId,
+                correlationId,
+                sponsor,
+                operation.sponsorRefundAmount,
+                operation.sponsorSentAmount,
+                bytes("")
+            );
+        }
         updateExtraAmountInternal(
             authorizationId,
-            payment.account,
-            basePaymentAmount + newExtraAmount,
+            account,
+            operation.newPaymentSumAmount,
             newExtraAmount,
             payment
         );
     }
 
+    /// @dev Returns a structure with parameters for a payment updating operation.
+    function defineRefundingOperation(
+        uint256 paymentRefundAmount,
+        uint256 newPaymentExtraAmount,
+        Payment storage payment
+    ) internal view returns (RefundingOperation memory) {
+        uint256 subsidyLimit = payment.subsidyLimit;
+        uint256 paymentBaseAmount = payment.baseAmount;
+        uint256 oldPaymentRefundAmount = payment.refundAmount;
+        uint256 newPaymentRefundAmount = oldPaymentRefundAmount + paymentRefundAmount;
+        uint256 oldSponsorRefundAmount =
+            defineSponsorRefundAmount(oldPaymentRefundAmount, paymentBaseAmount, subsidyLimit);
+        uint256 newSponsorRefundAmount =
+            defineSponsorRefundAmount(newPaymentRefundAmount, paymentBaseAmount, subsidyLimit);
+        uint256 accountBaseAmount = defineAccountBaseAmount(paymentBaseAmount, subsidyLimit);
+
+        RefundingOperation memory operation;
+
+        operation.newPaymentSumAmount = paymentBaseAmount + newPaymentExtraAmount;
+        operation.sponsorRefundAmount = newSponsorRefundAmount - oldSponsorRefundAmount;
+        operation.paymentRefundAmount = paymentRefundAmount; // It is needed to avoid the "Stack too deep" error.
+        operation.newPaymentRefundAmount = newPaymentRefundAmount;
+        operation.newCompensationAmount = newPaymentRefundAmount + calculateCashback(
+            accountBaseAmount - (newPaymentRefundAmount - newSponsorRefundAmount),
+            payment.cashbackRate
+        );
+
+        uint256 oldPaymentExtraAmount = payment.extraAmount;
+        uint256 oldAccountExtraAmount =
+            defineAccountExtraAmount(paymentBaseAmount, oldPaymentExtraAmount, subsidyLimit);
+        uint256 newAccountExtraAmount =
+            defineAccountExtraAmount(paymentBaseAmount, newPaymentExtraAmount, subsidyLimit);
+        uint256 paymentExtraAmountChange = oldPaymentExtraAmount - newPaymentExtraAmount;
+        uint256 accountExtraAmountChange = oldAccountExtraAmount - newAccountExtraAmount;
+        uint256 oldCompensationAmount = payment.compensationAmount;
+        operation.accountSentAmount =
+            operation.newCompensationAmount - oldCompensationAmount - newSponsorRefundAmount + accountExtraAmountChange;
+        operation.sponsorSentAmount =
+            operation.sponsorRefundAmount + paymentExtraAmountChange - accountExtraAmountChange;
+        operation.totalSentAmount = operation.accountSentAmount + operation.sponsorSentAmount;
+        operation.paymentTotalAmountDiff = operation.paymentRefundAmount + paymentExtraAmountChange;
+        operation.revokedCashbackAmount =
+            operation.paymentRefundAmount - (operation.newCompensationAmount - oldCompensationAmount);
+
+        return operation;
+    }
+
+    /// @dev Sends cashback related to a payment.
     function sendCashbackInternal(
         address account,
         uint256 basePaymentAmount,
-        bytes16 authorizationId
+        bytes16 authorizationId,
+        int16   requestedCashbackRateInPermil
     ) internal returns (uint256 sentAmount, uint16 appliedCashbackRate) {
+        if (requestedCashbackRateInPermil == 0) {
+            return (0, 0);
+        }
         address distributor = _cashbackDistributor;
         if (_cashbackEnabled && distributor != address(0)) {
             bool success;
             uint256 cashbackNonce;
-            appliedCashbackRate = _cashbackRateInPermil;
+            if (requestedCashbackRateInPermil > 0) {
+                appliedCashbackRate = uint16(requestedCashbackRateInPermil);
+            } else {
+                appliedCashbackRate = _cashbackRateInPermil;
+            }
             uint256 cashbackAmount = calculateCashback(basePaymentAmount, appliedCashbackRate);
             (success, sentAmount, cashbackNonce) = ICashbackDistributor(distributor).sendCashback(
                 _token,
@@ -1157,6 +1560,7 @@ contract CardPaymentProcessor is
         }
     }
 
+    /// @dev Revokes partially or fully cashback related to a payment.
     function revokeCashbackInternal(bytes16 authorizationId, uint256 amount) internal {
         address distributor = _cashbackDistributor;
         uint256 cashbackNonce = _cashbacks[authorizationId].lastCashbackNonce;
@@ -1169,6 +1573,7 @@ contract CardPaymentProcessor is
         }
     }
 
+    /// @dev Increases cashback related to a payment.
     function increaseCashbackInternal(
         bytes16 authorizationId,
         uint256 amount
@@ -1186,6 +1591,7 @@ contract CardPaymentProcessor is
         }
     }
 
+    /// @dev Checks if the cash-out account exists and returns if it does. Otherwise reverts the execution.
     function requireCashOutAccount() internal view returns (address account) {
         account = _cashOutAccount;
         if (account == address(0)) {
@@ -1193,10 +1599,12 @@ contract CardPaymentProcessor is
         }
     }
 
+    /// @dev Calculates cashback according to the amount and the rate.
     function calculateCashback(uint256 amount, uint256 cashbackRateInPermil) internal pure returns (uint256) {
         return amount * cashbackRateInPermil / 1000;
     }
 
+    /// @dev Update the extra amount of a payment and emits the related event.
     function updateExtraAmountInternal(
         bytes16 authorizationId,
         address account,
@@ -1206,7 +1614,7 @@ contract CardPaymentProcessor is
     ) internal {
         uint256 oldExtraAmount = payment.extraAmount;
         if (oldExtraAmount != newExtraAmount) {
-            emit PaymentExtraAmountChanged (
+            emit PaymentExtraAmountChanged(
                 authorizationId,
                 account,
                 sumAmount,
@@ -1214,6 +1622,80 @@ contract CardPaymentProcessor is
                 oldExtraAmount
             );
             payment.extraAmount = newExtraAmount;
+        }
+    }
+
+    /// @dev Defines the account part of a payment base amount according to a subsidy limit.
+    function defineAccountBaseAmount(uint256 paymentBaseAmount, uint256 subsidyLimit) internal pure returns (uint256) {
+        if (subsidyLimit >= paymentBaseAmount) {
+            return 0;
+        } else {
+            return paymentBaseAmount - subsidyLimit;
+        }
+    }
+
+    /// @dev Defines the account part of a payment extra amount according to a subsidy limit.
+    function defineAccountExtraAmount(
+        uint256 paymentBaseAmount,
+        uint256 paymentExtraAmount,
+        uint256 subsidyLimit
+    ) internal pure returns (uint256) {
+        if (subsidyLimit > paymentBaseAmount) {
+            uint256 paymentSumAmount = paymentBaseAmount + paymentExtraAmount;
+            if (subsidyLimit >= paymentSumAmount) {
+                return 0;
+            } else {
+                return paymentSumAmount - subsidyLimit;
+            }
+        } else {
+            return paymentExtraAmount;
+        }
+    }
+
+    /// @dev Defines the account and sponsor parts of a payment sum amount according to a subsidy limit.
+    function defineSumAmountParts(
+        uint256 paymentSumAmount,
+        uint256 subsidyLimit
+    ) internal pure returns (
+        uint256 accountSumAmount,
+        uint256 sponsorSumAmount
+    ) {
+        if (subsidyLimit >= paymentSumAmount) {
+            sponsorSumAmount = paymentSumAmount;
+            accountSumAmount = 0;
+        } else {
+            sponsorSumAmount = subsidyLimit;
+            accountSumAmount = paymentSumAmount - subsidyLimit;
+        }
+    }
+
+    function defineSponsorRefundAmount(
+        uint256 paymentRefundAmount,
+        uint256 paymentBaseAmount,
+        uint256 subsidyLimit
+    ) internal pure returns (uint256) {
+        if (subsidyLimit >= paymentBaseAmount) {
+            return paymentRefundAmount;
+        } else {
+            return paymentRefundAmount * subsidyLimit / paymentBaseAmount;
+        }
+    }
+
+    /// @dev Resets the payment structure fields related to the subsidy part of a payment.
+    function resetSubsidizedPaymentFields(Payment storage payment) internal {
+        if (payment.sponsor != address(0)) {
+            payment.sponsor = address(0);
+        }
+        if (payment.subsidyLimit != 0) {
+            payment.subsidyLimit = 0;
+        }
+    }
+
+    /// @dev Resets the payment structure fields related to the compensation and refund of a payment.
+    function resetCompensationAndRefundFields(Payment storage payment) internal {
+        payment.compensationAmount = 0;
+        if (payment.refundAmount != 0) {
+            payment.refundAmount = 0;
         }
     }
 }
