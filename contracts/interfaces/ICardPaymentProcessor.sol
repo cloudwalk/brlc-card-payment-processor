@@ -71,6 +71,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /// @dev Emitted when the extra amount of a payment is changed or set as non-zero during payment making.
     event PaymentExtraAmountChanged(
         bytes16 indexed authorizationId,
+        bytes16 indexed correlationId,
         address indexed account,
         uint256 sumAmount,
         uint256 newExtraAmount,
@@ -93,7 +94,9 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         bytes16 indexed correlationId,
         address indexed account,
         uint256 oldSumAmount,
-        uint256 newSumAmount
+        uint256 newSumAmount,
+        uint256 oldBaseAmount,
+        uint256 newBaseAmount
     );
 
     /// @dev Emitted along with the {UpdatePaymentAmount} event when the amount of a subsidized payment is updated.

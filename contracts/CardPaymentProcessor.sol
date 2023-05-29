@@ -910,6 +910,7 @@ contract CardPaymentProcessor is
         if (operation.extraAmount > 0) {
             emit PaymentExtraAmountChanged(
                 operation.authorizationId,
+                operation.correlationId,
                 operation.account,
                 sumAmount,
                 operation.extraAmount,
@@ -951,6 +952,8 @@ contract CardPaymentProcessor is
         uint256 newPaymentSumAmount;
         uint256 oldSponsorSumAmount;
         uint256 newSponsorSumAmount;
+        uint256 oldPaymentBaseAmount;
+        uint256 newPaymentBaseAmount;
         uint256 oldCompensationAmount;
         uint256 paymentTotalAmountChange;
         uint256 accountBalanceChange;
@@ -1002,7 +1005,9 @@ contract CardPaymentProcessor is
             correlationId,
             account,
             operation.oldPaymentSumAmount,
-            operation.newPaymentSumAmount
+            operation.newPaymentSumAmount,
+            operation.oldPaymentBaseAmount,
+            operation.newPaymentBaseAmount
         );
         if (sponsor != address(0)) {
             emit UpdatePaymentSubsidized(
@@ -1016,6 +1021,7 @@ contract CardPaymentProcessor is
         }
         updateExtraAmountInternal(
             authorizationId,
+            correlationId,
             account,
             operation.newPaymentSumAmount,
             newExtraAmount,
@@ -1048,21 +1054,18 @@ contract CardPaymentProcessor is
 
     /// @dev Returns a structure with parameters for a payment updating operation.
     function defineUpdatePaymentOperation(
-        uint256 newBaseAmount,
-        uint256 newExtraAmount,
+        uint256 newPaymentBaseAmount,
+        uint256 newPaymentExtraAmount,
         uint256 paymentRefundAmount,
         Payment storage payment
     ) internal view returns (UpdatingOperation memory) {
         if (payment.sponsor != address(0) && paymentRefundAmount != 0) {
             revert SubsidizedPaymentWithNonZeroRefundAmount();
         }
-        uint256 oldPaymentSumAmount = payment.baseAmount + payment.extraAmount;
-        uint256 newPaymentSumAmount = newBaseAmount + newExtraAmount;
+        uint256 oldPaymentBaseAmount = payment.baseAmount;
+        uint256 oldPaymentSumAmount = oldPaymentBaseAmount + payment.extraAmount;
+        uint256 newPaymentSumAmount = newPaymentBaseAmount + newPaymentExtraAmount;
         uint256 subsidyLimit = payment.subsidyLimit;
-        uint256 newAccountBaseAmount = defineAccountBaseAmount(newBaseAmount, subsidyLimit);
-        uint256 newCompensationAmount = paymentRefundAmount +
-            calculateCashback(newAccountBaseAmount - paymentRefundAmount, payment.cashbackRate);
-        uint256 oldCompensationAmount = payment.compensationAmount;
         uint256 newAccountSumAmount;
         uint256 newSponsorSumAmount;
         uint256 oldAccountSumAmount;
@@ -1075,7 +1078,9 @@ contract CardPaymentProcessor is
             newPaymentSumAmount: newPaymentSumAmount,
             oldSponsorSumAmount: oldSponsorSumAmount,
             newSponsorSumAmount: newSponsorSumAmount,
-            oldCompensationAmount: oldCompensationAmount,
+            oldPaymentBaseAmount: oldPaymentBaseAmount,
+            newPaymentBaseAmount: newPaymentBaseAmount,
+            oldCompensationAmount: payment.compensationAmount,
             paymentTotalAmountChange: 0,
             accountBalanceChange: 0,
             sponsorBalanceChange: 0,
@@ -1083,6 +1088,11 @@ contract CardPaymentProcessor is
             paymentSumAmountDecreased: false,
             cashbackDecreased: false
         });
+
+        uint256 newAccountBaseAmount = defineAccountBaseAmount(newPaymentBaseAmount, subsidyLimit);
+        uint256 newCompensationAmount = paymentRefundAmount +
+            calculateCashback(newAccountBaseAmount - paymentRefundAmount, payment.cashbackRate);
+        uint256 oldCompensationAmount = operation.oldCompensationAmount;
 
         if (newPaymentSumAmount < oldPaymentSumAmount) {
             operation.paymentSumAmountDecreased = true;
@@ -1469,6 +1479,7 @@ contract CardPaymentProcessor is
         }
         updateExtraAmountInternal(
             authorizationId,
+            correlationId,
             account,
             operation.newPaymentSumAmount,
             newExtraAmount,
@@ -1607,6 +1618,7 @@ contract CardPaymentProcessor is
     /// @dev Update the extra amount of a payment and emits the related event.
     function updateExtraAmountInternal(
         bytes16 authorizationId,
+        bytes16 correlationId,
         address account,
         uint256 sumAmount,
         uint256 newExtraAmount,
@@ -1616,6 +1628,7 @@ contract CardPaymentProcessor is
         if (oldExtraAmount != newExtraAmount) {
             emit PaymentExtraAmountChanged(
                 authorizationId,
+                correlationId,
                 account,
                 sumAmount,
                 newExtraAmount,
