@@ -41,6 +41,13 @@ contract CardPaymentProcessor is
     /// @dev The maximum allowable cashback rate in permil (1 permil = 0.1 %).
     uint16 public constant MAX_CASHBACK_RATE_IN_PERMIL = 250;
 
+    /**
+     * @dev The coefficient used to round the cashback according to the formula:
+     *      `roundedCashback = [(cashback + coef / 2) / coef] * coef`.
+     * Currently, it can only be changed by deploying a new implementation of the contract.
+     */
+    uint16 public constant CASHBACK_ROUNDING_COEF = 10000;
+
     // -------------------- Events -----------------------------------
 
     /**
@@ -1612,7 +1619,8 @@ contract CardPaymentProcessor is
 
     /// @dev Calculates cashback according to the amount and the rate.
     function calculateCashback(uint256 amount, uint256 cashbackRateInPermil) internal pure returns (uint256) {
-        return amount * cashbackRateInPermil / 1000;
+        uint256 cashback = amount * cashbackRateInPermil / 1000;
+        return ((cashback + CASHBACK_ROUNDING_COEF / 2) / CASHBACK_ROUNDING_COEF) * CASHBACK_ROUNDING_COEF;
     }
 
     /// @dev Update the extra amount of a payment and emits the related event.

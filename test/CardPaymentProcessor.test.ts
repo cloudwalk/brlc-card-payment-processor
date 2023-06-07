@@ -15,7 +15,9 @@ const ZERO_ADDRESS = ethers.constants.AddressZero;
 const ZERO_TRANSACTION_HASH: string = ethers.constants.HashZero;
 const BYTES16_LENGTH: number = 16;
 const BYTES32_LENGTH: number = 32;
-const INITIAL_USER_BALANCE = 1000000;
+const CASHBACK_ROUNDING_COEF = 10000;
+const DIGITS_COEF = 1000000;
+const INITIAL_USER_BALANCE = 1000_000 * DIGITS_COEF;
 const INITIAL_SPONSOR_BALANCE = INITIAL_USER_BALANCE * 2;
 
 const FUNCTION_MAKE_PAYMENT_FULL = "makePayment(uint256,uint256,bytes16,bytes16)";
@@ -536,7 +538,12 @@ class CardPaymentProcessorModel {
   }
 
   #calculateCashback(amount: number, cashbackRateInPermil) {
-    return Math.floor(amount * cashbackRateInPermil / 1000);
+    const cashback = Math.floor(amount * cashbackRateInPermil / 1000);
+    return this.#roundCashback(cashback, CASHBACK_ROUNDING_COEF);
+  }
+
+  #roundCashback(cashback: number, roundingCoefficient: number): number {
+    return Math.floor(Math.floor(cashback + roundingCoefficient / 2) / roundingCoefficient) * roundingCoefficient;
   }
 
   #getPaymentByMakingOperationIndex(paymentMakingOperationIndex: number): PaymentModel {
@@ -2147,12 +2154,14 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     for (let i = 0; i < numberOfPayments; ++i) {
       const payment: TestPayment = {
         account: (i % 2 > 0) ? user1 : user2,
-        baseAmount: 235 + i * 235,
-        extraAmount: 235 + i * 235,
+        baseAmount: 1234567 + i * 1234567,
+        extraAmount: 1234567 + i * 1234567,
         authorizationId: createBytesString(123 + i * 123, BYTES16_LENGTH),
         correlationId: createBytesString(345 + i * 345, BYTES16_LENGTH),
         parentTxHash: createBytesString(1 + i, BYTES32_LENGTH),
       };
+      expect(payment.baseAmount).greaterThan(DIGITS_COEF);
+      expect(payment.extraAmount).greaterThan(DIGITS_COEF);
       testPayments.push(payment);
     }
     return testPayments;
@@ -3230,8 +3239,6 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     ) {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
-      payment.baseAmount = 1234;
-      payment.extraAmount = 1234;
 
       if (updatingCondition !== UpdatingConditionType.CashbackDisabledBeforePaymentMaking) {
         await cardPaymentProcessorShell.enableCashback();
@@ -3550,31 +3557,31 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         describe("Less than the payment base amount. And if the payment changes are:", async () => {
           it("The base amount decreases but it is still above SL", async () => {
             await checkUpdatingForSubsidizedPayment({
-              initBaseAmount: 1000,
-              initExtraAmount: 500,
-              subsidyLimit: 700,
-              newBaseAmount: 800,
-              newExtraAmount: 500,
+              initBaseAmount: 1000 * DIGITS_COEF,
+              initExtraAmount: 500 * DIGITS_COEF,
+              subsidyLimit: 700 * DIGITS_COEF,
+              newBaseAmount: 800 * DIGITS_COEF,
+              newExtraAmount: 500 * DIGITS_COEF,
             });
           });
 
           it("The base amount decreases bellow SL but the sum amount is still above SL", async () => {
             await checkUpdatingForSubsidizedPayment({
-              initBaseAmount: 1000,
-              initExtraAmount: 500,
-              subsidyLimit: 700,
-              newBaseAmount: 600,
-              newExtraAmount: 500,
+              initBaseAmount: 1000 * DIGITS_COEF,
+              initExtraAmount: 500 * DIGITS_COEF,
+              subsidyLimit: 700 * DIGITS_COEF,
+              newBaseAmount: 600 * DIGITS_COEF,
+              newExtraAmount: 500 * DIGITS_COEF,
             });
           });
 
           it("The base amount decreases more and the sum amount becomes bellow SL", async () => {
             await checkUpdatingForSubsidizedPayment({
-              initBaseAmount: 1000,
-              initExtraAmount: 500,
-              subsidyLimit: 700,
-              newBaseAmount: 200,
-              newExtraAmount: 300,
+              initBaseAmount: 1000 * DIGITS_COEF,
+              initExtraAmount: 500 * DIGITS_COEF,
+              subsidyLimit: 700 * DIGITS_COEF,
+              newBaseAmount: 200 * DIGITS_COEF,
+              newExtraAmount: 300 * DIGITS_COEF,
             });
           });
         });
@@ -3582,31 +3589,31 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         describe("Between the payment base amount and the sum amount. And if the payment changes are:", async () => {
           it("The base amount decreases but the sum amount is still above SL", async () => {
             await checkUpdatingForSubsidizedPayment({
-              initBaseAmount: 1000,
-              initExtraAmount: 600,
-              subsidyLimit: 1200,
-              newBaseAmount: 800,
-              newExtraAmount: 600,
+              initBaseAmount: 1000 * DIGITS_COEF,
+              initExtraAmount: 600 * DIGITS_COEF,
+              subsidyLimit: 1200 * DIGITS_COEF,
+              newBaseAmount: 800 * DIGITS_COEF,
+              newExtraAmount: 600 * DIGITS_COEF,
             });
           });
 
           it("The base amount decreases and the sum amount becomes bellow SL", async () => {
             await checkUpdatingForSubsidizedPayment({
-              initBaseAmount: 1000,
-              initExtraAmount: 600,
-              subsidyLimit: 1200,
-              newBaseAmount: 400,
-              newExtraAmount: 600,
+              initBaseAmount: 1000 * DIGITS_COEF,
+              initExtraAmount: 600 * DIGITS_COEF,
+              subsidyLimit: 1200 * DIGITS_COEF,
+              newBaseAmount: 400 * DIGITS_COEF,
+              newExtraAmount: 600 * DIGITS_COEF,
             });
           });
 
           it("The base amount increases above SL", async () => {
             await checkUpdatingForSubsidizedPayment({
-              initBaseAmount: 1000,
-              initExtraAmount: 600,
-              subsidyLimit: 1200,
-              newBaseAmount: 1400,
-              newExtraAmount: 600,
+              initBaseAmount: 1000 * DIGITS_COEF,
+              initExtraAmount: 600 * DIGITS_COEF,
+              subsidyLimit: 1200 * DIGITS_COEF,
+              newBaseAmount: 1400 * DIGITS_COEF,
+              newExtraAmount: 600 * DIGITS_COEF,
             });
           });
         });
@@ -3614,41 +3621,41 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         describe("Above the payment sum amount. And if the payment changes are:", async () => {
           it("The payment sum amount decreases", async () => {
             await checkUpdatingForSubsidizedPayment({
-              initBaseAmount: 1000,
-              initExtraAmount: 600,
-              subsidyLimit: 2000,
-              newBaseAmount: 800,
-              newExtraAmount: 400,
+              initBaseAmount: 1000 * DIGITS_COEF,
+              initExtraAmount: 600 * DIGITS_COEF,
+              subsidyLimit: 2000 * DIGITS_COEF,
+              newBaseAmount: 800 * DIGITS_COEF,
+              newExtraAmount: 400 * DIGITS_COEF,
             });
           });
 
           it("The payment sum amount increases but it is still below SL", async () => {
             await checkUpdatingForSubsidizedPayment({
-              initBaseAmount: 1000,
-              initExtraAmount: 600,
-              subsidyLimit: 2000,
-              newBaseAmount: 1200,
-              newExtraAmount: 700,
+              initBaseAmount: 1000 * DIGITS_COEF,
+              initExtraAmount: 600 * DIGITS_COEF,
+              subsidyLimit: 2000 * DIGITS_COEF,
+              newBaseAmount: 1200 * DIGITS_COEF,
+              newExtraAmount: 700 * DIGITS_COEF,
             });
           });
 
           it("The payment sum amount increases above SL but the base amount is still below SL", async () => {
             await checkUpdatingForSubsidizedPayment({
-              initBaseAmount: 1000,
-              initExtraAmount: 600,
-              subsidyLimit: 2000,
-              newBaseAmount: 1200,
-              newExtraAmount: 1000,
+              initBaseAmount: 1000 * DIGITS_COEF,
+              initExtraAmount: 600 * DIGITS_COEF,
+              subsidyLimit: 2000 * DIGITS_COEF,
+              newBaseAmount: 1200 * DIGITS_COEF,
+              newExtraAmount: 1000 * DIGITS_COEF,
             });
           });
 
           it("The payment sum amount increases above SL and the base amount becomes above SL", async () => {
             await checkUpdatingForSubsidizedPayment({
-              initBaseAmount: 1000,
-              initExtraAmount: 600,
-              subsidyLimit: 2000,
-              newBaseAmount: 2200,
-              newExtraAmount: 800,
+              initBaseAmount: 1000 * DIGITS_COEF,
+              initExtraAmount: 600 * DIGITS_COEF,
+              subsidyLimit: 2000 * DIGITS_COEF,
+              newBaseAmount: 2200 * DIGITS_COEF,
+              newExtraAmount: 800 * DIGITS_COEF,
             });
           });
         });
@@ -5082,22 +5089,22 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           describe("Less than the initial one.  And if the payment status is", async () => {
             it("Uncleared", async () => {
               await checkRefundingForSubsidizedPayment({
-                initBaseAmount: 1000,
-                initExtraAmount: 600,
-                subsidyLimit: 800,
-                refundAmount: 500,
-                newExtraAmount: 400,
+                initBaseAmount: 1000 * DIGITS_COEF,
+                initExtraAmount: 600 * DIGITS_COEF,
+                subsidyLimit: 800 * DIGITS_COEF,
+                refundAmount: 500 * DIGITS_COEF,
+                newExtraAmount: 400 * DIGITS_COEF,
                 paymentStatus: PaymentStatus.Uncleared
               });
             });
 
             it("Confirmed", async () => {
               await checkRefundingForSubsidizedPayment({
-                initBaseAmount: 1000,
-                initExtraAmount: 600,
-                subsidyLimit: 800,
-                refundAmount: 500,
-                newExtraAmount: 400,
+                initBaseAmount: 1000 * DIGITS_COEF,
+                initExtraAmount: 600 * DIGITS_COEF,
+                subsidyLimit: 800 * DIGITS_COEF,
+                refundAmount: 500 * DIGITS_COEF,
+                newExtraAmount: 400 * DIGITS_COEF,
                 paymentStatus: PaymentStatus.Confirmed
               });
             });
@@ -5108,22 +5115,22 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           describe("Less than the init one but the sum amount is above SL.  And if the payment status is", async () => {
             it("Uncleared", async () => {
               await checkRefundingForSubsidizedPayment({
-                initBaseAmount: 1000,
-                initExtraAmount: 600,
-                subsidyLimit: 1200,
-                refundAmount: 500,
-                newExtraAmount: 400,
+                initBaseAmount: 1000 * DIGITS_COEF,
+                initExtraAmount: 600 * DIGITS_COEF,
+                subsidyLimit: 1200 * DIGITS_COEF,
+                refundAmount: 500 * DIGITS_COEF,
+                newExtraAmount: 400 * DIGITS_COEF,
                 paymentStatus: PaymentStatus.Uncleared
               });
             });
 
             it("Confirmed", async () => {
               await checkRefundingForSubsidizedPayment({
-                initBaseAmount: 1000,
-                initExtraAmount: 600,
-                subsidyLimit: 1200,
-                refundAmount: 500,
-                newExtraAmount: 400,
+                initBaseAmount: 1000 * DIGITS_COEF,
+                initExtraAmount: 600 * DIGITS_COEF,
+                subsidyLimit: 1200 * DIGITS_COEF,
+                refundAmount: 500 * DIGITS_COEF,
+                newExtraAmount: 400 * DIGITS_COEF,
                 paymentStatus: PaymentStatus.Confirmed
               });
             });
@@ -5132,22 +5139,22 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           describe("Less than the init one and the sum amount is below SL.  And if the payment status is", async () => {
             it("Uncleared", async () => {
               await checkRefundingForSubsidizedPayment({
-                initBaseAmount: 1000,
-                initExtraAmount: 600,
-                subsidyLimit: 1200,
-                refundAmount: 500,
-                newExtraAmount: 100,
+                initBaseAmount: 1000 * DIGITS_COEF,
+                initExtraAmount: 600 * DIGITS_COEF,
+                subsidyLimit: 1200 * DIGITS_COEF,
+                refundAmount: 500 * DIGITS_COEF,
+                newExtraAmount: 100 * DIGITS_COEF,
                 paymentStatus: PaymentStatus.Uncleared
               });
             });
 
             it("Confirmed", async () => {
               await checkRefundingForSubsidizedPayment({
-                initBaseAmount: 1000,
-                initExtraAmount: 600,
-                subsidyLimit: 1200,
-                refundAmount: 500,
-                newExtraAmount: 100,
+                initBaseAmount: 1000 * DIGITS_COEF,
+                initExtraAmount: 600 * DIGITS_COEF,
+                subsidyLimit: 1200 * DIGITS_COEF,
+                refundAmount: 500 * DIGITS_COEF,
+                newExtraAmount: 100 * DIGITS_COEF,
                 paymentStatus: PaymentStatus.Confirmed
               });
             });
@@ -5158,22 +5165,22 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           describe("Less than the init one.  And if the payment status is", async () => {
             it("Uncleared", async () => {
               await checkRefundingForSubsidizedPayment({
-                initBaseAmount: 1000,
-                initExtraAmount: 600,
-                subsidyLimit: 2000,
-                refundAmount: 500,
-                newExtraAmount: 400,
+                initBaseAmount: 1000 * DIGITS_COEF,
+                initExtraAmount: 600 * DIGITS_COEF,
+                subsidyLimit: 2000 * DIGITS_COEF,
+                refundAmount: 500 * DIGITS_COEF,
+                newExtraAmount: 400 * DIGITS_COEF,
                 paymentStatus: PaymentStatus.Uncleared
               });
             });
 
             it("Confirmed", async () => {
               await checkRefundingForSubsidizedPayment({
-                initBaseAmount: 1000,
-                initExtraAmount: 600,
-                subsidyLimit: 2000,
-                refundAmount: 500,
-                newExtraAmount: 400,
+                initBaseAmount: 1000 * DIGITS_COEF,
+                initExtraAmount: 600 * DIGITS_COEF,
+                subsidyLimit: 2000 * DIGITS_COEF,
+                refundAmount: 500 * DIGITS_COEF,
+                newExtraAmount: 400 * DIGITS_COEF,
                 paymentStatus: PaymentStatus.Confirmed
               });
             });
@@ -5779,19 +5786,19 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      payment.baseAmount = 1000;
-      payment.extraAmount = 400;
-      const subsidyLimit = 800;
+      payment.baseAmount = 1000 * DIGITS_COEF;
+      payment.extraAmount = 400 * DIGITS_COEF;
+      const subsidyLimit = 800 * DIGITS_COEF;
       const cashbackRateInPermil = 200; // 20 %
 
       await cardPaymentProcessorShell.enableCashback();
       const opResult = cardPaymentProcessorShell.makePaymentFor(payment, sponsor, subsidyLimit, cashbackRateInPermil);
 
-      const cashbackChange = 40;
+      const cashbackChange = 40 * DIGITS_COEF;
       const expectedBalanceChanges: ExpectedBalanceChanges = {
-        user: -600 + cashbackChange,
-        sponsor: -800,
-        cardPaymentProcessor: 1400,
+        user: -600 * DIGITS_COEF + cashbackChange,
+        sponsor: -800 * DIGITS_COEF,
+        cardPaymentProcessor: 1400 * DIGITS_COEF,
         cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
@@ -5801,9 +5808,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      payment.baseAmount = 1000;
-      payment.extraAmount = 400;
-      const subsidyLimit = 2000;
+      payment.baseAmount = 1000 * DIGITS_COEF;
+      payment.extraAmount = 400 * DIGITS_COEF;
+      const subsidyLimit = 2000 * DIGITS_COEF;
       const cashbackRateInPermil = 200; // 20 %
 
       await cardPaymentProcessorShell.enableCashback();
@@ -5812,8 +5819,52 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const cashbackChange = 0;
       const expectedBalanceChanges: ExpectedBalanceChanges = {
         user: -0 + cashbackChange,
-        sponsor: -1400,
-        cardPaymentProcessor: 1400,
+        sponsor: -1400 * DIGITS_COEF,
+        cardPaymentProcessor: 1400 * DIGITS_COEF,
+        cashbackDistributor: -cashbackChange,
+      };
+      await checkBalanceChanges(context, opResult, expectedBalanceChanges);
+    });
+
+    it("Making a payment with cashback, example 3: cashback rounding up", async () => {
+      const context = await beforeMakingPayments();
+      const { cardPaymentProcessorShell, payments: [payment] } = context;
+
+      const subsidyLimit = 0;
+      const cashbackRateInPermil = 200; // 20 %
+      payment.baseAmount = Math.floor(2.5 * CASHBACK_ROUNDING_COEF / (cashbackRateInPermil / 1000));
+      payment.extraAmount = 0;
+
+      await cardPaymentProcessorShell.enableCashback();
+      const opResult = cardPaymentProcessorShell.makePaymentFor(payment, sponsor, subsidyLimit, cashbackRateInPermil);
+
+      const cashbackChange = 3 * CASHBACK_ROUNDING_COEF;
+      const expectedBalanceChanges: ExpectedBalanceChanges = {
+        user: -payment.baseAmount + cashbackChange,
+        sponsor: -0,
+        cardPaymentProcessor: payment.baseAmount,
+        cashbackDistributor: -cashbackChange,
+      };
+      await checkBalanceChanges(context, opResult, expectedBalanceChanges);
+    });
+
+    it("Making a payment with cashback, example 4: cashback rounding down", async () => {
+      const context = await beforeMakingPayments();
+      const { cardPaymentProcessorShell, payments: [payment] } = context;
+
+      const subsidyLimit = 0;
+      const cashbackRateInPermil = 200; // 20 %
+      payment.baseAmount = Math.floor(2.49999 * CASHBACK_ROUNDING_COEF / (cashbackRateInPermil / 1000));
+      payment.extraAmount = 0;
+
+      await cardPaymentProcessorShell.enableCashback();
+      const opResult = cardPaymentProcessorShell.makePaymentFor(payment, sponsor, subsidyLimit, cashbackRateInPermil);
+
+      const cashbackChange = 2 * CASHBACK_ROUNDING_COEF;
+      const expectedBalanceChanges: ExpectedBalanceChanges = {
+        user: -payment.baseAmount + cashbackChange,
+        sponsor: -0,
+        cardPaymentProcessor: payment.baseAmount,
         cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
@@ -5823,25 +5874,25 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      payment.baseAmount = 1000;
-      payment.extraAmount = 400;
-      const subsidyLimit = 800;
+      payment.baseAmount = 1000 * DIGITS_COEF;
+      payment.extraAmount = 400 * DIGITS_COEF;
+      const subsidyLimit = 800 * DIGITS_COEF;
       const cashbackRateInPermil = 200; // 20 %
-      const newBaseAmount = 1200;
-      const newExtraAmount = 600;
+      const newBaseAmount = 1200 * DIGITS_COEF;
+      const newExtraAmount = 600 * DIGITS_COEF;
 
       await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(payment, sponsor, subsidyLimit, cashbackRateInPermil);
       const opResult = cardPaymentProcessorShell.updatePaymentAmount(payment, newBaseAmount, newExtraAmount);
 
-      const oldCashback = 40;
-      const newCashback = 80;
+      const oldCashback = 40 * DIGITS_COEF;
+      const newCashback = 80 * DIGITS_COEF;
       const cashbackChange = newCashback - oldCashback;
 
       const expectedBalanceChanges: ExpectedBalanceChanges = {
-        user: -400 + cashbackChange,
+        user: -400 * DIGITS_COEF + cashbackChange,
         sponsor: 0,
-        cardPaymentProcessor: +400,
+        cardPaymentProcessor: +400 * DIGITS_COEF,
         cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
@@ -5851,25 +5902,25 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      payment.baseAmount = 1200;
-      payment.extraAmount = 600;
-      const subsidyLimit = 800;
+      payment.baseAmount = 1200 * DIGITS_COEF;
+      payment.extraAmount = 600 * DIGITS_COEF;
+      const subsidyLimit = 800 * DIGITS_COEF;
       const cashbackRateInPermil = 200; // 20 %
-      const newBaseAmount = 400;
-      const newExtraAmount = 200;
+      const newBaseAmount = 400 * DIGITS_COEF;
+      const newExtraAmount = 200 * DIGITS_COEF;
 
       await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(payment, sponsor, subsidyLimit, cashbackRateInPermil);
       const opResult = cardPaymentProcessorShell.updatePaymentAmount(payment, newBaseAmount, newExtraAmount);
 
-      const oldCashback = 80;
+      const oldCashback = 80 * DIGITS_COEF;
       const newCashback = 0;
       const cashbackChange = newCashback - oldCashback;
 
       const expectedBalanceChanges: ExpectedBalanceChanges = {
-        user: +1000 + cashbackChange,
-        sponsor: +200,
-        cardPaymentProcessor: -1200,
+        user: +1000 * DIGITS_COEF + cashbackChange,
+        sponsor: +200 * DIGITS_COEF,
+        cardPaymentProcessor: -1200 * DIGITS_COEF,
         cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
@@ -5879,25 +5930,25 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      payment.baseAmount = 400;
-      payment.extraAmount = 200;
-      const subsidyLimit = 800;
+      payment.baseAmount = 400 * DIGITS_COEF;
+      payment.extraAmount = 200 * DIGITS_COEF;
+      const subsidyLimit = 800 * DIGITS_COEF;
       const cashbackRateInPermil = 200; // 20 %
-      const newBaseAmount = 1200;
-      const newExtraAmount = 600;
+      const newBaseAmount = 1200 * DIGITS_COEF;
+      const newExtraAmount = 600 * DIGITS_COEF;
 
       await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(payment, sponsor, subsidyLimit, cashbackRateInPermil);
       const opResult = cardPaymentProcessorShell.updatePaymentAmount(payment, newBaseAmount, newExtraAmount);
 
       const oldCashback = 0;
-      const newCashback = 80;
+      const newCashback = 80 * DIGITS_COEF;
       const cashbackChange = newCashback - oldCashback;
 
       const expectedBalanceChanges: ExpectedBalanceChanges = {
-        user: -1000 + cashbackChange,
-        sponsor: -200,
-        cardPaymentProcessor: +1200,
+        user: -1000 * DIGITS_COEF + cashbackChange,
+        sponsor: -200 * DIGITS_COEF,
+        cardPaymentProcessor: +1200 * DIGITS_COEF,
         cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
@@ -5907,25 +5958,25 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      payment.baseAmount = 1000;
-      payment.extraAmount = 600;
-      const subsidyLimit = 800;
+      payment.baseAmount = 1000 * DIGITS_COEF;
+      payment.extraAmount = 600 * DIGITS_COEF;
+      const subsidyLimit = 800 * DIGITS_COEF;
       const cashbackRateInPermil = 200; // 20 %
-      const refundAmount = 400;
+      const refundAmount = 400 * DIGITS_COEF;
       const newExtraAmount = payment.extraAmount;
 
       await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(payment, sponsor, subsidyLimit, cashbackRateInPermil);
       const opResult = cardPaymentProcessorShell.refundPayment(payment, refundAmount, newExtraAmount);
 
-      const oldCashback = 40;
-      const newCashback = 24;
+      const oldCashback = 40 * DIGITS_COEF;
+      const newCashback = 24 * DIGITS_COEF;
       const cashbackChange = newCashback - oldCashback;
 
       const expectedBalanceChanges: ExpectedBalanceChanges = {
-        user: +80 + cashbackChange,
-        sponsor: +320,
-        cardPaymentProcessor: -400,
+        user: +80 * DIGITS_COEF + cashbackChange,
+        sponsor: +320 * DIGITS_COEF,
+        cardPaymentProcessor: -400 * DIGITS_COEF,
         cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
@@ -5935,25 +5986,25 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      payment.baseAmount = 1000;
-      payment.extraAmount = 600;
-      const subsidyLimit = 800;
+      payment.baseAmount = 1000 * DIGITS_COEF;
+      payment.extraAmount = 600 * DIGITS_COEF;
+      const subsidyLimit = 800 * DIGITS_COEF;
       const cashbackRateInPermil = 200; // 20 %
-      const refundAmount = 400;
-      const newExtraAmount = 200;
+      const refundAmount = 400 * DIGITS_COEF;
+      const newExtraAmount = 200 * DIGITS_COEF;
 
       await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(payment, sponsor, subsidyLimit, cashbackRateInPermil);
       const opResult = cardPaymentProcessorShell.refundPayment(payment, refundAmount, newExtraAmount);
 
-      const oldCashback = 40;
-      const newCashback = 24;
+      const oldCashback = 40 * DIGITS_COEF;
+      const newCashback = 24 * DIGITS_COEF;
       const cashbackChange = newCashback - oldCashback;
 
       const expectedBalanceChanges: ExpectedBalanceChanges = {
-        user: +480 + cashbackChange,
-        sponsor: +320,
-        cardPaymentProcessor: -800,
+        user: +480 * DIGITS_COEF + cashbackChange,
+        sponsor: +320 * DIGITS_COEF,
+        cardPaymentProcessor: -800 * DIGITS_COEF,
         cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
@@ -5963,12 +6014,12 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      payment.baseAmount = 1000;
-      payment.extraAmount = 600;
-      const subsidyLimit = 800;
+      payment.baseAmount = 1000 * DIGITS_COEF;
+      payment.extraAmount = 600 * DIGITS_COEF;
+      const subsidyLimit = 800 * DIGITS_COEF;
       const cashbackRateInPermil = 200; // 20 %
-      const refundAmount = 400;
-      const newExtraAmount = 200;
+      const refundAmount = 400 * DIGITS_COEF;
+      const newExtraAmount = 200 * DIGITS_COEF;
 
       await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(payment, sponsor, subsidyLimit, cashbackRateInPermil);
@@ -5976,16 +6027,16 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await cardPaymentProcessorShell.confirmPayments([payment]);
       const opResult = cardPaymentProcessorShell.refundPayment(payment, refundAmount, newExtraAmount);
 
-      const oldCashback = 40;
-      const newCashback = 24;
+      const oldCashback = 40 * DIGITS_COEF;
+      const newCashback = 24 * DIGITS_COEF;
       const cashbackChange = newCashback - oldCashback;
 
       const expectedBalanceChanges: ExpectedBalanceChanges = {
-        user: +480 + cashbackChange,
-        sponsor: +320,
+        user: +480 * DIGITS_COEF + cashbackChange,
+        sponsor: +320 * DIGITS_COEF,
         cardPaymentProcessor: 0,
         cashbackDistributor: -cashbackChange,
-        cashOutAccount: -800,
+        cashOutAccount: -800 * DIGITS_COEF,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5994,23 +6045,23 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      payment.baseAmount = 1000;
-      payment.extraAmount = 400;
-      const subsidyLimit = 800;
+      payment.baseAmount = 1000 * DIGITS_COEF;
+      payment.extraAmount = 400 * DIGITS_COEF;
+      const subsidyLimit = 800 * DIGITS_COEF;
       const cashbackRateInPermil = 200; // 20 %
 
       await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(payment, sponsor, subsidyLimit, cashbackRateInPermil);
       const opResult = cardPaymentProcessorShell.revokePayment(payment);
 
-      const oldCashback = 40;
+      const oldCashback = 40 * DIGITS_COEF;
       const newCashback = 0;
       const cashbackChange = newCashback - oldCashback;
 
       const expectedBalanceChanges: ExpectedBalanceChanges = {
-        user: +600 + cashbackChange,
-        sponsor: +800,
-        cardPaymentProcessor: -1400,
+        user: +600 * DIGITS_COEF + cashbackChange,
+        sponsor: +800 * DIGITS_COEF,
+        cardPaymentProcessor: -1400 * DIGITS_COEF,
         cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
@@ -6020,9 +6071,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      payment.baseAmount = 1000;
-      payment.extraAmount = 400;
-      const subsidyLimit = 2000;
+      payment.baseAmount = 1000 * DIGITS_COEF;
+      payment.extraAmount = 400 * DIGITS_COEF;
+      const subsidyLimit = 2000 * DIGITS_COEF;
       const cashbackRateInPermil = 200; // 20 %
 
       await cardPaymentProcessorShell.enableCashback();
@@ -6035,8 +6086,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       const expectedBalanceChanges: ExpectedBalanceChanges = {
         user: cashbackChange,
-        sponsor: +1400,
-        cardPaymentProcessor: -1400,
+        sponsor: +1400 * DIGITS_COEF,
+        cardPaymentProcessor: -1400 * DIGITS_COEF,
         cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
@@ -6046,9 +6097,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      payment.baseAmount = 1000;
-      payment.extraAmount = 400;
-      const subsidyLimit = 800;
+      payment.baseAmount = 1000 * DIGITS_COEF;
+      payment.extraAmount = 400 * DIGITS_COEF;
+      const subsidyLimit = 800 * DIGITS_COEF;
       const cashbackRateInPermil = 200; // 20 %
 
       await cardPaymentProcessorShell.enableCashback();
@@ -6057,8 +6108,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const [opResult] = await cardPaymentProcessorShell.confirmPayments([payment]);
 
       const expectedBalanceChanges: ExpectedBalanceChanges = {
-        cardPaymentProcessor: -1400,
-        cashOutAccount: +1400,
+        cardPaymentProcessor: -1400 * DIGITS_COEF,
+        cashOutAccount: +1400 * DIGITS_COEF,
       };
       await checkBalanceChanges(context, Promise.resolve(opResult), expectedBalanceChanges);
     });
