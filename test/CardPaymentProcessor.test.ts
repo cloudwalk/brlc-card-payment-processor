@@ -579,8 +579,6 @@ class CardPaymentProcessorModel {
       this.#defineAmountParts(operation.newBaseAmount, operation.newExtraAmount, operation.subsidyLimit);
     const oldAmountParts: AmountParts =
       this.#defineAmountParts(operation.oldBaseAmount, operation.oldExtraAmount, operation.subsidyLimit);
-    const refundParts: RefundParts =
-      this.#defineRefundParts(payment.refundAmount, payment.baseAmount, payment.subsidyLimit);
     const amountDiff =
       operation.newBaseAmount + operation.newExtraAmount - operation.oldBaseAmount - operation.oldExtraAmount;
     const accountAmountDiff: number = newAmountParts.accountBaseAmount + newAmountParts.accountExtraAmount -
@@ -593,18 +591,8 @@ class CardPaymentProcessorModel {
       operation.sponsorBalanceChange = -sponsorAmountDiff;
       operation.cardPaymentProcessorBalanceChange = amountDiff;
     } else {
-      const cashbackModel = this.getCashbackByAuthorizationId(operation.authorizationId);
-      operation.cashbackNonce = cashbackModel?.lastCashbackNonce ?? 0;
-      const oldCashback = this.#calculateCashback(
-        oldAmountParts.accountBaseAmount - refundParts.accountRefundAmount,
-        payment.cashbackRate
-      );
-      const newCashback = this.#calculateCashback(
-        newAmountParts.accountBaseAmount - refundParts.accountRefundAmount,
-        payment.cashbackRate
-      );
-      operation.cashbackRequestedChange = newCashback - oldCashback;
-      if (newCashback >= oldCashback) {
+      operation.cashbackRequestedChange = this.#defineCashbackChangeForPaymentUpdatingOperation(operation, payment);
+      if (operation.newBaseAmount > operation.oldBaseAmount) {
         operation.cashbackIncreaseRequested = true;
         if (this.#cashbackDistributorMockConfig.increaseCashbackSuccessResult) {
           operation.cashbackIncreaseSuccess = true;
@@ -630,6 +618,31 @@ class CardPaymentProcessorModel {
           (operation.cashbackRequestedChange - operation.cashbackActualChange);
         operation.compensationAmountChange = operation.cashbackRequestedChange;
       }
+    }
+  }
+
+  #defineCashbackChangeForPaymentUpdatingOperation(operation: PaymentOperation, payment: PaymentModel) {
+    const newAmountParts: AmountParts =
+      this.#defineAmountParts(operation.newBaseAmount, operation.newExtraAmount, operation.subsidyLimit);
+    const oldAmountParts: AmountParts =
+      this.#defineAmountParts(operation.oldBaseAmount, operation.oldExtraAmount, operation.subsidyLimit);
+    const refundParts: RefundParts =
+      this.#defineRefundParts(payment.refundAmount, payment.baseAmount, payment.subsidyLimit);
+    const cashbackModel = this.getCashbackByAuthorizationId(operation.authorizationId);
+    operation.cashbackNonce = cashbackModel?.lastCashbackNonce ?? 0;
+    const oldExpectedCashback = this.#calculateCashback(
+      oldAmountParts.accountBaseAmount - refundParts.accountRefundAmount,
+      payment.cashbackRate
+    );
+    const oldActualCashback = payment.compensationAmount - payment.refundAmount;
+    const newExpectedCashback = this.#calculateCashback(
+      newAmountParts.accountBaseAmount - refundParts.accountRefundAmount,
+      payment.cashbackRate
+    );
+    if (newExpectedCashback < oldExpectedCashback && newExpectedCashback > oldActualCashback) {
+      return 0;
+    } else {
+      return (newExpectedCashback - oldActualCashback);
     }
   }
 
@@ -825,15 +838,12 @@ class CardPaymentProcessorModel {
       operation.cashbackRevocationRequested = true;
       const cashbackModel = this.getCashbackByAuthorizationId(operation.authorizationId);
       operation.cashbackNonce = cashbackModel?.lastCashbackNonce ?? 0;
-      const oldCashback = this.#calculateCashback(
-        oldAmountParts.accountBaseAmount - oldRefundParts.accountRefundAmount,
-        payment.cashbackRate
-      );
+      const oldCashback = payment.compensationAmount - payment.refundAmount;
       const newCashback = this.#calculateCashback(
         newAmountParts.accountBaseAmount - newRefundParts.accountRefundAmount,
         payment.cashbackRate
       );
-      const cashbackRevocationAmount = oldCashback - newCashback;
+      const cashbackRevocationAmount = newCashback > oldCashback ? 0 : oldCashback - newCashback;
       if (this.#cashbackDistributorMockConfig.revokeCashbackSuccessResult) {
         operation.cashbackActualChange = -cashbackRevocationAmount;
         operation.cashbackRevocationSuccess = true;
@@ -1425,7 +1435,7 @@ class TestContext {
           this.cardPaymentProcessorShell.contract,
           EVENT_NAME_REVOKE_CASHBACK_FAILURE
         );
-      } else {  // !(operation.cashbackIncreaseSuccess || operation.cashbackRevocationRequested)
+      } else {  // !(operation.cashbackRevocationRequested || operation.cashbackIncreaseRequested)
         await expect(tx).not.to.emit(
           this.cashbackDistributorMockShell.contract,
           EVENT_NAME_REVOKE_CASHBACK_MOCK
@@ -2154,14 +2164,14 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     for (let i = 0; i < numberOfPayments; ++i) {
       const payment: TestPayment = {
         account: (i % 2 > 0) ? user1 : user2,
-        baseAmount: 1234567 + i * 1234567,
-        extraAmount: 1234567 + i * 1234567,
+        baseAmount: Math.floor(123.456789 * DIGITS_COEF + i * 123.456789 * DIGITS_COEF),
+        extraAmount: Math.floor(123.456789 * DIGITS_COEF + i * 123.456789 * DIGITS_COEF),
         authorizationId: createBytesString(123 + i * 123, BYTES16_LENGTH),
         correlationId: createBytesString(345 + i * 345, BYTES16_LENGTH),
         parentTxHash: createBytesString(1 + i, BYTES32_LENGTH),
       };
-      expect(payment.baseAmount).greaterThan(DIGITS_COEF);
-      expect(payment.extraAmount).greaterThan(DIGITS_COEF);
+      expect(payment.baseAmount).greaterThan(10 * DIGITS_COEF);
+      expect(payment.extraAmount).greaterThan(10 * DIGITS_COEF);
       testPayments.push(payment);
     }
     return testPayments;
@@ -2896,7 +2906,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
             it("Both nonzero and if cashback is partially sent with non-zero amount", async () => {
               const context = await beforeMakingPayments();
-              const sentCashbackAmount = 1;
+              const sentCashbackAmount = 2 * CASHBACK_ROUNDING_COEF;
               await context.cashbackDistributorMockShell.setSendCashbackAmountResult(sentCashbackAmount);
               await checkPaymentMakingFor(context);
             });
@@ -3251,10 +3261,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       let newBaseAmount = payment.baseAmount;
       switch (newBasePaymentAmountType) {
         case NewBasePaymentAmountType.Less:
-          newBaseAmount = Math.floor(payment.baseAmount * 0.5);
+          newBaseAmount = Math.floor(payment.baseAmount * 0.9);
           break;
         case NewBasePaymentAmountType.More:
-          newBaseAmount = Math.floor(payment.baseAmount * 2);
+          newBaseAmount = Math.floor(payment.baseAmount * 1.1);
           break;
       }
 
@@ -3286,7 +3296,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         updatingCondition === UpdatingConditionType.CashbackEnabledButIncreasingPartial
         && newBasePaymentAmountType === NewBasePaymentAmountType.More
       ) {
-        const actualCashbackChange = 1;
+        const actualCashbackChange = 2 * CASHBACK_ROUNDING_COEF;
         await context.cashbackDistributorMockShell.setIncreaseCashbackAmountResult(actualCashbackChange);
       }
 
@@ -5712,6 +5722,45 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await cardPaymentProcessorShell.makePayments([payment]);
       await context.checkCardPaymentProcessorState();
       await cardPaymentProcessorShell.revokePayment(payment);
+      await context.checkCardPaymentProcessorState();
+    });
+
+    it("Refunding executes as expected if the initial cashback was capped", async () => {
+      const context = await beforeMakingPayments();
+      const { cardPaymentProcessorShell, cashbackDistributorMockShell, payments: [payment] } = context;
+      expect(payment).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
+
+      await cardPaymentProcessorShell.enableCashback();
+      await cashbackDistributorMockShell.setSendCashbackAmountResult(CASHBACK_ROUNDING_COEF);
+      await cardPaymentProcessorShell.makePayments([payment]);
+      const refundAmount = Math.floor(payment.baseAmount * 0.1);
+      await cardPaymentProcessorShell.refundPayment(payment, refundAmount);
+      await context.checkCardPaymentProcessorState();
+    });
+
+    it("Updating with cashback decreasing executes as expected if the initial cashback was capped", async () => {
+      const context = await beforeMakingPayments();
+      const { cardPaymentProcessorShell, cashbackDistributorMockShell, payments: [payment] } = context;
+      expect(payment).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
+
+      await cardPaymentProcessorShell.enableCashback();
+      await cashbackDistributorMockShell.setSendCashbackAmountResult(CASHBACK_ROUNDING_COEF);
+      await cardPaymentProcessorShell.makePayments([payment]);
+      const newBaseAmount = Math.floor(payment.baseAmount * 0.1);
+      await cardPaymentProcessorShell.updatePaymentAmount(payment, newBaseAmount);
+      await context.checkCardPaymentProcessorState();
+    });
+
+    it("Updating with cashback increasing executes as expected if the initial cashback was capped", async () => {
+      const context = await beforeMakingPayments();
+      const { cardPaymentProcessorShell, cashbackDistributorMockShell, payments: [payment] } = context;
+      expect(payment).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
+
+      await cardPaymentProcessorShell.enableCashback();
+      await cashbackDistributorMockShell.setSendCashbackAmountResult(CASHBACK_ROUNDING_COEF);
+      await cardPaymentProcessorShell.makePayments([payment]);
+      const newBaseAmount = Math.floor(payment.baseAmount * 1.5);
+      await cardPaymentProcessorShell.updatePaymentAmount(payment, newBaseAmount);
       await context.checkCardPaymentProcessorState();
     });
   });

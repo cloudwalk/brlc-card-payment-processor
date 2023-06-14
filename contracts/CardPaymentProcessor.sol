@@ -373,7 +373,7 @@ contract CardPaymentProcessor is
         bytes16 correlationId,
         address sponsor,
         uint256 subsidyLimit,
-        int16  cashbackRateInPermil
+        int16   cashbackRateInPermil
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (account == address(0)) {
             revert ZeroAccount();
@@ -1101,32 +1101,32 @@ contract CardPaymentProcessor is
             calculateCashback(newAccountBaseAmount - paymentRefundAmount, payment.cashbackRate);
         uint256 oldCompensationAmount = operation.oldCompensationAmount;
 
+        if (operation.newPaymentBaseAmount <= operation.oldPaymentBaseAmount) {
+            operation.cashbackDecreased = true;
+            // If payment base amount decreases than the cashback amount can only be decreased or is not changed.
+            if (newCompensationAmount <= oldCompensationAmount) {
+                operation.cashbackAmountChange = oldCompensationAmount - newCompensationAmount;
+            }
+        } else {
+            operation.cashbackAmountChange = newCompensationAmount - oldCompensationAmount;
+        }
+
         if (newPaymentSumAmount < oldPaymentSumAmount) {
             operation.paymentSumAmountDecreased = true;
             operation.paymentTotalAmountChange = oldPaymentSumAmount - newPaymentSumAmount;
             operation.sponsorBalanceChange = oldSponsorSumAmount - newSponsorSumAmount;
+            operation.accountBalanceChange = oldAccountSumAmount - newAccountSumAmount;
 
-            if (newCompensationAmount < oldCompensationAmount) {
-                operation.cashbackDecreased = true;
-                operation.cashbackAmountChange = oldCompensationAmount - newCompensationAmount;
-                operation.accountBalanceChange =
-                    oldAccountSumAmount - newAccountSumAmount - operation.cashbackAmountChange;
-            } else {
-                operation.cashbackAmountChange = newCompensationAmount - oldCompensationAmount;
-                operation.accountBalanceChange = oldAccountSumAmount - newAccountSumAmount;
+            if (operation.cashbackDecreased) {
+                operation.accountBalanceChange -= operation.cashbackAmountChange;
             }
         } else {
             operation.paymentTotalAmountChange = newPaymentSumAmount - oldPaymentSumAmount;
             operation.sponsorBalanceChange = newSponsorSumAmount - oldSponsorSumAmount;
+            operation.accountBalanceChange = newAccountSumAmount - oldAccountSumAmount;
 
-            if (newCompensationAmount < oldCompensationAmount) {
-                operation.cashbackDecreased = true;
-                operation.cashbackAmountChange = oldCompensationAmount - newCompensationAmount;
-                operation.accountBalanceChange =
-                    newAccountSumAmount - oldAccountSumAmount + operation.cashbackAmountChange;
-            } else {
-                operation.cashbackAmountChange = newCompensationAmount - oldCompensationAmount;
-                operation.accountBalanceChange = newAccountSumAmount - oldAccountSumAmount;
+            if (operation.cashbackDecreased) {
+                operation.accountBalanceChange += operation.cashbackAmountChange;
             }
         }
         return operation;
@@ -1394,11 +1394,14 @@ contract CardPaymentProcessor is
 
     /// @dev Contains parameters of a payment refunding operation.
     struct RefundingOperation {
-        uint256 paymentRefundAmount;
+        uint256 paymentRefundAmount; // It is for local use only to avoid the "Stack too deep" error.
         uint256 sponsorRefundAmount;
         uint256 newPaymentRefundAmount;
         uint256 newPaymentSumAmount;
         uint256 paymentTotalAmountDiff;
+        uint256 oldCashbackAmount; // It is for local use only to avoid the "Stack too deep" error.
+        uint256 newCashbackAmount; // It is for local use only to avoid the "Stack too deep" error.
+        uint256 oldCompensationAmount; // It is for local use only to avoid the "Stack too deep" error.
         uint256 newCompensationAmount;
         uint256 accountSentAmount;
         uint256 sponsorSentAmount;
@@ -1514,12 +1517,21 @@ contract CardPaymentProcessor is
 
         operation.newPaymentSumAmount = paymentBaseAmount + newPaymentExtraAmount;
         operation.sponsorRefundAmount = newSponsorRefundAmount - oldSponsorRefundAmount;
-        operation.paymentRefundAmount = paymentRefundAmount; // It is needed to avoid the "Stack too deep" error.
+        operation.paymentRefundAmount = paymentRefundAmount;
         operation.newPaymentRefundAmount = newPaymentRefundAmount;
-        operation.newCompensationAmount = newPaymentRefundAmount + calculateCashback(
+        operation.oldCompensationAmount = payment.compensationAmount;
+        operation.oldCashbackAmount = operation.oldCompensationAmount - oldPaymentRefundAmount;
+        operation.newCashbackAmount = calculateCashback(
             accountBaseAmount - (newPaymentRefundAmount - newSponsorRefundAmount),
             payment.cashbackRate
         );
+
+        // The cashback cannot be increased in the refunding operation.
+        if (operation.newCashbackAmount > operation.oldCashbackAmount) {
+            operation.newCashbackAmount = operation.oldCashbackAmount;
+        }
+        operation.revokedCashbackAmount = operation.oldCashbackAmount - operation.newCashbackAmount;
+        operation.newCompensationAmount = newPaymentRefundAmount + operation.newCashbackAmount;
 
         uint256 oldPaymentExtraAmount = payment.extraAmount;
         uint256 oldAccountExtraAmount =
@@ -1528,15 +1540,12 @@ contract CardPaymentProcessor is
             defineAccountExtraAmount(paymentBaseAmount, newPaymentExtraAmount, subsidyLimit);
         uint256 paymentExtraAmountChange = oldPaymentExtraAmount - newPaymentExtraAmount;
         uint256 accountExtraAmountChange = oldAccountExtraAmount - newAccountExtraAmount;
-        uint256 oldCompensationAmount = payment.compensationAmount;
-        operation.accountSentAmount =
-            operation.newCompensationAmount - oldCompensationAmount - newSponsorRefundAmount + accountExtraAmountChange;
+        operation.accountSentAmount = operation.newCompensationAmount - operation.oldCompensationAmount -
+            newSponsorRefundAmount + accountExtraAmountChange;
         operation.sponsorSentAmount =
             operation.sponsorRefundAmount + paymentExtraAmountChange - accountExtraAmountChange;
         operation.totalSentAmount = operation.accountSentAmount + operation.sponsorSentAmount;
         operation.paymentTotalAmountDiff = operation.paymentRefundAmount + paymentExtraAmountChange;
-        operation.revokedCashbackAmount =
-            operation.paymentRefundAmount - (operation.newCompensationAmount - oldCompensationAmount);
 
         return operation;
     }
