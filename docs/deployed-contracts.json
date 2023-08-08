@@ -1,31 +1,51 @@
 [
   {
-    "name": "PixCashier",
+    "name": "PixCashier_BRLC",
     "chainId": 2009,
     "address": "0x1F94A163C329bEc14C73Ca46c66150E3c47dbEDC"
   },
   {
-    "name": "PixCashier",
+    "name": "PixCashier_BRLC",
     "chainId": 2008,
     "address": "0x3181Ab023a4D4788754258BE5A3b8cf3D8276B98"
   },
   {
-    "name": "CardPaymentProcessor",
+    "name": "PixCashier_USJIM",
+    "chainId": 2009,
+    "address": "0xB2aEa43F8aEfc78A2eb558118F8A606d6d9073D8"
+  },
+  {
+    "name": "PixCashier_USJIM",
+    "chainId": 2008,
+    "address": "0xd1476a75a3F4e700AEbcB8804d0A74A8bAcc303c"
+  },
+  {
+    "name": "CardPaymentProcessor_BRLC",
     "chainId": 2009,
     "address": "0xc10dB4941fB486b2d88839775802FA03BAc6dE31"
   },
   {
-    "name": "CardPaymentProcessor",
+    "name": "CardPaymentProcessor_BRLC",
     "chainId": 2008,
     "address": "0xe938b69d9AFA593FFE55CF01738AbfD62466DEa7"
   },
   {
-    "name": "CashbackDistributor",
+    "name": "CardPaymentProcessor_USJIM",
+    "chainId": 2009,
+    "address": "0x06aAAACCE7E224b402E749135C1dF616435BBb9E"
+  },
+  {
+    "name": "CardPaymentProcessor_USJIM",
+    "chainId": 2008,
+    "address": "0x160e794bAd1503968D316A8300D2a4E8F435Bf3e"
+  },
+  {
+    "name": "CashbackDistributor_BRLC",
     "chainId": 2009,
     "address": "0xE3845d98DFb62172B0C8E49BfCc3290890e40a05"
   },
   {
-    "name": "CashbackDistributor",
+    "name": "CashbackDistributor_BRLC",
     "chainId": 2008,
     "address": "0xFe57a8CE8f8428688Aa6D58B4707ED3586da6E46"
   },
