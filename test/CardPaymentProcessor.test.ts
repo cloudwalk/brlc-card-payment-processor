@@ -1254,6 +1254,10 @@ class TestContext {
         case OperationKind.Refunding:
           await this.checkRefundingEvents(tx, operation);
           break;
+        default:
+          throw new Error(
+            `An unknown operation kind was found: ${operation.kind}`
+          );
       }
 
       if (operation.newExtraAmount !== operation.oldExtraAmount) {
@@ -4890,6 +4894,105 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         REVERT_ERROR_IF_CASH_OUT_ACCOUNT_ADDRESS_IS_ZERO
       );
     });
+  });
+
+  describe("Function 'clearAndConfirmPayment()'", async () => {
+    it("Executes as expected and emits the correct event if the payment is subsidized", async () => {
+      const context = await beforeMakingPayments();
+      const { cardPaymentProcessorShell, payments: [payment] } = context;
+
+      await cardPaymentProcessorShell.enableCashback();
+      const subsidyLimit = Math.floor(payment.baseAmount / 2);
+      await cardPaymentProcessorShell.makePaymentFor(payment, sponsor, subsidyLimit);
+
+      const operationIndex1 = cardPaymentProcessorShell.model.clearPayment(payment.authorizationId);
+      const operationIndex2 = cardPaymentProcessorShell.model.confirmPayment(payment.authorizationId);
+      const tx = cardPaymentProcessorShell.contract.connect(executor).clearAndConfirmPayment(payment.authorizationId);
+      expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
+
+      await context.checkPaymentOperationsForTx(tx, [operationIndex1, operationIndex2]);
+      await context.checkCardPaymentProcessorState();
+    });
+
+    it("Is reverted if the contract is paused", async () => {
+      const context = await prepareForPayments();
+      const { cardPaymentProcessorShell, payments: [payment] } = context;
+      await pauseContract(cardPaymentProcessorShell.contract);
+
+      await expect(
+        cardPaymentProcessorShell.contract.connect(executor).clearAndConfirmPayment(payment.authorizationId)
+      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+    });
+
+    it("Is reverted if the caller does not have the executor role", async () => {
+      const context = await prepareForPayments();
+      const { cardPaymentProcessorShell, payments: [payment] } = context;
+
+      await expect(
+        cardPaymentProcessorShell.contract.connect(deployer).clearAndConfirmPayment(payment.authorizationId)
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
+    });
+
+    // Other conditions are checked during testing the clearing and confirming functions
+  });
+
+  describe("Function 'clearAndConfirmPayments()'", async () => {
+    it("Executes as expected and emits the correct events", async () => {
+      const context = await beforeMakingPayments({ paymentNumber: 2 });
+      const { cardPaymentProcessorShell, payments } = context;
+      await cardPaymentProcessorShell.makePayments([payments[0]]);
+      const subsidyLimit = Math.floor(payments[1].baseAmount / 2);
+      await cardPaymentProcessorShell.makePaymentFor(payments[1], sponsor, subsidyLimit);
+
+      const operationIndex1 = cardPaymentProcessorShell.model.clearPayment(payments[0].authorizationId);
+      const operationIndex2 = cardPaymentProcessorShell.model.clearPayment(payments[1].authorizationId);
+      const operationIndex3 = cardPaymentProcessorShell.model.confirmPayment(payments[0].authorizationId);
+      const operationIndex4 = cardPaymentProcessorShell.model.confirmPayment(payments[1].authorizationId);
+      const tx = cardPaymentProcessorShell.contract.connect(executor).clearAndConfirmPayments([
+        payments[0].authorizationId,
+        payments[1].authorizationId
+      ]);
+      expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
+
+      await context.checkPaymentOperationsForTx(
+        tx,
+        [operationIndex1, operationIndex2, operationIndex3, operationIndex4]
+      );
+      await context.checkCardPaymentProcessorState();
+    });
+
+    it("Is reverted if the contract is paused", async () => {
+      const context = await prepareForPayments();
+      const { cardPaymentProcessorShell, payments: [payment] } = context;
+      await pauseContract(cardPaymentProcessorShell.contract);
+
+      await expect(
+        cardPaymentProcessorShell.contract.connect(executor).clearAndConfirmPayments([payment.authorizationId])
+      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+    });
+
+    it("Is reverted if the caller does not have the executor role", async () => {
+      const context = await prepareForPayments();
+      const { cardPaymentProcessorShell, payments: [payment] } = context;
+
+      await expect(
+        cardPaymentProcessorShell.contract.connect(deployer).clearAndConfirmPayments([payment.authorizationId])
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
+    });
+
+    it("Is reverted if the payment authorization IDs array is empty", async () => {
+      const context = await prepareForPayments();
+      const { cardPaymentProcessorShell } = context;
+
+      await expect(
+        cardPaymentProcessorShell.contract.connect(executor).clearAndConfirmPayments([])
+      ).to.be.revertedWithCustomError(
+        cardPaymentProcessorShell.contract,
+        REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY
+      );
+    });
+
+    // Other conditions are checked during testing the clearing and confirming functions
   });
 
   describe("Function 'refundPayment()' with the extra amount parameter", async () => {
