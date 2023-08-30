@@ -523,6 +523,34 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     function confirmPayments(bytes16[] memory authorizationIds) external;
 
     /**
+     * @dev Executes clearing and confirmation operations for a single previously made card payment.
+     *
+     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
+     *
+     * Emits a {ClearPayment} event.
+     * Emits a {ClearPaymentSubsidized} event if the payment is subsidized.
+     * Emits a {ConfirmPayment} event.
+     * Emits a {ConfirmPaymentSubsidized} event if the payment is subsidized.
+     *
+     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     */
+    function clearAndConfirmPayment(bytes16 authorizationId) external;
+
+    /**
+     * @dev Executes clearing and confirmation operations for several previously made card payments.
+     *
+     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
+     *
+     * Emits a {ClearPayment} event for each payment.
+     * Emits a {ClearPaymentSubsidized} event for each subsidized payment.
+     * Emits a {ConfirmPayment} event for each payment.
+     * Emits a {ConfirmPaymentSubsidized} for each subsidized payment.
+     *
+     * @param authorizationIds The card transaction authorization IDs from the off-chain card processing backend.
+     */
+    function clearAndConfirmPayments(bytes16[] memory authorizationIds) external;
+
+    /**
      * @dev Makes a refund for a previously made card payment.
      *
      * Emits a {RefundPayment} event.

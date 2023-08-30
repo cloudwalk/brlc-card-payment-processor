@@ -608,6 +608,57 @@ contract CardPaymentProcessor is
     }
 
     /**
+     * @dev See {ICardPaymentProcessor-clearAndConfirmPayment}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input authorization ID of the payment must not be zero.
+     * - The payment linked with the authorization ID must have the "uncleared" status.
+     */
+    function clearAndConfirmPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        uint256 clearedAmount = clearPaymentInternal(authorizationId);
+        uint256 confirmedAmount = confirmPaymentInternal(authorizationId);
+
+        _totalUnclearedBalance -= clearedAmount;
+        _totalClearedBalance = _totalClearedBalance + clearedAmount - confirmedAmount;
+
+        IERC20Upgradeable(_token).safeTransfer(requireCashOutAccount(), confirmedAmount);
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-clearAndConfirmPayments}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input array of authorization IDs must not be empty.
+     * - All authorization IDs in the input array must not be zero.
+     * - All payments linked with the authorization IDs must have the "uncleared" status.
+     */
+    function clearAndConfirmPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        if (authorizationIds.length == 0) {
+            revert EmptyAuthorizationIdsArray();
+        }
+
+        uint256 cumulativeClearedAmount = 0;
+        uint256 cumulativeConfirmedAmount = 0;
+        uint256 len = authorizationIds.length;
+        for (uint256 i = 0; i < len; ++i) {
+            bytes16 authorizationId = authorizationIds[i];
+            cumulativeClearedAmount += clearPaymentInternal(authorizationId);
+            cumulativeConfirmedAmount += confirmPaymentInternal(authorizationId);
+        }
+
+        _totalUnclearedBalance -= cumulativeClearedAmount;
+        _totalClearedBalance = _totalClearedBalance + cumulativeClearedAmount - cumulativeConfirmedAmount;
+
+        IERC20Upgradeable(_token).safeTransfer(requireCashOutAccount(), cumulativeConfirmedAmount);
+    }
+
+    /**
      * @dev See {ICardPaymentProcessor-refundPayment}.
      *
      * Requirements:
