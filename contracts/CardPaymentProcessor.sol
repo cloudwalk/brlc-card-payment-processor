@@ -440,10 +440,10 @@ contract CardPaymentProcessor is
      * - The payment linked with the authorization ID must have the "uncleared" status.
      */
     function clearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        uint256 totalAmount = clearPaymentInternal(authorizationId);
+        uint256 amount = clearPaymentInternal(authorizationId);
 
-        _totalUnclearedBalance = _totalUnclearedBalance - totalAmount;
-        _totalClearedBalance = _totalClearedBalance + totalAmount;
+        _totalUnclearedBalance -= amount;
+        _totalClearedBalance += amount;
     }
 
     /**
@@ -462,14 +462,14 @@ contract CardPaymentProcessor is
             revert EmptyAuthorizationIdsArray();
         }
 
-        uint256 cumulativeTotalAmount = 0;
+        uint256 cumulativeAmount = 0;
         uint256 len = authorizationIds.length;
         for (uint256 i = 0; i < len; i++) {
-            cumulativeTotalAmount += clearPaymentInternal(authorizationIds[i]);
+            cumulativeAmount += clearPaymentInternal(authorizationIds[i]);
         }
 
-        _totalUnclearedBalance = _totalUnclearedBalance - cumulativeTotalAmount;
-        _totalClearedBalance = _totalClearedBalance + cumulativeTotalAmount;
+        _totalUnclearedBalance -= cumulativeAmount;
+        _totalClearedBalance += cumulativeAmount;
     }
 
     /**
@@ -483,10 +483,10 @@ contract CardPaymentProcessor is
      * - The payment linked with the authorization ID must have the "cleared" status.
      */
     function unclearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        uint256 totalAmount = unclearPaymentInternal(authorizationId);
+        uint256 amount = unclearPaymentInternal(authorizationId);
 
-        _totalClearedBalance = _totalClearedBalance - totalAmount;
-        _totalUnclearedBalance = _totalUnclearedBalance + totalAmount;
+        _totalClearedBalance -=amount;
+        _totalUnclearedBalance += amount;
     }
 
     /**
@@ -505,14 +505,14 @@ contract CardPaymentProcessor is
             revert EmptyAuthorizationIdsArray();
         }
 
-        uint256 cumulativeTotalAmount = 0;
+        uint256 cumulativeAmount = 0;
         uint256 len = authorizationIds.length;
         for (uint256 i = 0; i < len; i++) {
-            cumulativeTotalAmount += unclearPaymentInternal(authorizationIds[i]);
+            cumulativeAmount += unclearPaymentInternal(authorizationIds[i]);
         }
 
-        _totalClearedBalance = _totalClearedBalance - cumulativeTotalAmount;
-        _totalUnclearedBalance = _totalUnclearedBalance + cumulativeTotalAmount;
+        _totalClearedBalance -= cumulativeAmount;
+        _totalUnclearedBalance += cumulativeAmount;
     }
 
     /**
@@ -598,13 +598,13 @@ contract CardPaymentProcessor is
             revert EmptyAuthorizationIdsArray();
         }
 
-        uint256 totalAmount = 0;
+        uint256 cumulativeAmount = 0;
         for (uint256 i = 0; i < authorizationIds.length; i++) {
-            totalAmount += confirmPaymentInternal(authorizationIds[i]);
+            cumulativeAmount += confirmPaymentInternal(authorizationIds[i]);
         }
 
-        _totalClearedBalance -= totalAmount;
-        IERC20Upgradeable(_token).safeTransfer(requireCashOutAccount(), totalAmount);
+        _totalClearedBalance -= cumulativeAmount;
+        IERC20Upgradeable(_token).safeTransfer(requireCashOutAccount(), cumulativeAmount);
     }
 
     /**
