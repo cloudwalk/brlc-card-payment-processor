@@ -440,10 +440,10 @@ contract CardPaymentProcessor is
      * - The payment linked with the authorization ID must have the "uncleared" status.
      */
     function clearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        uint256 totalAmount = clearPaymentInternal(authorizationId);
+        uint256 amount = clearPaymentInternal(authorizationId);
 
-        _totalUnclearedBalance = _totalUnclearedBalance - totalAmount;
-        _totalClearedBalance = _totalClearedBalance + totalAmount;
+        _totalUnclearedBalance -= amount;
+        _totalClearedBalance += amount;
     }
 
     /**
@@ -462,14 +462,14 @@ contract CardPaymentProcessor is
             revert EmptyAuthorizationIdsArray();
         }
 
-        uint256 cumulativeTotalAmount = 0;
+        uint256 cumulativeAmount = 0;
         uint256 len = authorizationIds.length;
         for (uint256 i = 0; i < len; i++) {
-            cumulativeTotalAmount += clearPaymentInternal(authorizationIds[i]);
+            cumulativeAmount += clearPaymentInternal(authorizationIds[i]);
         }
 
-        _totalUnclearedBalance = _totalUnclearedBalance - cumulativeTotalAmount;
-        _totalClearedBalance = _totalClearedBalance + cumulativeTotalAmount;
+        _totalUnclearedBalance -= cumulativeAmount;
+        _totalClearedBalance += cumulativeAmount;
     }
 
     /**
@@ -483,10 +483,10 @@ contract CardPaymentProcessor is
      * - The payment linked with the authorization ID must have the "cleared" status.
      */
     function unclearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        uint256 totalAmount = unclearPaymentInternal(authorizationId);
+        uint256 amount = unclearPaymentInternal(authorizationId);
 
-        _totalClearedBalance = _totalClearedBalance - totalAmount;
-        _totalUnclearedBalance = _totalUnclearedBalance + totalAmount;
+        _totalClearedBalance -=amount;
+        _totalUnclearedBalance += amount;
     }
 
     /**
@@ -505,14 +505,14 @@ contract CardPaymentProcessor is
             revert EmptyAuthorizationIdsArray();
         }
 
-        uint256 cumulativeTotalAmount = 0;
+        uint256 cumulativeAmount = 0;
         uint256 len = authorizationIds.length;
         for (uint256 i = 0; i < len; i++) {
-            cumulativeTotalAmount += unclearPaymentInternal(authorizationIds[i]);
+            cumulativeAmount += unclearPaymentInternal(authorizationIds[i]);
         }
 
-        _totalClearedBalance = _totalClearedBalance - cumulativeTotalAmount;
-        _totalUnclearedBalance = _totalUnclearedBalance + cumulativeTotalAmount;
+        _totalClearedBalance -= cumulativeAmount;
+        _totalUnclearedBalance += cumulativeAmount;
     }
 
     /**
@@ -598,13 +598,64 @@ contract CardPaymentProcessor is
             revert EmptyAuthorizationIdsArray();
         }
 
-        uint256 totalAmount = 0;
+        uint256 cumulativeAmount = 0;
         for (uint256 i = 0; i < authorizationIds.length; i++) {
-            totalAmount += confirmPaymentInternal(authorizationIds[i]);
+            cumulativeAmount += confirmPaymentInternal(authorizationIds[i]);
         }
 
-        _totalClearedBalance -= totalAmount;
-        IERC20Upgradeable(_token).safeTransfer(requireCashOutAccount(), totalAmount);
+        _totalClearedBalance -= cumulativeAmount;
+        IERC20Upgradeable(_token).safeTransfer(requireCashOutAccount(), cumulativeAmount);
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-clearAndConfirmPayment}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input authorization ID of the payment must not be zero.
+     * - The payment linked with the authorization ID must have the "uncleared" status.
+     */
+    function clearAndConfirmPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        uint256 clearedAmount = clearPaymentInternal(authorizationId);
+        uint256 confirmedAmount = confirmPaymentInternal(authorizationId);
+
+        _totalUnclearedBalance -= clearedAmount;
+        _totalClearedBalance = _totalClearedBalance + clearedAmount - confirmedAmount;
+
+        IERC20Upgradeable(_token).safeTransfer(requireCashOutAccount(), confirmedAmount);
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-clearAndConfirmPayments}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input array of authorization IDs must not be empty.
+     * - All authorization IDs in the input array must not be zero.
+     * - All payments linked with the authorization IDs must have the "uncleared" status.
+     */
+    function clearAndConfirmPayments(bytes16[] memory authorizationIds) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        if (authorizationIds.length == 0) {
+            revert EmptyAuthorizationIdsArray();
+        }
+
+        uint256 cumulativeClearedAmount = 0;
+        uint256 cumulativeConfirmedAmount = 0;
+        uint256 len = authorizationIds.length;
+        for (uint256 i = 0; i < len; ++i) {
+            bytes16 authorizationId = authorizationIds[i];
+            cumulativeClearedAmount += clearPaymentInternal(authorizationId);
+            cumulativeConfirmedAmount += confirmPaymentInternal(authorizationId);
+        }
+
+        _totalUnclearedBalance -= cumulativeClearedAmount;
+        _totalClearedBalance = _totalClearedBalance + cumulativeClearedAmount - cumulativeConfirmedAmount;
+
+        IERC20Upgradeable(_token).safeTransfer(requireCashOutAccount(), cumulativeConfirmedAmount);
     }
 
     /**
