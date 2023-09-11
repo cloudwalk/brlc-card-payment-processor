@@ -43,7 +43,8 @@
 | --- | --- | --- | --- |
 | 1 | ProxyAdmin | Proxy admin | [0x71Bb3b173De088f34609e33A4B3E39EE8dd57A95](https://explorer.mainnet.cloudwalk.io/address/0x71Bb3b173De088f34609e33A4B3E39EE8dd57A95) |
 | 2 | TransparentUpgradeableProxy | Upgradeable proxy | [0xc10dB4941fB486b2d88839775802FA03BAc6dE31](https://explorer.mainnet.cloudwalk.io/address/0xc10dB4941fB486b2d88839775802FA03BAc6dE31) |
-| 3 | CardPaymentProcessor | Proxy implementation | [0x4FD4eD690f886555838C6ff7817569228666b37c](https://explorer.mainnet.cloudwalk.io/address/0x4FD4eD690f886555838C6ff7817569228666b37c) |
+| 3 | CardPaymentProcessor | Proxy implementation | [0x1487c7A58a889f4aE5F47231c5e65308ebF67f36](https://explorer.mainnet.cloudwalk.io/address/0x1487c7A58a889f4aE5F47231c5e65308ebF67f36) |
+|||| <strike>[0x4FD4eD690f886555838C6ff7817569228666b37c](https://explorer.mainnet.cloudwalk.io/address/0x4FD4eD690f886555838C6ff7817569228666b37c)</strike> |
 |||| <strike>[0x94468CED5411D9394dea234F27E1ff82B6Be7c67](https://explorer.mainnet.cloudwalk.io/address/0x94468CED5411D9394dea234F27E1ff82B6Be7c67)</strike> |
 |||| <strike>[0x1462E6237E7eF6668E544B4368199A71832Dbb53](https://explorer.mainnet.cloudwalk.io/address/0x1462E6237E7eF6668E544B4368199A71832Dbb53)</strike> |
 |||| <strike>[0xD8208dDf3BE7FeaE390d3fdf073Ac49223ad3c01](https://explorer.mainnet.cloudwalk.io/address/0xD8208dDf3BE7FeaE390d3fdf073Ac49223ad3c01)</strike> |
@@ -84,7 +85,8 @@
 | --- | --- | --- | --- |
 | 1 | ProxyAdmin | Proxy admin | [0x71Bb3b173De088f34609e33A4B3E39EE8dd57A95](https://explorer.mainnet.cloudwalk.io/address/0x71Bb3b173De088f34609e33A4B3E39EE8dd57A95) |
 | 2 | TransparentUpgradeableProxy | Upgradeable proxy | [0x06aAAACCE7E224b402E749135C1dF616435BBb9E](https://explorer.mainnet.cloudwalk.io/address/0x06aAAACCE7E224b402E749135C1dF616435BBb9E) |
-| 3 | CardPaymentProcessor | Proxy implementation | [0x4FD4eD690f886555838C6ff7817569228666b37c](https://explorer.mainnet.cloudwalk.io/address/0x4FD4eD690f886555838C6ff7817569228666b37c) |
+| 3 | CardPaymentProcessor | Proxy implementation | [0x1487c7A58a889f4aE5F47231c5e65308ebF67f36](https://explorer.mainnet.cloudwalk.io/address/0x1487c7A58a889f4aE5F47231c5e65308ebF67f36) |
+|||| <strike>[0x4FD4eD690f886555838C6ff7817569228666b37c](https://explorer.mainnet.cloudwalk.io/address/0x4FD4eD690f886555838C6ff7817569228666b37c)</strike> |
 
 ### CloudWalk (Testnet)
 | # | Name | Description | Address |
