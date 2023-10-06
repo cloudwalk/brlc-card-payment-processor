@@ -26,6 +26,14 @@ abstract contract PixCashierStorageV1 is IPixCashierTypes {
 }
 
 /**
+ * @title PixCashier storage version 2
+ */
+abstract contract PixCashierStorageV2 is IPixCashierTypes {
+    /// @dev The mapping of a cash-out operation structure for a given off-chain transaction identifier.
+    mapping(bytes32 => CashInOperation) internal _cashIns;
+}
+
+/**
  * @title PixCashier storage
  * @dev Contains storage variables of the {PixCashier} contract.
  *
@@ -35,6 +43,6 @@ abstract contract PixCashierStorageV1 is IPixCashierTypes {
  * e.g. PixCashierStorage<versionNumber>, so finally it would look like
  * "contract PixCashierStorage is PixCashierStorageV1, PixCashierStorageV2".
  */
-abstract contract PixCashierStorage is PixCashierStorageV1 {
+abstract contract PixCashierStorage is PixCashierStorageV1, PixCashierStorageV2 {
 
 }
