@@ -537,6 +537,34 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     function clearAndConfirmPayment(bytes16 authorizationId) external;
 
     /**
+     * @dev Executes updating, clearing and confirmation operations for a single previously made card payment.
+     *
+     * Updating of the base amount and extra amount executes lazy, i.e. only if
+     * the provided new amounts differ from the current once of the payment. Otherwise the update operation is skipped.
+     *
+     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
+     *
+     * Emits a {UpdatePaymentAmount} event if the update operation is executed.
+     * Emits a {UpdatePaymentAmountSubsidized} event if the update operation is executed and the payment is subsidized.
+     * Emits a {PaymentExtraAmountChanged} event if `extraAmount` of the payment is changed.
+     * Emits a {ClearPayment} event.
+     * Emits a {ClearPaymentSubsidized} event if the payment is subsidized.
+     * Emits a {ConfirmPayment} event.
+     * Emits a {ConfirmPaymentSubsidized} event if the payment is subsidized.
+     *
+     * @param newBaseAmount The new base amount of the payment.
+     * @param newExtraAmount The new extra amount of the payment. No cashback is applied.
+     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
+     */
+    function updateLazyClearConfirmPayment(
+        uint256 newBaseAmount,
+        uint256 newExtraAmount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) external;
+
+    /**
      * @dev Executes clearing and confirmation operations for several previously made card payments.
      *
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.

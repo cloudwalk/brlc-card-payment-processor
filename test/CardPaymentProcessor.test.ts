@@ -1213,6 +1213,9 @@ class TestContext {
     const operations: PaymentOperation[] = paymentOperationIndexes.map(
       (index) => this.cardPaymentProcessorShell.model.getPaymentOperation(index)
     );
+    const cashbackRevocationRequestedInAnyOperation = operations.filter(operation => operation.cashbackRevocationRequested).length > 0;
+    const cashbackIncreaseRequestedInAnyOperation = operations.filter(operation => operation.cashbackIncreaseRequested).length > 0;
+    const extraAmountChangedInAnyOperations = operations.filter(operation => operation.oldExtraAmount !== operation.newExtraAmount).length > 0;
 
     for (let operation of operations) {
       switch (operation.kind) {
@@ -1272,7 +1275,7 @@ class TestContext {
           checkEventField("newExtraAmount", operation.newExtraAmount),
           checkEventField("oldExtraAmount", operation.oldExtraAmount)
         );
-      } else {
+      } else if (!extraAmountChangedInAnyOperations) {
         await expect(tx).not.to.emit(
           this.cardPaymentProcessorShell.contract,
           EVENT_NAME_PAYMENT_EXTRA_AMOUNT_CHANGED
@@ -1439,7 +1442,7 @@ class TestContext {
           this.cardPaymentProcessorShell.contract,
           EVENT_NAME_REVOKE_CASHBACK_FAILURE
         );
-      } else {  // !(operation.cashbackRevocationRequested || operation.cashbackIncreaseRequested)
+      } else if (!cashbackRevocationRequestedInAnyOperation && !cashbackIncreaseRequestedInAnyOperation) {
         await expect(tx).not.to.emit(
           this.cashbackDistributorMockShell.contract,
           EVENT_NAME_REVOKE_CASHBACK_MOCK
@@ -4934,6 +4937,121 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
 
     // Other conditions are checked during testing the clearing and confirming functions
+  });
+
+  describe("Function 'updateLazyClearConfirmPayment()'", async () => {
+
+    enum NewBasePaymentAmountType {
+      Same = 0,
+      More = 1,
+    }
+
+    enum NewExtraPaymentAmountType {
+      Same = 0,
+      More = 1,
+    }
+
+    async function checkContractFunction(
+      newBasePaymentAmountType: NewBasePaymentAmountType,
+      newExtraPaymentAmountType: NewExtraPaymentAmountType
+    ) {
+      const context = await beforeMakingPayments();
+      const { cardPaymentProcessorShell, payments: [payment] } = context;
+
+      await cardPaymentProcessorShell.enableCashback();
+      const subsidyLimit = Math.floor(payment.baseAmount / 2);
+      await cardPaymentProcessorShell.makePaymentFor(payment, sponsor, subsidyLimit);
+
+      let newBaseAmount;
+      if (newBasePaymentAmountType == NewExtraPaymentAmountType.More) {
+        newBaseAmount = payment.baseAmount + 1;
+      } else {
+        newBaseAmount = payment.baseAmount;
+      }
+      let newExtraAmount;
+      if (newExtraPaymentAmountType == NewExtraPaymentAmountType.More) {
+        newExtraAmount = payment.extraAmount + 1;
+      } else {
+        newExtraAmount = payment.extraAmount;
+      }
+
+      const operationIndexes: number[] = [];
+      if (newBaseAmount !== payment.baseAmount || newExtraAmount !== payment.extraAmount) {
+        const operationIndex1 = cardPaymentProcessorShell.model.updatePaymentAmount(
+          newBaseAmount,
+          newExtraAmount,
+          payment.authorizationId,
+          PAYMENT_UPDATING_CORRELATION_ID_STUB
+        );
+        operationIndexes.push(operationIndex1);
+      }
+      const operationIndex2 = cardPaymentProcessorShell.model.clearPayment(payment.authorizationId);
+      operationIndexes.push(operationIndex2);
+      const operationIndex3 = cardPaymentProcessorShell.model.confirmPayment(payment.authorizationId);
+      operationIndexes.push(operationIndex3);
+
+      const tx = cardPaymentProcessorShell.contract.connect(executor).updateLazyClearConfirmPayment(
+        newBaseAmount,
+        newExtraAmount,
+        payment.authorizationId,
+        PAYMENT_UPDATING_CORRELATION_ID_STUB
+      );
+      expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
+
+      await context.checkPaymentOperationsForTx(tx, operationIndexes);
+      await context.checkCardPaymentProcessorState();
+
+      if (newBaseAmount === payment.baseAmount && newExtraAmount === payment.extraAmount) {
+        await expect(tx).not.to.emit(cardPaymentProcessorShell.contract, EVENT_NAME_UPDATE_PAYMENT_AMOUNT);
+      }
+    }
+
+    describe("Executes as expected and emits the correct event if the payment is subsidized and", async () => {
+      it("The new base amount differs from the current one and the extra amount is the same", async () => {
+        await checkContractFunction(NewBasePaymentAmountType.More, NewExtraPaymentAmountType.Same);
+      });
+
+      it("The new extra amount differs from the current one and the base amount is the same", async () => {
+        await checkContractFunction(NewBasePaymentAmountType.Same, NewExtraPaymentAmountType.More);
+      });
+
+      it("The new base amount and extra amount are the same", async () => {
+        await checkContractFunction(NewBasePaymentAmountType.Same, NewExtraPaymentAmountType.Same);
+      });
+    });
+
+    describe("Is reverted if ", async () => {
+      it("The contract is paused", async () => {
+        const context = await prepareForPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+        await pauseContract(cardPaymentProcessorShell.contract);
+
+        await expect(
+          cardPaymentProcessorShell.contract.connect(executor).updateLazyClearConfirmPayment(
+            payment.baseAmount,
+            payment.extraAmount,
+            payment.authorizationId,
+            PAYMENT_UPDATING_CORRELATION_ID_STUB
+          )
+        ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      });
+
+      it("The caller does not have the executor role", async () => {
+        const context = await prepareForPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+
+        await expect(
+          cardPaymentProcessorShell.contract.connect(deployer).updateLazyClearConfirmPayment(
+            payment.baseAmount,
+            payment.extraAmount,
+            payment.authorizationId,
+            PAYMENT_UPDATING_CORRELATION_ID_STUB
+          )
+        ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
+      });
+    });
+
+    // Other conditions are checked during testing the updating, clearing, confirming functions
   });
 
   describe("Function 'clearAndConfirmPayments()'", async () => {
