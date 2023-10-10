@@ -306,50 +306,6 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     ) external;
 
     /**
-     * @dev Makes a card payment without cashback.
-     *
-     * Transfers the underlying tokens from the payer (who is the caller of the function) to this contract.
-     * This function is expected to be called by any account.
-     *
-     * Emits a {MakePayment} event.
-     * Emits a {PaymentExtraAmountChanged} event if `extraAmount` is not zero.
-     *
-     * @param baseAmount The base amount of tokens to transfer because of the payment.
-     * @param extraAmount The extra amount of tokens to transfer because of the payment. No cashback is applied.
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
-     */
-    function makePaymentWithoutCashback(
-        uint256 baseAmount,
-        uint256 extraAmount,
-        bytes16 authorizationId,
-        bytes16 correlationId
-    ) external;
-
-    /**
-     * @dev Makes a card payment from some other account.
-     *
-     * Transfers the underlying tokens from the account to this contract.
-     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
-     *
-     * Emits a {MakePayment} event.
-     * Emits a {PaymentExtraAmountChanged} event if `extraAmount` is not zero.
-     *
-     * @param account The account on that behalf the payment is made.
-     * @param baseAmount The base amount of tokens to transfer because of the payment.
-     * @param extraAmount The extra amount of tokens to transfer because of the payment. No cashback is applied.
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
-     */
-    function makePaymentFrom(
-        address account,
-        uint256 baseAmount,
-        uint256 extraAmount,
-        bytes16 authorizationId,
-        bytes16 correlationId
-    ) external;
-
-    /**
      * @dev Makes a card payment for a given account initiated by a service account.
      *
      * The payment can be subsidized with full or partial reimbursement from a specified sponsor account.
