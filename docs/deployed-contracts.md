@@ -43,7 +43,8 @@
 | --- | --- | --- | --- |
 | 1 | ProxyAdmin | Proxy admin | [0x71Bb3b173De088f34609e33A4B3E39EE8dd57A95](https://explorer.mainnet.cloudwalk.io/address/0x71Bb3b173De088f34609e33A4B3E39EE8dd57A95) |
 | 2 | TransparentUpgradeableProxy | Upgradeable proxy | [0xc10dB4941fB486b2d88839775802FA03BAc6dE31](https://explorer.mainnet.cloudwalk.io/address/0xc10dB4941fB486b2d88839775802FA03BAc6dE31) |
-| 3 | CardPaymentProcessor | Proxy implementation | [0x4FD4eD690f886555838C6ff7817569228666b37c](https://explorer.mainnet.cloudwalk.io/address/0x4FD4eD690f886555838C6ff7817569228666b37c) |
+| 3 | CardPaymentProcessor | Proxy implementation | [0x1487c7A58a889f4aE5F47231c5e65308ebF67f36](https://explorer.mainnet.cloudwalk.io/address/0x1487c7A58a889f4aE5F47231c5e65308ebF67f36) |
+|||| <strike>[0x4FD4eD690f886555838C6ff7817569228666b37c](https://explorer.mainnet.cloudwalk.io/address/0x4FD4eD690f886555838C6ff7817569228666b37c)</strike> |
 |||| <strike>[0x94468CED5411D9394dea234F27E1ff82B6Be7c67](https://explorer.mainnet.cloudwalk.io/address/0x94468CED5411D9394dea234F27E1ff82B6Be7c67)</strike> |
 |||| <strike>[0x1462E6237E7eF6668E544B4368199A71832Dbb53](https://explorer.mainnet.cloudwalk.io/address/0x1462E6237E7eF6668E544B4368199A71832Dbb53)</strike> |
 |||| <strike>[0xD8208dDf3BE7FeaE390d3fdf073Ac49223ad3c01](https://explorer.mainnet.cloudwalk.io/address/0xD8208dDf3BE7FeaE390d3fdf073Ac49223ad3c01)</strike> |
@@ -60,7 +61,8 @@
 | --- | --- | --- | --- |
 | 1 | ProxyAdmin | Proxy admin | [0xDb25bd42B55468B6CeF2097C65cE7AcF4f8aaE8A](https://explorer.testnet.cloudwalk.io/address/0xDb25bd42B55468B6CeF2097C65cE7AcF4f8aaE8A) |
 | 2 | TransparentUpgradeableProxy | Upgradeable proxy | [0xe938b69d9AFA593FFE55CF01738AbfD62466DEa7](https://explorer.testnet.cloudwalk.io/address/0xe938b69d9AFA593FFE55CF01738AbfD62466DEa7) |
-| 3 | CardPaymentProcessor | Proxy implementation | [0x1A17724b8B14cf35024Ab7EC7aaaaAE0a70FA004](https://explorer.testnet.cloudwalk.io/address/0x1A17724b8B14cf35024Ab7EC7aaaaAE0a70FA004) |
+| 3 | CardPaymentProcessor | Proxy implementation | [0xd539c1683D5115EdC40a4ecD8E65DFaB0b3E8110](https://explorer.testnet.cloudwalk.io/address/0xd539c1683D5115EdC40a4ecD8E65DFaB0b3E8110) |
+|||| <strike>[0x1A17724b8B14cf35024Ab7EC7aaaaAE0a70FA004](https://explorer.testnet.cloudwalk.io/address/0x1A17724b8B14cf35024Ab7EC7aaaaAE0a70FA004)</strike> |
 |||| <strike>[0x7097c58298baF94b8bC0724FeF217b73ee2CAD01](https://explorer.testnet.cloudwalk.io/address/0x7097c58298baF94b8bC0724FeF217b73ee2CAD01)</strike> |
 |||| <strike>[0x6E8b29d87692a965fb62c527523a3f690b06e4D5](https://explorer.testnet.cloudwalk.io/address/0x6E8b29d87692a965fb62c527523a3f690b06e4D5)</strike> |
 |||| <strike>[0xc8d4d83961fFAb3b3c82DB716F6f8ED51B092A49](https://explorer.testnet.cloudwalk.io/address/0xc8d4d83961fFAb3b3c82DB716F6f8ED51B092A49)</strike> |
@@ -83,14 +85,16 @@
 | --- | --- | --- | --- |
 | 1 | ProxyAdmin | Proxy admin | [0x71Bb3b173De088f34609e33A4B3E39EE8dd57A95](https://explorer.mainnet.cloudwalk.io/address/0x71Bb3b173De088f34609e33A4B3E39EE8dd57A95) |
 | 2 | TransparentUpgradeableProxy | Upgradeable proxy | [0x06aAAACCE7E224b402E749135C1dF616435BBb9E](https://explorer.mainnet.cloudwalk.io/address/0x06aAAACCE7E224b402E749135C1dF616435BBb9E) |
-| 3 | CardPaymentProcessor | Proxy implementation | [0x4FD4eD690f886555838C6ff7817569228666b37c](https://explorer.mainnet.cloudwalk.io/address/0x4FD4eD690f886555838C6ff7817569228666b37c) |
+| 3 | CardPaymentProcessor | Proxy implementation | [0x1487c7A58a889f4aE5F47231c5e65308ebF67f36](https://explorer.mainnet.cloudwalk.io/address/0x1487c7A58a889f4aE5F47231c5e65308ebF67f36) |
+|||| <strike>[0x4FD4eD690f886555838C6ff7817569228666b37c](https://explorer.mainnet.cloudwalk.io/address/0x4FD4eD690f886555838C6ff7817569228666b37c)</strike> |
 
 ### CloudWalk (Testnet)
 | # | Name | Description | Address |
 | --- | --- | --- | --- |
 | 1 | ProxyAdmin | Proxy admin | [0xDb25bd42B55468B6CeF2097C65cE7AcF4f8aaE8A](https://explorer.testnet.cloudwalk.io/address/0xDb25bd42B55468B6CeF2097C65cE7AcF4f8aaE8A) |
 | 2 | TransparentUpgradeableProxy | Upgradeable proxy | [0x160e794bAd1503968D316A8300D2a4E8F435Bf3e](https://explorer.testnet.cloudwalk.io/address/0x160e794bAd1503968D316A8300D2a4E8F435Bf3e) |
-| 3 | CardPaymentProcessor | Proxy implementation | [0x1A17724b8B14cf35024Ab7EC7aaaaAE0a70FA004](https://explorer.testnet.cloudwalk.io/address/0x1A17724b8B14cf35024Ab7EC7aaaaAE0a70FA004) |
+| 3 | CardPaymentProcessor | Proxy implementation | [0xd539c1683D5115EdC40a4ecD8E65DFaB0b3E8110](https://explorer.testnet.cloudwalk.io/address/0xd539c1683D5115EdC40a4ecD8E65DFaB0b3E8110) |
+|||| <strike>[0x1A17724b8B14cf35024Ab7EC7aaaaAE0a70FA004](https://explorer.testnet.cloudwalk.io/address/0x1A17724b8B14cf35024Ab7EC7aaaaAE0a70FA004)</strike> |
 
 # CashbackDistributor (BRLC)
 
