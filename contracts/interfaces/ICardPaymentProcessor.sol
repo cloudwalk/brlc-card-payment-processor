@@ -223,6 +223,13 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         bytes addendum // Empty. Reserved for future possible additional information.
     );
 
+    /// @dev Emitted when an account is refunded.
+    event RefundAccount(
+        bytes16 indexed correlationId,
+        address indexed account,
+        uint256 refundAmount
+    );
+
     /// @dev Emitted when the cash-out account is changed.
     event SetCashOutAccount(
         address oldCashOutAccount,
@@ -550,6 +557,23 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint256 refundAmount,
         uint256 newExtraAmount,
         bytes16 authorizationId,
+        bytes16 correlationId
+    ) external;
+
+    /**
+     * @dev Makes a refund for an account where the refund cannot be associated with any card payment.
+     *
+     * During this operation the needed amount of tokens is transferred from the cash-out account to the target account.
+     *
+     * Emits a {RefundAccount} event.
+     *
+     * @param account The address of the account to refund.
+     * @param refundAmount The amount of tokens to refund.
+     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
+     */
+    function refundAccount(
+        address account,
+        uint256 refundAmount,
         bytes16 correlationId
     ) external;
 }

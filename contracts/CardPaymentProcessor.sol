@@ -592,6 +592,35 @@ contract CardPaymentProcessor is
     }
 
     /**
+     * @dev See {ICardPaymentProcessor-refundAccount}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The account address must not be zero.
+     */
+    function refundAccount(
+        address account,
+        uint256 refundAmount,
+        bytes16 correlationId
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        if (account == address(0)) {
+            revert ZeroAccount();
+        }
+        address cashOutAccount_ = requireCashOutAccount();
+        IERC20Upgradeable token = IERC20Upgradeable(_token);
+
+        emit RefundAccount(
+            correlationId,
+            account,
+            refundAmount
+        );
+
+        token.safeTransferFrom(cashOutAccount_, account, refundAmount);
+    }
+
+    /**
      * @dev Sets a new value for the revocation limit.
      * If the limit equals 0 or 1 a payment with the same authorization ID cannot be repeated after the revocation.
      *
