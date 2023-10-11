@@ -38,6 +38,7 @@ const EVENT_NAME_INCREASE_CASHBACK_SUCCESS = "IncreaseCashbackSuccess";
 const EVENT_NAME_MAKE_PAYMENT = "MakePayment";
 const EVENT_NAME_MAKE_PAYMENT_SUBSIDIZED = "MakePaymentSubsidized";
 const EVENT_NAME_PAYMENT_EXTRA_AMOUNT_CHANGED = "PaymentExtraAmountChanged";
+const EVENT_NAME_REFUND_ACCOUNT = "RefundAccount";
 const EVENT_NAME_REFUND_PAYMENT = "RefundPayment";
 const EVENT_NAME_REFUND_PAYMENT_SUBSIDIZED = "RefundPaymentSubsidized";
 const EVENT_NAME_REVERSE_PAYMENT = "ReversePayment";
@@ -5301,6 +5302,100 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             PAYMENT_REFUNDING_CORRELATION_ID_STUB
           )
         ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
+      });
+    });
+  });
+
+  describe("Function 'refundAccount()'", async () => {
+    const nonZeroTokenAmount = 123;
+    const zeroTokenAmount = 0;
+
+    async function checkRefundingAccount(tokenAmount: number) {
+      const { cardPaymentProcessorShell, tokenMock } = await prepareForPayments();
+      await proveTx(tokenMock.mint(cashOutAccount.address, tokenAmount));
+
+      const tx = await cardPaymentProcessorShell.contract.connect(executor).refundAccount(
+        user1.address,
+        tokenAmount,
+        PAYMENT_REFUNDING_CORRELATION_ID_STUB
+      );
+
+      await expect(tx).to.emit(
+        cardPaymentProcessorShell.contract,
+        EVENT_NAME_REFUND_ACCOUNT
+      ).withArgs(
+        PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+        user1.address,
+        tokenAmount
+      );
+
+      await expect(tx).to.changeTokenBalances(
+        tokenMock,
+        [user1, cashOutAccount, cardPaymentProcessorShell.contract],
+        [+tokenAmount, -tokenAmount, 0]
+      );
+    }
+
+    describe("Executes as expected and emits the correct events if the refund amount is", async () => {
+      it("Nonzero", async () => {
+        await checkRefundingAccount(nonZeroTokenAmount);
+      });
+
+      it("Zero", async () => {
+        await checkRefundingAccount(zeroTokenAmount);
+      });
+    });
+
+    describe("Is reverted if", async () => {
+      it("The contract is paused", async () => {
+        const { cardPaymentProcessorShell } = await prepareForPayments();
+        await pauseContract(cardPaymentProcessorShell.contract);
+
+        await expect(
+          cardPaymentProcessorShell.contract.connect(executor).refundAccount(
+            user1.address,
+            nonZeroTokenAmount,
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB
+          )
+        ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      });
+
+      it("The caller does not have the executor role", async () => {
+        const { cardPaymentProcessorShell } = await prepareForPayments();
+
+        await expect(
+          cardPaymentProcessorShell.contract.connect(deployer).refundAccount(
+            user1.address,
+            nonZeroTokenAmount,
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB
+          )
+        ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
+      });
+
+      it("The account address is zero", async () => {
+        const { cardPaymentProcessorShell } = await prepareForPayments();
+
+        await expect(
+          cardPaymentProcessorShell.contract.connect(executor).refundAccount(
+            ZERO_ADDRESS,
+            nonZeroTokenAmount,
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB
+          )
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_ACCOUNT_IS_ZERO);
+      });
+
+      it("The cash-out account does not have enough token balance", async () => {
+        const { cardPaymentProcessorShell, tokenMock } = await prepareForPayments();
+        const tokenAmount = nonZeroTokenAmount;
+        await proveTx(tokenMock.mint(cashOutAccount.address, tokenAmount - 1));
+
+        await expect(
+          cardPaymentProcessorShell.contract.connect(executor).refundAccount(
+            user1.address,
+            tokenAmount,
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB
+          )
+        ).to.be.revertedWith(REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
       });
     });
   });
