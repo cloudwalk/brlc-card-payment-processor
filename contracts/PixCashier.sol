@@ -65,6 +65,12 @@ contract PixCashier is
     error InvalidBatchArrays();
 
     /**
+     * @dev The cash-in operation with the provided off-chain transaction is already executed.
+     * @param txId The off-chain transaction identifiers of the operation.
+     */
+    error CashInAlreadyExecuted(bytes32 txId);
+
+    /**
      * @dev The cash-out operation with the provided off-chain transaction identifier has an inappropriate status.
      * @param txId The off-chain transaction identifiers of the operation.
      * @param status The current status of the operation.
@@ -164,6 +170,24 @@ contract PixCashier is
                 txIds[i] = _pendingCashOutTxIds.at(index);
                 index++;
             }
+        }
+    }
+
+    /**
+     * @dev See {IPixCashier-getCashIn}.
+     */
+    function getCashIn(bytes32 txIds) external view returns (CashInOperation memory) {
+        return _cashIns[txIds];
+    }
+
+    /**
+     * @dev See {IPixCashier-getCashIns}.
+     */
+    function getCashIns(bytes32[] memory txIds) external view returns (CashInOperation[] memory cashIns) {
+        uint256 len = txIds.length;
+        cashIns = new CashInOperation[](len);
+        for (uint256 i = 0; i < len; i++) {
+            cashIns[i] = _cashIns[txIds[i]];
         }
     }
 
@@ -362,6 +386,16 @@ contract PixCashier is
         if (isBlacklisted(account)) {
             revert BlacklistedAccount(account);
         }
+
+        if (_cashIns[txId].status != CashInStatus.Nonexistent) {
+            revert CashInAlreadyExecuted(txId);
+        }
+
+        _cashIns[txId] = CashInOperation({
+            status: CashInStatus.Executed,
+            account: account,
+            amount: amount
+        });
 
         emit CashIn(account, amount, txId);
 

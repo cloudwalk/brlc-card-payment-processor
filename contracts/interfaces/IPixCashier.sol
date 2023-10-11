@@ -7,6 +7,18 @@ pragma solidity 0.8.16;
  */
 interface IPixCashierTypes {
     /**
+     * @dev Possible statuses of a cash-in operation as an enum.
+     *
+     * The possible values:
+     * - Nonexistent - The operation does not exist (the default value).
+     * - Executed ---- The operations was executed.
+     */
+    enum CashInStatus {
+        Nonexistent, // 0
+        Executed     // 1
+    }
+
+    /**
      * @dev Possible statuses of a cash-out operation as an enum.
      *
      * The possible values:
@@ -22,7 +34,14 @@ interface IPixCashierTypes {
         Confirmed    // 3
     }
 
-    /// @dev Structure with data of a single cash-out operation.
+    /// @dev Structure with data of a single cash-in operation.
+    struct CashInOperation {
+        CashInStatus status;  // The status of the cash-in operation according to the {CashInStatus} enum.
+        address account;      // The owner of tokens to cash-in.
+        uint256 amount;       // The amount of tokens to cash-in.
+    }
+
+    /// @dev Structure with data of a single cash-in operation.
     struct CashOut {
         address account;      // The owner of tokens to cash-out.
         uint256 amount;       // The amount of tokens to cash-out.
@@ -71,6 +90,18 @@ interface IPixCashier is IPixCashierTypes {
      * @dev Returns the address of the underlying token.
      */
     function underlyingToken() external view returns (address);
+
+    /**
+     * @dev Returns the data of a single cash-in operation.
+     * @param txId The off-chain transaction identifier of the operation.
+     */
+    function getCashIn(bytes32 txId) external view returns (CashInOperation memory);
+
+    /**
+     * @dev Returns the data of multiple cash-out operations.
+     * @param txIds The off-chain transaction identifiers of the operations.
+     */
+    function getCashIns(bytes32[] memory txIds) external view returns (CashInOperation[] memory cashIns);
 
     /**
      * @dev Returns the pending cash-out balance for an account.
