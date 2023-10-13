@@ -236,123 +236,6 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-makePaymentWithoutCashback}.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must must not be blacklisted.
-     * - The authorization ID of the payment must not be zero.
-     * - The payment linked with the authorization ID must not exist or be revoked.
-     * - The payment's revocation counter must be equal to zero or less than the configured revocation limit.
-     */
-    function makePaymentWithoutCashback(
-        uint256 baseAmount,
-        uint256 extraAmount,
-        bytes16 authorizationId,
-        bytes16 correlationId
-    ) external whenNotPaused notBlacklisted(_msgSender()) {
-        address sender = _msgSender();
-        MakingOperation memory operation = MakingOperation({
-            sender: sender,
-            account: sender,
-            baseAmount: baseAmount,
-            extraAmount: extraAmount,
-            authorizationId: authorizationId,
-            correlationId: correlationId,
-            sponsor: address(0),
-            subsidyLimit: 0,
-            cashbackRateInPermil: 0
-        });
-        makePaymentInternal(operation);
-    }
-
-    /**
-     * @dev A version of the function without the `extraAmount` parameter for backward compatibility.
-     */
-    function makePayment(
-        uint256 amount,
-        bytes16 authorizationId,
-        bytes16 correlationId
-    ) external whenNotPaused notBlacklisted(_msgSender()) {
-        address sender = _msgSender();
-        MakingOperation memory operation = MakingOperation({
-            sender: sender,
-            account: sender,
-            baseAmount: amount,
-            extraAmount: 0,
-            authorizationId: authorizationId,
-            correlationId: correlationId,
-            sponsor: address(0),
-            subsidyLimit: 0,
-            cashbackRateInPermil: -1
-        });
-        makePaymentInternal(operation);
-    }
-
-    /**
-     * @dev See {ICardPaymentProcessor-makePaymentFor}.
-     *
-     * Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The payment account address must not be zero.
-     * - The authorization ID of the payment must not be zero.
-     * - The payment linked with the authorization ID must not exist or be revoked.
-     * - The payment's revocation counter must be equal to zero or less than the configured revocation limit.
-     */
-    function makePaymentFrom(
-        address account,
-        uint256 baseAmount,
-        uint256 extraAmount,
-        bytes16 authorizationId,
-        bytes16 correlationId
-    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        if (account == address(0)) {
-            revert ZeroAccount();
-        }
-        MakingOperation memory operation = MakingOperation({
-            sender: _msgSender(),
-            account: account,
-            baseAmount: baseAmount,
-            extraAmount: extraAmount,
-            authorizationId: authorizationId,
-            correlationId: correlationId,
-            sponsor: address(0),
-            subsidyLimit: 0,
-            cashbackRateInPermil: -1
-        });
-        makePaymentInternal(operation);
-    }
-
-    /**
-     * @dev A version of the function without the `extraAmount` parameter for backward compatibility.
-     */
-    function makePaymentFrom(
-        address account,
-        uint256 amount,
-        bytes16 authorizationId,
-        bytes16 correlationId
-    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        if (account == address(0)) {
-            revert ZeroAccount();
-        }
-        MakingOperation memory operation = MakingOperation({
-            sender: _msgSender(),
-            account: account,
-            baseAmount: amount,
-            extraAmount: 0,
-            authorizationId: authorizationId,
-            correlationId: correlationId,
-            sponsor: address(0),
-            subsidyLimit: 0,
-            cashbackRateInPermil: -1
-        });
-        makePaymentInternal(operation);
-    }
-
-    /**
      * @dev See {ICardPaymentProcessor-makePaymentFor}.
      *
      * Requirements:
@@ -415,18 +298,13 @@ contract CardPaymentProcessor is
         bytes16 authorizationId,
         bytes16 correlationId
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        updatePaymentAmountInternal(newBaseAmount, newExtraAmount, authorizationId, correlationId);
-    }
-
-    /**
-     * @dev A version of the function without the `newExtraAmount` parameter for backward compatibility.
-     */
-    function updatePaymentAmount(
-        uint256 newAmount,
-        bytes16 authorizationId,
-        bytes16 correlationId
-    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        updatePaymentAmountInternal(newAmount, _payments[authorizationId].extraAmount, authorizationId, correlationId);
+        updatePaymentAmountInternal(
+            newBaseAmount,
+            newExtraAmount,
+            authorizationId,
+            correlationId,
+            UpdatingOperationKind.Full
+        );
     }
 
     /**
@@ -485,7 +363,7 @@ contract CardPaymentProcessor is
     function unclearPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         uint256 amount = unclearPaymentInternal(authorizationId);
 
-        _totalClearedBalance -=amount;
+        _totalClearedBalance -= amount;
         _totalUnclearedBalance += amount;
     }
 
@@ -618,13 +496,38 @@ contract CardPaymentProcessor is
      * - The payment linked with the authorization ID must have the "uncleared" status.
      */
     function clearAndConfirmPayment(bytes16 authorizationId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        uint256 clearedAmount = clearPaymentInternal(authorizationId);
-        uint256 confirmedAmount = confirmPaymentInternal(authorizationId);
+        clearAndConfirmPaymentInternal(authorizationId);
+    }
 
-        _totalUnclearedBalance -= clearedAmount;
-        _totalClearedBalance = _totalClearedBalance + clearedAmount - confirmedAmount;
-
-        IERC20Upgradeable(_token).safeTransfer(requireCashOutAccount(), confirmedAmount);
+    /**
+     * @dev See {ICardPaymentProcessor-updateLazyClearConfirmPayment}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input authorization ID of the payment must not be zero.
+     * - The payment linked with the authorization ID must have the "uncleared" status.
+     * - The input authorization ID of the payment must not be zero.
+     * - The new base amount must not exceed the existing refund amount.
+     * - If the base amount of the payment increases the extra amount must increase too or keep unchanged.
+     * - If the base amount of the payment decreases the extra amount must decrease too or keep unchanged.
+     * - If the base amount of the payment does not change the extra amount is allowed to change in any way.
+     */
+    function updateLazyClearConfirmPayment(
+        uint256 newBaseAmount,
+        uint256 newExtraAmount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        updatePaymentAmountInternal(
+            newBaseAmount,
+            newExtraAmount,
+            authorizationId,
+            correlationId,
+            UpdatingOperationKind.Lazy
+        );
+        clearAndConfirmPaymentInternal(authorizationId);
     }
 
     /**
@@ -686,6 +589,35 @@ contract CardPaymentProcessor is
         bytes16 correlationId
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         refundPaymentInternal(refundAmount, _payments[authorizationId].extraAmount, authorizationId, correlationId);
+    }
+
+    /**
+     * @dev See {ICardPaymentProcessor-refundAccount}.
+     *
+     * Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The account address must not be zero.
+     */
+    function refundAccount(
+        address account,
+        uint256 refundAmount,
+        bytes16 correlationId
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        if (account == address(0)) {
+            revert ZeroAccount();
+        }
+        address cashOutAccount_ = requireCashOutAccount();
+        IERC20Upgradeable token = IERC20Upgradeable(_token);
+
+        emit RefundAccount(
+            correlationId,
+            account,
+            refundAmount
+        );
+
+        token.safeTransferFrom(cashOutAccount_, account, refundAmount);
     }
 
     /**
@@ -1021,18 +953,30 @@ contract CardPaymentProcessor is
         bool cashbackDecreased;
     }
 
+    /// @dev Kind of a payment updating operation
+    enum UpdatingOperationKind {
+        Full, // 0 The operation is executed fully regardless of the new values of the base amount and extra amount.
+        Lazy  // 1 The operation is executed only if the new amounts differ from the current ones of the payment.
+    }
+
     /// @dev Updates the base amount and extra amount of a payment. See {ICardPaymentCashback-updatePaymentAmount}.
     function updatePaymentAmountInternal(
         uint256 newBaseAmount,
         uint256 newExtraAmount,
         bytes16 authorizationId,
-        bytes16 correlationId
+        bytes16 correlationId,
+        UpdatingOperationKind kind
     ) internal {
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
         }
 
         Payment storage payment = _payments[authorizationId];
+        if (kind != UpdatingOperationKind.Full) {
+            if (payment.baseAmount == newBaseAmount && payment.extraAmount == newExtraAmount) {
+                return;
+            }
+        }
         PaymentStatus status = payment.status;
         uint256 refundAmount = payment.refundAmount;
 
@@ -1309,6 +1253,16 @@ contract CardPaymentProcessor is
                 bytes("")
             );
         }
+    }
+
+    function clearAndConfirmPaymentInternal(bytes16 authorizationId) internal {
+        uint256 clearedAmount = clearPaymentInternal(authorizationId);
+        uint256 confirmedAmount = confirmPaymentInternal(authorizationId);
+
+        _totalUnclearedBalance -= clearedAmount;
+        _totalClearedBalance = _totalClearedBalance + clearedAmount - confirmedAmount;
+
+        IERC20Upgradeable(_token).safeTransfer(requireCashOutAccount(), confirmedAmount);
     }
 
     /// @dev Contains parameters of a payment canceling operation.

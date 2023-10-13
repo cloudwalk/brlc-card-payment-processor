@@ -223,6 +223,13 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         bytes addendum // Empty. Reserved for future possible additional information.
     );
 
+    /// @dev Emitted when an account is refunded.
+    event RefundAccount(
+        bytes16 indexed correlationId,
+        address indexed account,
+        uint256 refundAmount
+    );
+
     /// @dev Emitted when the cash-out account is changed.
     event SetCashOutAccount(
         address oldCashOutAccount,
@@ -299,50 +306,6 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
     function makePayment(
-        uint256 baseAmount,
-        uint256 extraAmount,
-        bytes16 authorizationId,
-        bytes16 correlationId
-    ) external;
-
-    /**
-     * @dev Makes a card payment without cashback.
-     *
-     * Transfers the underlying tokens from the payer (who is the caller of the function) to this contract.
-     * This function is expected to be called by any account.
-     *
-     * Emits a {MakePayment} event.
-     * Emits a {PaymentExtraAmountChanged} event if `extraAmount` is not zero.
-     *
-     * @param baseAmount The base amount of tokens to transfer because of the payment.
-     * @param extraAmount The extra amount of tokens to transfer because of the payment. No cashback is applied.
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
-     */
-    function makePaymentWithoutCashback(
-        uint256 baseAmount,
-        uint256 extraAmount,
-        bytes16 authorizationId,
-        bytes16 correlationId
-    ) external;
-
-    /**
-     * @dev Makes a card payment from some other account.
-     *
-     * Transfers the underlying tokens from the account to this contract.
-     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
-     *
-     * Emits a {MakePayment} event.
-     * Emits a {PaymentExtraAmountChanged} event if `extraAmount` is not zero.
-     *
-     * @param account The account on that behalf the payment is made.
-     * @param baseAmount The base amount of tokens to transfer because of the payment.
-     * @param extraAmount The extra amount of tokens to transfer because of the payment. No cashback is applied.
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
-     */
-    function makePaymentFrom(
-        address account,
         uint256 baseAmount,
         uint256 extraAmount,
         bytes16 authorizationId,
@@ -537,6 +500,34 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     function clearAndConfirmPayment(bytes16 authorizationId) external;
 
     /**
+     * @dev Executes updating, clearing and confirmation operations for a single previously made card payment.
+     *
+     * Updating of the base amount and extra amount executes lazy, i.e. only if
+     * the provided new amounts differ from the current once of the payment. Otherwise the update operation is skipped.
+     *
+     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
+     *
+     * Emits a {UpdatePaymentAmount} event if the update operation is executed.
+     * Emits a {UpdatePaymentAmountSubsidized} event if the update operation is executed and the payment is subsidized.
+     * Emits a {PaymentExtraAmountChanged} event if `extraAmount` of the payment is changed.
+     * Emits a {ClearPayment} event.
+     * Emits a {ClearPaymentSubsidized} event if the payment is subsidized.
+     * Emits a {ConfirmPayment} event.
+     * Emits a {ConfirmPaymentSubsidized} event if the payment is subsidized.
+     *
+     * @param newBaseAmount The new base amount of the payment.
+     * @param newExtraAmount The new extra amount of the payment. No cashback is applied.
+     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
+     */
+    function updateLazyClearConfirmPayment(
+        uint256 newBaseAmount,
+        uint256 newExtraAmount,
+        bytes16 authorizationId,
+        bytes16 correlationId
+    ) external;
+
+    /**
      * @dev Executes clearing and confirmation operations for several previously made card payments.
      *
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
@@ -566,6 +557,23 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint256 refundAmount,
         uint256 newExtraAmount,
         bytes16 authorizationId,
+        bytes16 correlationId
+    ) external;
+
+    /**
+     * @dev Makes a refund for an account where the refund cannot be associated with any card payment.
+     *
+     * During this operation the needed amount of tokens is transferred from the cash-out account to the target account.
+     *
+     * Emits a {RefundAccount} event.
+     *
+     * @param account The address of the account to refund.
+     * @param refundAmount The amount of tokens to refund.
+     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
+     */
+    function refundAccount(
+        address account,
+        uint256 refundAmount,
         bytes16 correlationId
     ) external;
 }
