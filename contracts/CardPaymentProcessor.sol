@@ -953,7 +953,7 @@ contract CardPaymentProcessor is
         bool cashbackDecreased;
     }
 
-    // @dev Kind of an payment updating operation
+    /// @dev Kind of a payment updating operation
     enum UpdatingOperationKind {
         Full, // 0 The operation is executed fully regardless of the new values of the base amount and extra amount.
         Lazy  // 1 The operation is executed only if the new amounts differ from the current ones of the payment.
