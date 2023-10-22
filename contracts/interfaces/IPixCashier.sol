@@ -61,6 +61,11 @@ interface IPixCashier is IPixCashierTypes {
         bytes32 indexed txId     // The off-chain transaction identifier.
     );
 
+    /// @dev Emitted when a new batch of cash-in operations is executed.
+    event CashInBatch(
+        bytes32 indexed batchId // The off-chain batch identifier.
+    );
+
     /// @dev Emitted when a new cash-out operation is initiated.
     event RequestCashOut(
         address indexed account, // The account that owns the tokens to cash-out.
@@ -173,16 +178,19 @@ interface IPixCashier is IPixCashierTypes {
      * This function is expected to be called by a limited number of accounts
      * that are allowed to execute cash-in operations.
      *
-     * Emits {CashIn} events.
+     * Emits a {CashInBatch} event.
+     * Emits a {CashIn} events.
      *
      * @param accounts The array of the addresses of the tokens recipient.
      * @param amounts The array of the token amounts to be received.
      * @param txIds The array of the off-chain transaction identifiers of the operation.
+     * @param batchId The off-chain batch identifier.
      */
     function cashInBatch(
         address[] memory accounts,
         uint256[] memory amounts,
-        bytes32[] memory txIds
+        bytes32[] memory txIds,
+        bytes32 batchId
     ) external;
 
     /**

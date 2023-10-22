@@ -55,6 +55,9 @@ contract PixCashier is
     /// @dev The zero off-chain transaction identifier has been passed as a function argument.
     error ZeroTxId();
 
+    /// @dev The zero off-chain transaction batch identifier has been passed as a function argument.
+    error ZeroBatchId();
+
     /// @dev An empty array of off-chain transaction identifiers has been passed as a function argument.
     error EmptyTransactionIdsArray();
 
@@ -69,6 +72,12 @@ contract PixCashier is
      * @param txId The off-chain transaction identifiers of the operation.
      */
     error CashInAlreadyExecuted(bytes32 txId);
+
+    /**
+     * @dev The cash-in batch operation with the provided off-chain transaction is already executed.
+     * @param batchId The off-chain transaction identifiers of the operation.
+     */
+    error CashInBatchAlreadyExecuted(bytes32 batchId);
 
     /**
      * @dev The cash-out operation with the provided off-chain transaction identifier has an inappropriate status.
@@ -239,15 +248,26 @@ contract PixCashier is
     function cashInBatch(
         address[] memory accounts,
         uint256[] memory amounts,
-        bytes32[] memory txIds
+        bytes32[] memory txIds,
+        bytes32 batchId
     ) external whenNotPaused onlyRole(CASHIER_ROLE) {
-        if (accounts.length != amounts.length || accounts.length != txIds.length) {
+        if (accounts.length == 0 || accounts.length != amounts.length || accounts.length != txIds.length) {
             revert InvalidBatchArrays();
+        }
+        if (_chashInBatches[batchId]) {
+            revert CashInBatchAlreadyExecuted(batchId);
+        }
+        if (batchId == 0) {
+            revert ZeroBatchId();
         }
 
         for (uint256 i = 0; i < accounts.length; i++) {
             _cashIn(accounts[i], amounts[i], txIds[i]);
         }
+
+        _chashInBatches[batchId] = true;
+
+        emit CashInBatch(batchId);
     }
 
     /**

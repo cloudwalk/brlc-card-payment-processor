@@ -34,6 +34,14 @@ abstract contract PixCashierStorageV2 is IPixCashierTypes {
 }
 
 /**
+ * @title PixCashier storage version 3
+ */
+abstract contract PixCashierStorageV3 {
+    /// @dev The mapping of a chahi-in batch identifier to a boolean value that indicates whether the batch was processed.
+    mapping(bytes32 => bool) internal _chashInBatches;
+}
+
+/**
  * @title PixCashier storage
  * @dev Contains storage variables of the {PixCashier} contract.
  *
@@ -43,6 +51,6 @@ abstract contract PixCashierStorageV2 is IPixCashierTypes {
  * e.g. PixCashierStorage<versionNumber>, so finally it would look like
  * "contract PixCashierStorage is PixCashierStorageV1, PixCashierStorageV2".
  */
-abstract contract PixCashierStorage is PixCashierStorageV1, PixCashierStorageV2 {
+abstract contract PixCashierStorage is PixCashierStorageV1, PixCashierStorageV2, PixCashierStorageV3 {
 
 }
