@@ -19,7 +19,7 @@ abstract contract PixCashierStorageV1 is IPixCashierTypes {
     mapping(bytes32 => CashOut) internal _cashOuts;
 
     /// @dev The set of off-chain transaction identifiers that correspond the pending cash-out operations.
-    EnumerableSetUpgradeable.Bytes32Set _pendingCashOutTxIds;
+    EnumerableSetUpgradeable.Bytes32Set internal _pendingCashOutTxIds;
 
     /// @dev The processed cash-out operation counter that includes number of reversed and confirmed operations.
     uint256 internal _processedCashOutCounter;
