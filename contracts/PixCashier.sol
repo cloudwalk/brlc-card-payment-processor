@@ -246,6 +246,7 @@ contract PixCashier is
      * - The contract must not be paused.
      * - The caller must have the {CASHIER_ROLE} role.
      * - The provided `account`, `amount`, and `txId` values must not be zero.
+     * - The cash-in operation with the provided `txId` must not be already executed.
      */
     function cashIn(
         address account,
@@ -264,6 +265,10 @@ contract PixCashier is
      * - The contract must not be paused.
      * - The caller must have the {CASHIER_ROLE} role.
      * - The provided `account`, `amount`, and `txId` values must not be zero.
+     * - The provided `accounts`, `amounts`, `txIds` arrays must not be empty and must have the same length.
+     * - The provided `batchId` must not be zero
+     * - The cash-in batch operation with the provided `batchId` must not be already executed.
+     * - Each cash-in operation with the provided identifier from the `txIds` array must not be already executed.
      */
     function cashInBatch(
         address[] memory accounts,
