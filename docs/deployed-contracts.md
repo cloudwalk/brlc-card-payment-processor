@@ -15,7 +15,8 @@
 | --- | --- | --- | --- |
 | 1 | ProxyAdmin | Proxy admin | [0xDb25bd42B55468B6CeF2097C65cE7AcF4f8aaE8A](https://explorer.testnet.cloudwalk.io/address/0xDb25bd42B55468B6CeF2097C65cE7AcF4f8aaE8A) |
 | 2 | TransparentUpgradeableProxy | Upgradeable proxy | [0x3181Ab023a4D4788754258BE5A3b8cf3D8276B98](https://explorer.testnet.cloudwalk.io/address/0x3181Ab023a4D4788754258BE5A3b8cf3D8276B98) |
-| 3 | PixCashier | Proxy implementation | [0xc0e7D7F54072F7c61924063e8198039Ec98b838c](https://explorer.testnet.cloudwalk.io/address/0xc0e7D7F54072F7c61924063e8198039Ec98b838c) |
+| 3 | PixCashier | Proxy implementation | [0x8474a120b9e253D0E03DAd5F7B8c7f6b803217F8](https://explorer.testnet.cloudwalk.io/address/0x8474a120b9e253D0E03DAd5F7B8c7f6b803217F8) |
+|||| <strike>[0xc0e7D7F54072F7c61924063e8198039Ec98b838c](https://explorer.testnet.cloudwalk.io/address/0xc0e7D7F54072F7c61924063e8198039Ec98b838c)</strike> |
 |||| <strike>[0x85Ec19fDfcf32E2733339FB27e55146f7e539dDd](https://explorer.testnet.cloudwalk.io/address/0x85Ec19fDfcf32E2733339FB27e55146f7e539dDd)</strike> |
 |||| <strike>[0x29bda6192283E3FB70f8B507877BC5e3036F1B93](https://explorer.testnet.cloudwalk.io/address/0x29bda6192283E3FB70f8B507877BC5e3036F1B93)</strike> |
 |||| <strike>[0x4E6dDB0A2F44273863Fb36F05501223A53989DA9](https://explorer.testnet.cloudwalk.io/address/0x4E6dDB0A2F44273863Fb36F05501223A53989DA9)</strike> |
@@ -34,7 +35,8 @@
 | --- | --- | --- | --- |
 | 1 | ProxyAdmin | Proxy admin | [0xDb25bd42B55468B6CeF2097C65cE7AcF4f8aaE8A](https://explorer.testnet.cloudwalk.io/address/0xDb25bd42B55468B6CeF2097C65cE7AcF4f8aaE8A) |
 | 2 | TransparentUpgradeableProxy | Upgradeable proxy | [0xd1476a75a3F4e700AEbcB8804d0A74A8bAcc303c](https://explorer.testnet.cloudwalk.io/address/0xd1476a75a3F4e700AEbcB8804d0A74A8bAcc303c) |
-| 3 | PixCashier | Proxy implementation | [0xc0e7D7F54072F7c61924063e8198039Ec98b838c](https://explorer.testnet.cloudwalk.io/address/0xc0e7D7F54072F7c61924063e8198039Ec98b838c) |
+| 3 | PixCashier | Proxy implementation | [0x8474a120b9e253D0E03DAd5F7B8c7f6b803217F8](https://explorer.testnet.cloudwalk.io/address/0x8474a120b9e253D0E03DAd5F7B8c7f6b803217F8) |
+|||| <strike>[0xc0e7D7F54072F7c61924063e8198039Ec98b838c](https://explorer.testnet.cloudwalk.io/address/0xc0e7D7F54072F7c61924063e8198039Ec98b838c)</strike> |
 
 # CardPaymentProcessor (BRLC)
 
