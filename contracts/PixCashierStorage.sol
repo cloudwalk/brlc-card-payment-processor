@@ -29,7 +29,7 @@ abstract contract PixCashierStorageV1 is IPixCashierTypes {
  * @title PixCashier storage version 2
  */
 abstract contract PixCashierStorageV2 is IPixCashierTypes {
-    /// @dev The mapping of a cash-out operation structure for a given off-chain transaction identifier.
+    /// @dev The mapping of a cash-in operation structure for a given off-chain transaction identifier.
     mapping(bytes32 => CashInOperation) internal _cashIns;
 }
 
@@ -37,8 +37,8 @@ abstract contract PixCashierStorageV2 is IPixCashierTypes {
  * @title PixCashier storage version 3
  */
 abstract contract PixCashierStorageV3 {
-    /// @dev The mapping of a chahi-in batch identifier to a boolean value that indicates whether the batch was processed.
-    mapping(bytes32 => bool) internal _chashInBatches;
+    /// @dev The mapping of a cash-in batch identifier to a boolean value that indicates whether the batch was processed.
+    mapping(bytes32 => bool) internal _cashInBatches;
 }
 
 /**

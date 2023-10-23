@@ -254,7 +254,7 @@ contract PixCashier is
         if (accounts.length == 0 || accounts.length != amounts.length || accounts.length != txIds.length) {
             revert InvalidBatchArrays();
         }
-        if (_chashInBatches[batchId]) {
+        if (_cashInBatches[batchId]) {
             revert CashInBatchAlreadyExecuted(batchId);
         }
         if (batchId == 0) {
@@ -265,7 +265,7 @@ contract PixCashier is
             _cashIn(accounts[i], amounts[i], txIds[i]);
         }
 
-        _chashInBatches[batchId] = true;
+        _cashInBatches[batchId] = true;
 
         emit CashInBatch(batchId);
     }
