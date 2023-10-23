@@ -185,8 +185,8 @@ contract PixCashier is
     /**
      * @dev See {IPixCashier-getCashIn}.
      */
-    function getCashIn(bytes32 txIds) external view returns (CashInOperation memory) {
-        return _cashIns[txIds];
+    function getCashIn(bytes32 txId) external view returns (CashInOperation memory) {
+        return _cashIns[txId];
     }
 
     /**
@@ -197,6 +197,26 @@ contract PixCashier is
         cashIns = new CashInOperation[](len);
         for (uint256 i = 0; i < len; i++) {
             cashIns[i] = _cashIns[txIds[i]];
+        }
+    }
+
+    /**
+     * @dev See {IPixCashier-getCashInBatch}.
+     */
+    function getCashInBatch(bytes32 batchId) external view returns (CashInBatchOperation memory) {
+        return _cashInBatches[batchId];
+    }
+
+    /**
+     * @dev See {IPixCashier-getCashInBatches}.
+     */
+    function getCashInBatches(
+        bytes32[] memory batchIds
+    ) external view returns (CashInBatchOperation[] memory cashInBatches) {
+        uint256 len = batchIds.length;
+        cashInBatches = new CashInBatchOperation[](len);
+        for (uint256 i = 0; i < len; i++) {
+            cashInBatches[i] = _cashInBatches[batchIds[i]];
         }
     }
 
@@ -254,7 +274,7 @@ contract PixCashier is
         if (accounts.length == 0 || accounts.length != amounts.length || accounts.length != txIds.length) {
             revert InvalidBatchArrays();
         }
-        if (_cashInBatches[batchId]) {
+        if (_cashInBatches[batchId].status == CashInBatchStatus.Executed) {
             revert CashInBatchAlreadyExecuted(batchId);
         }
         if (batchId == 0) {
@@ -265,7 +285,7 @@ contract PixCashier is
             _cashIn(accounts[i], amounts[i], txIds[i]);
         }
 
-        _cashInBatches[batchId] = true;
+        _cashInBatches[batchId].status = CashInBatchStatus.Executed;
 
         emit CashInBatch(batchId);
     }

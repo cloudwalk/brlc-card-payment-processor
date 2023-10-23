@@ -19,6 +19,18 @@ interface IPixCashierTypes {
     }
 
     /**
+     * @dev Possible statuses of a cash-in batch operation as an enum.
+     *
+     * The possible values:
+     * - Nonexistent - The operation does not exist (the default value).
+     * - Executed ---- The operations was executed.
+     */
+    enum CashInBatchStatus {
+        Nonexistent, // 0
+        Executed     // 1
+    }
+
+    /**
      * @dev Possible statuses of a cash-out operation as an enum.
      *
      * The possible values:
@@ -39,6 +51,11 @@ interface IPixCashierTypes {
         CashInStatus status;  // The status of the cash-in operation according to the {CashInStatus} enum.
         address account;      // The owner of tokens to cash-in.
         uint256 amount;       // The amount of tokens to cash-in.
+    }
+
+    /// @dev Structure with data of a batch cash-in operation.
+    struct CashInBatchOperation {
+        CashInBatchStatus status;  // The status of the cash-in batch operation according to the {CashInBatchStatus}.
     }
 
     /// @dev Structure with data of a single cash-in operation.
@@ -103,10 +120,24 @@ interface IPixCashier is IPixCashierTypes {
     function getCashIn(bytes32 txId) external view returns (CashInOperation memory);
 
     /**
-     * @dev Returns the data of multiple cash-out operations.
+     * @dev Returns the data of multiple cash-in operations.
      * @param txIds The off-chain transaction identifiers of the operations.
      */
     function getCashIns(bytes32[] memory txIds) external view returns (CashInOperation[] memory cashIns);
+
+    /**
+     * @dev Returns the data of a cash-in batch operation.
+     * @param batchId The off-chain identifier of the cash-in batch operation.
+     */
+    function getCashInBatch(bytes32 batchId) external view returns (CashInBatchOperation memory);
+
+    /**
+     * @dev Returns the data of multiple cash-in batch operations.
+     * @param batchIds The off-chain identifiers of the cash-in batch operations.
+     */
+    function getCashInBatches(
+        bytes32[] memory batchIds
+    ) external view returns (CashInBatchOperation[] memory cashInBatches);
 
     /**
      * @dev Returns the pending cash-out balance for an account.
