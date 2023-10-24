@@ -17,6 +17,11 @@ enum CashInBatchStatus {
   Executed = 1,
 }
 
+enum CashInExecutionStatus {
+  Success = 0,
+  AlreadyExecuted = 1,
+}
+
 enum CashOutStatus {
   Nonexistent = 0,
   Pending = 1,
@@ -485,18 +490,29 @@ describe("Contract 'PixCashier'", async () => {
       await proveTx(pixCashier.grantRole(cashierRole, cashier.address));
     });
 
-    it("Executes as expected", async () => {
+    it("Executes as expected even if one of the cash-in operations is already executed", async () => {
+      await proveTx(pixCashier.connect(cashier).cashIn(userAddresses[1], TOKEN_AMOUNTS[1], TRANSACTIONS_ARRAY[1]));
+      const expectedExecutionResults: CashInExecutionStatus[] = [
+        CashInExecutionStatus.Success,
+        CashInExecutionStatus.AlreadyExecuted,
+        CashInExecutionStatus.Success
+      ];
+
       const tx: TransactionResponse =
         await pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY, BATCH_ID_STUB1);
+
       await expect(tx).to.changeTokenBalances(
         tokenMock,
         [user, secondUser, thirdUser, pixCashier],
-        [+TOKEN_AMOUNTS[0], +TOKEN_AMOUNTS[1], +TOKEN_AMOUNTS[2], 0]
+        [+TOKEN_AMOUNTS[0], 0, +TOKEN_AMOUNTS[2], 0]
       );
       await expect(tx).to.emit(
         pixCashier,
         "CashInBatch"
-      ).withArgs(BATCH_ID_STUB1);
+      ).withArgs(
+        BATCH_ID_STUB1,
+        expectedExecutionResults
+      );
       await expect(tx).to.emit(
         pixCashier,
         "CashIn"
@@ -504,14 +520,6 @@ describe("Contract 'PixCashier'", async () => {
         expectedCashIns[0].account.address,
         expectedCashIns[0].amount,
         expectedCashIns[0].txId
-      );
-      await expect(tx).to.emit(
-        pixCashier,
-        "CashIn"
-      ).withArgs(
-        expectedCashIns[1].account.address,
-        expectedCashIns[1].amount,
-        expectedCashIns[1].txId
       );
       await expect(tx).to.emit(
         pixCashier,
@@ -606,17 +614,6 @@ describe("Contract 'PixCashier'", async () => {
       await expect(
         pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY, BATCH_ID_STUB1)
       ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_TOKEN_MINTING_FAILURE);
-    });
-
-    it("Is reverted if one of the cash-ins with the provided txIds is already executed", async () => {
-      const lastTxId: string = TRANSACTIONS_ARRAY.slice(-1)[0];
-      await proveTx(pixCashier.connect(cashier).cashIn(deployer.address, 1, lastTxId));
-      await expect(
-        pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY, BATCH_ID_STUB1)
-      ).to.be.revertedWithCustomError(
-        pixCashier,
-        REVERT_ERROR_IF_CASH_IN_ALREADY_EXECUTED
-      ).withArgs(lastTxId);
     });
 
     it("Is reverted if the provided batch ID is zero", async () => {
