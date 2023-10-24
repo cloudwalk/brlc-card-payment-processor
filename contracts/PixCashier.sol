@@ -436,12 +436,11 @@ contract PixCashier is
         }
 
         if (_cashIns[txId].status != CashInStatus.Nonexistent) {
-            if (policy == CashInExecutionPolicy.Revert) {
-                revert CashInAlreadyExecuted(txId);
-            } else if (policy == CashInExecutionPolicy.Skip) {
+            if (policy == CashInExecutionPolicy.Skip) {
                 return CashInExecutionResult.AlreadyExecuted;
+            } else {
+                revert CashInAlreadyExecuted(txId);
             }
-            assert(false);
         }
 
         _cashIns[txId] = CashInOperation({
