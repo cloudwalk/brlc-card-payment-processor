@@ -11,7 +11,7 @@ interface IPixCashierTypes {
      *
      * The possible values:
      * - Nonexistent - The operation does not exist (the default value).
-     * - Executed ---- The operations was executed.
+     * - Executed ---- The operation was executed.
      */
     enum CashInStatus {
         Nonexistent, // 0
@@ -23,11 +23,35 @@ interface IPixCashierTypes {
      *
      * The possible values:
      * - Nonexistent - The operation does not exist (the default value).
-     * - Executed ---- The operations was executed.
+     * - Executed ---- The operation was executed.
      */
     enum CashInBatchStatus {
         Nonexistent, // 0
         Executed     // 1
+    }
+
+    /**
+     * @dev Possible result statuses of a cash-in operation as an enum.
+     *
+     * The possible values:
+     * - Success --------- The operation was executed successfully.
+     * - AlreadyExecuted - The operation was already executed.
+     */
+    enum CashInExecutionResult {
+        Success,        // 0
+        AlreadyExecuted // 1
+    }
+
+    /**
+     * @dev Possible execution policies of a cash-in operation as an enum.
+     *
+     * The possible values:
+     * - Revert - In case of failure the operation will be reverted.
+     * - Skip --- In case of failure the operation will be skipped.
+     */
+    enum CashInExecutionPolicy {
+        Revert, // 0
+        Skip    // 1
     }
 
     /**
@@ -37,7 +61,7 @@ interface IPixCashierTypes {
      * - Nonexistent - The operation does not exist (the default value).
      * - Pending ----- The status immediately after the operation requesting.
      * - Reversed ---- The operation was reversed.
-     * - Confirmed --- The operations was confirmed.
+     * - Confirmed --- The operation was confirmed.
      */
     enum CashOutStatus {
         Nonexistent, // 0
@@ -80,7 +104,8 @@ interface IPixCashier is IPixCashierTypes {
 
     /// @dev Emitted when a new batch of cash-in operations is executed.
     event CashInBatch(
-        bytes32 indexed batchId // The off-chain batch identifier.
+        bytes32 indexed batchId,                 // The off-chain batch identifier.
+        CashInExecutionResult[] executionResults // The array of execution results for each operation.
     );
 
     /// @dev Emitted when a new cash-out operation is initiated.

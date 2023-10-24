@@ -253,7 +253,7 @@ contract PixCashier is
         uint256 amount,
         bytes32 txId
     ) external whenNotPaused onlyRole(CASHIER_ROLE) {
-        _cashIn(account, amount, txId);
+        _cashIn(account, amount, txId, CashInExecutionPolicy.Revert);
     }
 
     /**
@@ -286,13 +286,15 @@ contract PixCashier is
             revert ZeroBatchId();
         }
 
+        CashInExecutionResult[] memory executionResults = new CashInExecutionResult[](txIds.length);
+
         for (uint256 i = 0; i < accounts.length; i++) {
-            _cashIn(accounts[i], amounts[i], txIds[i]);
+            executionResults[i] = _cashIn(accounts[i], amounts[i], txIds[i], CashInExecutionPolicy.Skip);
         }
 
         _cashInBatches[batchId].status = CashInBatchStatus.Executed;
 
-        emit CashInBatch(batchId);
+        emit CashInBatch(batchId, executionResults);
     }
 
     /**
@@ -417,8 +419,9 @@ contract PixCashier is
     function _cashIn(
         address account,
         uint256 amount,
-        bytes32 txId
-    ) internal {
+        bytes32 txId,
+        CashInExecutionPolicy policy
+    ) internal returns (CashInExecutionResult){
         if (account == address(0)) {
             revert ZeroAccount();
         }
@@ -433,7 +436,12 @@ contract PixCashier is
         }
 
         if (_cashIns[txId].status != CashInStatus.Nonexistent) {
-            revert CashInAlreadyExecuted(txId);
+            if (policy == CashInExecutionPolicy.Revert) {
+                revert CashInAlreadyExecuted(txId);
+            } else if (policy == CashInExecutionPolicy.Skip) {
+                return CashInExecutionResult.AlreadyExecuted;
+            }
+            assert(false);
         }
 
         _cashIns[txId] = CashInOperation({
@@ -447,6 +455,8 @@ contract PixCashier is
         if (!IERC20Mintable(_token).mint(account, amount)) {
             revert TokenMintingFailure();
         }
+
+        return CashInExecutionResult.Success;
     }
 
     /**
