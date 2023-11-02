@@ -294,7 +294,7 @@ contract PixCashier is
 
         _cashInBatches[batchId].status = CashInBatchStatus.Executed;
 
-        emit CashInBatch(batchId, executionResults);
+        emit CashInBatch(batchId, txIds, executionResults);
     }
 
     /**

@@ -511,6 +511,7 @@ describe("Contract 'PixCashier'", async () => {
         "CashInBatch"
       ).withArgs(
         BATCH_ID_STUB1,
+        TRANSACTIONS_ARRAY,
         expectedExecutionResults
       );
       await expect(tx).to.emit(

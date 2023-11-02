@@ -105,7 +105,8 @@ interface IPixCashier is IPixCashierTypes {
     /// @dev Emitted when a new batch of cash-in operations is executed.
     event CashInBatch(
         bytes32 indexed batchId,                 // The off-chain batch identifier.
-        CashInExecutionResult[] executionResults // The array of execution results for each operation.
+        bytes32[] txIds,                         // The array of off-chain identifiers for each operation in the batch.
+        CashInExecutionResult[] executionResults // The array of execution results for each operation in the batch.
     );
 
     /// @dev Emitted when a new cash-out operation is initiated.
