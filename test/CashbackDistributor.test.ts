@@ -1251,14 +1251,14 @@ describe("Contract 'CashbackDistributor'", async () => {
       const fixture: Fixture = await setUpFixture(deployAndConfigureAllContracts);
       const { cashbackDistributor, tokenMocks: [tokenMock] } = fixture;
       const recipient: SignerWithAddress = user;
-      const cashbacks: TestCashback[] = [1, 2, 3, 4].map(nonce => {
+      const cashbacks: TestCashback[] = [1, 2, 3, 4, 5].map(nonce => {
         return {
           token: tokenMock,
           kind: CashbackKind.CardPayment,
           status: CashbackStatus.Nonexistent,
           externalId: CASHBACK_EXTERNAL_ID_STUB1,
           recipient: recipient,
-          requestedAmount: 0,
+          requestedAmount: 1,
           sentAmount: 0,
           sender: distributor,
           nonce: nonce,
@@ -1266,8 +1266,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       });
       cashbacks[0].requestedAmount = 123;
       cashbacks[1].requestedAmount = MAX_CASHBACK_FOR_PERIOD - cashbacks[0].requestedAmount + 1;
-      cashbacks[2].requestedAmount = 1;
-      cashbacks[3].requestedAmount = 1;
+      cashbacks[2].requestedAmount = cashbacks[1].requestedAmount;
       const { cashbackDistributorInitialBalanceByToken } = await setUpContractsForSendingCashbacks(
         cashbackDistributor,
         cashbacks
@@ -1310,8 +1309,18 @@ describe("Contract 'CashbackDistributor'", async () => {
         expectedCashbackSum: MAX_CASHBACK_FOR_PERIOD
       });
 
-      // Revoke the second (partial) cashback and check that the cap-related values were not changed.
+      // Revoke the second (partial) cashback and check that the cap-related values are changed.
       await revokeCashback(cashbackDistributor, cashbacks[1], cashbacks[1].sentAmount);
+      await checkCashbackDistributorState(context);
+      await checkPeriodCapRelatedValues({
+        expectedLastTimeReset: block1.timestamp,
+        expectedCashbackSum: MAX_CASHBACK_FOR_PERIOD - cashbacks[1].sentAmount
+      });
+
+      // Reach the cashback period cap again and check the cap-related values.
+      cashbacks[2].sentAmount = cashbacks[1].sentAmount;
+      await sendCashbacks(cashbackDistributor, [cashbacks[2]], CashbackStatus.Partial);
+      context.cashbacks = [cashbacks[0], cashbacks[1], cashbacks[2]];
       await checkCashbackDistributorState(context);
       await checkPeriodCapRelatedValues({
         expectedLastTimeReset: block1.timestamp,
@@ -1319,8 +1328,8 @@ describe("Contract 'CashbackDistributor'", async () => {
       });
 
       // Check that next cashback sending to the same recipient failed because of the period cap.
-      await sendCashbacks(cashbackDistributor, [cashbacks[2]], CashbackStatus.Capped);
-      context.cashbacks = [cashbacks[0], cashbacks[1], cashbacks[2]];
+      await sendCashbacks(cashbackDistributor, [cashbacks[3]], CashbackStatus.Capped);
+      context.cashbacks = [cashbacks[0], cashbacks[1], cashbacks[2], cashbacks[3]];
       await checkCashbackDistributorState(context);
       await checkPeriodCapRelatedValues({
         expectedLastTimeReset: block1.timestamp,
@@ -1336,14 +1345,22 @@ describe("Contract 'CashbackDistributor'", async () => {
       await time.increase(CASHBACK_RESET_PERIOD);
 
       // Check that next cashback sending executes successfully due to the cap period resets
-      cashbacks[3].sentAmount = cashbacks[3].requestedAmount;
-      const [transactionReceipt4] = await sendCashbacks(cashbackDistributor, [cashbacks[3]], CashbackStatus.Success);
+      cashbacks[4].sentAmount = cashbacks[4].requestedAmount;
+      const [transactionReceipt4] = await sendCashbacks(cashbackDistributor, [cashbacks[4]], CashbackStatus.Success);
       const block4: Block = await ethers.provider.getBlock(transactionReceipt4.blockNumber);
-      context.cashbacks = [cashbacks[0], cashbacks[1], cashbacks[2], cashbacks[3]];
+      context.cashbacks = cashbacks;
       await checkCashbackDistributorState(context);
       await checkPeriodCapRelatedValues({
         expectedLastTimeReset: block4.timestamp,
-        expectedCashbackSum: cashbacks[3].requestedAmount
+        expectedCashbackSum: cashbacks[4].requestedAmount
+      });
+
+      // Revoke the first cashback and check that the cap-related values are changed properly.
+      await revokeCashback(cashbackDistributor, cashbacks[0], cashbacks[0].sentAmount);
+      await checkCashbackDistributorState(context);
+      await checkPeriodCapRelatedValues({
+        expectedLastTimeReset: block4.timestamp,
+        expectedCashbackSum: 0
       });
     });
   });
