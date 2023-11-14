@@ -5,7 +5,8 @@
 | --- | --- | --- | --- |
 | 1 | ProxyAdmin | Proxy admin | [0x71Bb3b173De088f34609e33A4B3E39EE8dd57A95](https://explorer.mainnet.cloudwalk.io/address/0x71Bb3b173De088f34609e33A4B3E39EE8dd57A95) |
 | 2 | TransparentUpgradeableProxy | Upgradeable proxy | [0x1F94A163C329bEc14C73Ca46c66150E3c47dbEDC](https://explorer.mainnet.cloudwalk.io/address/0x1F94A163C329bEc14C73Ca46c66150E3c47dbEDC) |
-| 3 | PixCashier | Proxy implementation | [0x5A987e235D225Ab15bf0daeFC7f82a56FBDD9870](https://explorer.mainnet.cloudwalk.io/address/0x5A987e235D225Ab15bf0daeFC7f82a56FBDD9870) |
+| 3 | PixCashier | Proxy implementation | [0x49E61dd2Bb79E9993CcB5Abb7f936f8c6D97df1c](https://explorer.mainnet.cloudwalk.io/address/0x49E61dd2Bb79E9993CcB5Abb7f936f8c6D97df1c) |
+|||| <strike>[0x5A987e235D225Ab15bf0daeFC7f82a56FBDD9870](https://explorer.mainnet.cloudwalk.io/address/0x5A987e235D225Ab15bf0daeFC7f82a56FBDD9870)</strike> |
 |||| <strike>[0x01F8907E37AE91A6Ecd264A409ca6DEDcEF692Bc](https://explorer.mainnet.cloudwalk.io/address/0x01F8907E37AE91A6Ecd264A409ca6DEDcEF692Bc)</strike> |
 |||| <strike>[0x8B69294E72b0f026f1E4176d92F667dd6f0AAa06](https://explorer.mainnet.cloudwalk.io/address/0x8B69294E72b0f026f1E4176d92F667dd6f0AAa06)</strike> |
 |||| <strike>[0x0037b3A816A8d5283d587190F6D4EDe459Ec61fD](https://explorer.mainnet.cloudwalk.io/address/0x0037b3A816A8d5283d587190F6D4EDe459Ec61fD)</strike> |
@@ -30,7 +31,8 @@
 | --- | --- | --- | --- |
 | 1 | ProxyAdmin | Proxy admin | [0x71Bb3b173De088f34609e33A4B3E39EE8dd57A95](https://explorer.mainnet.cloudwalk.io/address/0x71Bb3b173De088f34609e33A4B3E39EE8dd57A95) |
 | 2 | TransparentUpgradeableProxy | Upgradeable proxy | [0xB2aEa43F8aEfc78A2eb558118F8A606d6d9073D8](https://explorer.mainnet.cloudwalk.io/address/0xB2aEa43F8aEfc78A2eb558118F8A606d6d9073D8) |
-| 3 | PixCashier | Proxy implementation | [0x5A987e235D225Ab15bf0daeFC7f82a56FBDD9870](https://explorer.mainnet.cloudwalk.io/address/0x5A987e235D225Ab15bf0daeFC7f82a56FBDD9870) |
+| 3 | PixCashier | Proxy implementation | [0x49E61dd2Bb79E9993CcB5Abb7f936f8c6D97df1c](https://explorer.mainnet.cloudwalk.io/address/0x49E61dd2Bb79E9993CcB5Abb7f936f8c6D97df1c) |
+|||| <strike>[0x5A987e235D225Ab15bf0daeFC7f82a56FBDD9870](https://explorer.mainnet.cloudwalk.io/address/0x5A987e235D225Ab15bf0daeFC7f82a56FBDD9870)</strike> |
 
 ### CloudWalk (Testnet)
 | # | Name | Description | Address |
