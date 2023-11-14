@@ -125,7 +125,8 @@
 | --- | --- | --- | --- |
 | 1 | ProxyAdmin | Proxy admin | [0xDb25bd42B55468B6CeF2097C65cE7AcF4f8aaE8A](https://explorer.testnet.cloudwalk.io/address/0xDb25bd42B55468B6CeF2097C65cE7AcF4f8aaE8A) |
 | 2 | TransparentUpgradeableProxy | Upgradeable proxy | [0xFe57a8CE8f8428688Aa6D58B4707ED3586da6E46](https://explorer.testnet.cloudwalk.io/address/0xFe57a8CE8f8428688Aa6D58B4707ED3586da6E46) |
-| 3 | CashbackDistributor | Proxy implementation | [0xBbc059d0904bC3f467DCB64De2E5Be1C251ee63B](https://explorer.testnet.cloudwalk.io/address/0xBbc059d0904bC3f467DCB64De2E5Be1C251ee63B) |
+| 3 | CashbackDistributor | Proxy implementation | [0xdCbDAcce467D18aD39c6378403A2DC71e125Fd96](https://explorer.testnet.cloudwalk.io/address/0xdCbDAcce467D18aD39c6378403A2DC71e125Fd96) |
+|||| <strike>[0xBbc059d0904bC3f467DCB64De2E5Be1C251ee63B](https://explorer.testnet.cloudwalk.io/address/0xBbc059d0904bC3f467DCB64De2E5Be1C251ee63B)</strike> |
 |||| <strike>[0x45bBae319Af0721393a8843e09A5bc20ad82689F](https://explorer.testnet.cloudwalk.io/address/0x45bBae319Af0721393a8843e09A5bc20ad82689F)</strike> |
 |||| <strike>[0xA8387dfc83ee42BB22e1E3d7d929E4B7bA19a935](https://explorer.testnet.cloudwalk.io/address/0xA8387dfc83ee42BB22e1E3d7d929E4B7bA19a935)</strike> |
 |||| <strike>[0x3B409680A2F27FE8b86e7f3651eA42FFDBD87204](https://explorer.testnet.cloudwalk.io/address/0x3B409680A2F27FE8b86e7f3651eA42FFDBD87204)</strike> |
