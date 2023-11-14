@@ -12,6 +12,16 @@ enum CashInStatus {
   Executed = 1,
 }
 
+enum CashInBatchStatus {
+  Nonexistent = 0,
+  Executed = 1,
+}
+
+enum CashInExecutionStatus {
+  Success = 0,
+  AlreadyExecuted = 1,
+}
+
 enum CashOutStatus {
   Nonexistent = 0,
   Pending = 1,
@@ -24,6 +34,11 @@ interface TestCashIn {
   amount: number;
   txId: string;
   status: CashInStatus;
+}
+
+interface TestCashInBatch {
+  batchId: string;
+  status: CashInBatchStatus;
 }
 
 interface TestCashOut {
@@ -109,12 +124,26 @@ function checkCashInEquality(
   }
 }
 
+function checkCashInBatchEquality(
+  actualOnChainCashInBatch: any,
+  expectedCashInBatch: TestCashInBatch,
+  cashInBatchIndex: number
+) {
+  expect(actualOnChainCashInBatch.status).to.equal(
+    expectedCashInBatch.status,
+    `cashInBatches[${cashInBatchIndex}].status is incorrect`
+  );
+}
+
 describe("Contract 'PixCashier'", async () => {
   const TRANSACTION_ID1 = ethers.utils.formatBytes32String("MOCK_TRANSACTION_ID1");
   const TRANSACTION_ID2 = ethers.utils.formatBytes32String("MOCK_TRANSACTION_ID2");
   const TRANSACTION_ID3 = ethers.utils.formatBytes32String("MOCK_TRANSACTION_ID3");
   const TRANSACTIONS_ARRAY: string[] = [TRANSACTION_ID1, TRANSACTION_ID2, TRANSACTION_ID3];
   const TOKEN_AMOUNTS: number[] = [100, 200, 300];
+  const BATCH_ID_STUB1 = ethers.utils.formatBytes32String("MOCK_BATCH_ID1");
+  const BATCH_ID_STUB2 = ethers.utils.formatBytes32String("MOCK_BATCH_ID2");
+  const BATCH_ID_ZERO = ethers.constants.HashZero;
 
   const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
@@ -130,7 +159,9 @@ describe("Contract 'PixCashier'", async () => {
   const REVERT_ERROR_IF_INAPPROPRIATE_CASH_OUT_ACCOUNT = "InappropriateCashOutAccount";
   const REVERT_ERROR_IF_INAPPROPRIATE_CASH_OUT_STATUS = "InappropriateCashOutStatus";
   const REVERT_ERROR_IF_EMPTY_TRANSACTION_IDS_ARRAY = "EmptyTransactionIdsArray";
-  const REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT = "InvalidBatchArrays";
+  const REVERT_ERROR_IF_INVALID_BATCH_ARRAYS = "InvalidBatchArrays";
+  const REVERT_ERROR_IF_CASH_IN_BATCH_ALREADY_EXECUTED = "CashInBatchAlreadyExecuted";
+  const REVERT_ERROR_IF_BATCH_ID_IS_ZERO = "ZeroBatchId";
 
   let PixCashier: ContractFactory;
   let pixCashier: Contract;
@@ -236,6 +267,17 @@ describe("Contract 'PixCashier'", async () => {
       const actualCashIn: any = await pixCashier.getCashIn(cashIn.txId);
       checkCashInEquality(actualCashIn, cashIn, i);
       checkCashInEquality(actualCashIns[i], cashIn, i);
+    }
+  }
+
+  async function checkCashInBatchStructuresOnBlockchain(cashInBatches: TestCashInBatch[]) {
+    const batchIds: string[] = cashInBatches.map(cashInBatch => cashInBatch.batchId);
+    const actualCashInBatches: any[] = await pixCashier.getCashInBatches(batchIds);
+    for (let i = 0; i < cashInBatches.length; ++i) {
+      const cashInBatch: TestCashInBatch = cashInBatches[i];
+      const actualCashInBatch: any = await pixCashier.getCashInBatch(cashInBatch.batchId);
+      checkCashInBatchEquality(actualCashInBatch, cashInBatch, i);
+      checkCashInBatchEquality(actualCashInBatches[i], cashInBatch, i);
     }
   }
 
@@ -448,13 +490,29 @@ describe("Contract 'PixCashier'", async () => {
       await proveTx(pixCashier.grantRole(cashierRole, cashier.address));
     });
 
-    it("Executes as expected", async () => {
+    it("Executes as expected even if one of the cash-in operations is already executed", async () => {
+      await proveTx(pixCashier.connect(cashier).cashIn(userAddresses[1], TOKEN_AMOUNTS[1], TRANSACTIONS_ARRAY[1]));
+      const expectedExecutionResults: CashInExecutionStatus[] = [
+        CashInExecutionStatus.Success,
+        CashInExecutionStatus.AlreadyExecuted,
+        CashInExecutionStatus.Success
+      ];
+
       const tx: TransactionResponse =
-        await pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY);
+        await pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY, BATCH_ID_STUB1);
+
       await expect(tx).to.changeTokenBalances(
         tokenMock,
         [user, secondUser, thirdUser, pixCashier],
-        [+TOKEN_AMOUNTS[0], +TOKEN_AMOUNTS[1], +TOKEN_AMOUNTS[2], 0]
+        [+TOKEN_AMOUNTS[0], 0, +TOKEN_AMOUNTS[2], 0]
+      );
+      await expect(tx).to.emit(
+        pixCashier,
+        "CashInBatch"
+      ).withArgs(
+        BATCH_ID_STUB1,
+        TRANSACTIONS_ARRAY,
+        expectedExecutionResults
       );
       await expect(tx).to.emit(
         pixCashier,
@@ -468,20 +526,18 @@ describe("Contract 'PixCashier'", async () => {
         pixCashier,
         "CashIn"
       ).withArgs(
-        expectedCashIns[1].account.address,
-        expectedCashIns[1].amount,
-        expectedCashIns[1].txId
-      );
-      await expect(tx).to.emit(
-        pixCashier,
-        "CashIn"
-      ).withArgs(
         expectedCashIns[2].account.address,
         expectedCashIns[2].amount,
         expectedCashIns[2].txId
       );
 
+      const expectedCashInBatches: TestCashInBatch[] = [
+        { batchId: BATCH_ID_STUB1, status: CashInBatchStatus.Executed },
+        { batchId: BATCH_ID_STUB2, status: CashInBatchStatus.Nonexistent },
+      ];
+
       await checkCashInStructuresOnBlockchain(expectedCashIns);
+      await checkCashInBatchStructuresOnBlockchain(expectedCashInBatches);
     });
 
     it("Is reverted if the contract is paused", async () => {
@@ -489,20 +545,20 @@ describe("Contract 'PixCashier'", async () => {
       await proveTx(pixCashier.pause());
       const users = [user.address, secondUser.address, thirdUser.address];
       await expect(
-        pixCashier.connect(cashier).cashInBatch(users, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
+        pixCashier.connect(cashier).cashInBatch(users, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY, BATCH_ID_STUB1)
       ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the cashier role", async () => {
       await expect(
-        pixCashier.connect(deployer).cashInBatch(userAddresses, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
+        pixCashier.connect(deployer).cashInBatch(userAddresses, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY, BATCH_ID_STUB1)
       ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, cashierRole));
     });
 
     it("Is reverted if one of the account addresses is zero", async () => {
       const zeroAccountArray = [user.address, ethers.constants.AddressZero, user.address];
       await expect(
-        pixCashier.connect(cashier).cashInBatch(zeroAccountArray, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
+        pixCashier.connect(cashier).cashInBatch(zeroAccountArray, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY, BATCH_ID_STUB1)
       ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_ACCOUNT_IS_ZERO);
     });
 
@@ -510,22 +566,30 @@ describe("Contract 'PixCashier'", async () => {
       await proveTx(pixCashier.grantRole(blacklisterRole, deployer.address));
       await proveTx(pixCashier.blacklist(secondUser.address));
       await expect(
-        pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
+        pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY, BATCH_ID_STUB1)
       ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_ACCOUNT_IS_BLACKLISTED);
     });
 
     it("Is reverted if one of the token amounts is zero", async () => {
       const zeroAmountArray = [100, 200, 0];
       await expect(
-        pixCashier.connect(cashier).cashInBatch(userAddresses, zeroAmountArray, TRANSACTIONS_ARRAY)
+        pixCashier.connect(cashier).cashInBatch(userAddresses, zeroAmountArray, TRANSACTIONS_ARRAY, BATCH_ID_STUB1)
       ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_AMOUNT_IS_ZERO);
     });
 
     it("Is reverted if one of the off-chain transaction IDs is zero", async () => {
       const zeroTransactionIdArray = [TRANSACTION_ID1, ethers.constants.HashZero, TRANSACTION_ID3];
       await expect(
-        pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, zeroTransactionIdArray)
+        pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, zeroTransactionIdArray, BATCH_ID_STUB1)
       ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_TRANSACTION_ID_IS_ZERO);
+    });
+
+    it("Is reverted if the account array is empty", async () => {
+      const noUsers: string[] = [];
+
+      await expect(
+        pixCashier.connect(cashier).cashInBatch(noUsers, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY, BATCH_ID_STUB1)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_INVALID_BATCH_ARRAYS);
     });
 
     it("Is reverted if the length of any passed arrays is different to others", async () => {
@@ -534,34 +598,44 @@ describe("Contract 'PixCashier'", async () => {
       const moreTransactions = [TRANSACTION_ID1, TRANSACTION_ID2, TRANSACTION_ID3, TRANSACTION_ID1];
 
       await expect(
-        pixCashier.connect(cashier).cashInBatch(moreUsers, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
-      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
+        pixCashier.connect(cashier).cashInBatch(moreUsers, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY, BATCH_ID_STUB1)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_INVALID_BATCH_ARRAYS);
 
       await expect(
-        pixCashier.connect(cashier).cashInBatch(userAddresses, moreAmounts, TRANSACTIONS_ARRAY)
-      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
+        pixCashier.connect(cashier).cashInBatch(userAddresses, moreAmounts, TRANSACTIONS_ARRAY, BATCH_ID_STUB1)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_INVALID_BATCH_ARRAYS);
 
       await expect(
-        pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, moreTransactions)
-      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
+        pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, moreTransactions, BATCH_ID_STUB1)
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_INVALID_BATCH_ARRAYS);
     });
 
     it("Is reverted if minting function returns 'false'", async () => {
       await proveTx(tokenMock.setMintResult(false));
       await expect(
-        pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
+        pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY, BATCH_ID_STUB1)
       ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_TOKEN_MINTING_FAILURE);
     });
 
-    it("Is reverted if one of the cash-ins with the provided txIds is already executed", async () => {
-      const lastTxId: string = TRANSACTIONS_ARRAY.slice(-1)[0];
-      await proveTx(pixCashier.connect(cashier).cashIn(deployer.address, 1, lastTxId));
+    it("Is reverted if the provided batch ID is zero", async () => {
       await expect(
-        pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
+        pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY, BATCH_ID_ZERO)
       ).to.be.revertedWithCustomError(
         pixCashier,
-        REVERT_ERROR_IF_CASH_IN_ALREADY_EXECUTED
-      ).withArgs(lastTxId);
+        REVERT_ERROR_IF_BATCH_ID_IS_ZERO
+      );
+    });
+
+    it("Is reverted if a cash-in batch with the provided ID is already executed", async () => {
+      await proveTx(
+        pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY, BATCH_ID_STUB1)
+      );
+      await expect(
+        pixCashier.connect(cashier).cashInBatch(userAddresses, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY, BATCH_ID_STUB1)
+      ).to.be.revertedWithCustomError(
+        pixCashier,
+        REVERT_ERROR_IF_CASH_IN_BATCH_ALREADY_EXECUTED
+      ).withArgs(BATCH_ID_STUB1);
     });
   });
 
@@ -791,15 +865,15 @@ describe("Contract 'PixCashier'", async () => {
 
       await expect(
         pixCashier.connect(cashier).requestCashOutFromBatch(moreUsers, TOKEN_AMOUNTS, TRANSACTIONS_ARRAY)
-      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_INVALID_BATCH_ARRAYS);
 
       await expect(
         pixCashier.connect(cashier).requestCashOutFromBatch(users, moreAmounts, TRANSACTIONS_ARRAY)
-      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_INVALID_BATCH_ARRAYS);
 
       await expect(
         pixCashier.connect(cashier).requestCashOutFromBatch(users, TOKEN_AMOUNTS, moreTransactions)
-      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_BATCH_TRANSACTION_DIFFERENT);
+      ).to.be.revertedWithCustomError(pixCashier, REVERT_ERROR_IF_INVALID_BATCH_ARRAYS);
     });
 
     it("Is reverted if the account is blacklisted", async () => {

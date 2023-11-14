@@ -55,6 +55,9 @@ contract PixCashier is
     /// @dev The zero off-chain transaction identifier has been passed as a function argument.
     error ZeroTxId();
 
+    /// @dev The zero off-chain transaction batch identifier has been passed as a function argument.
+    error ZeroBatchId();
+
     /// @dev An empty array of off-chain transaction identifiers has been passed as a function argument.
     error EmptyTransactionIdsArray();
 
@@ -69,6 +72,12 @@ contract PixCashier is
      * @param txId The off-chain transaction identifiers of the operation.
      */
     error CashInAlreadyExecuted(bytes32 txId);
+
+    /**
+     * @dev The cash-in batch operation with the provided off-chain transaction is already executed.
+     * @param batchId The off-chain transaction identifiers of the operation.
+     */
+    error CashInBatchAlreadyExecuted(bytes32 batchId);
 
     /**
      * @dev The cash-out operation with the provided off-chain transaction identifier has an inappropriate status.
@@ -176,8 +185,8 @@ contract PixCashier is
     /**
      * @dev See {IPixCashier-getCashIn}.
      */
-    function getCashIn(bytes32 txIds) external view returns (CashInOperation memory) {
-        return _cashIns[txIds];
+    function getCashIn(bytes32 txId) external view returns (CashInOperation memory) {
+        return _cashIns[txId];
     }
 
     /**
@@ -188,6 +197,26 @@ contract PixCashier is
         cashIns = new CashInOperation[](len);
         for (uint256 i = 0; i < len; i++) {
             cashIns[i] = _cashIns[txIds[i]];
+        }
+    }
+
+    /**
+     * @dev See {IPixCashier-getCashInBatch}.
+     */
+    function getCashInBatch(bytes32 batchId) external view returns (CashInBatchOperation memory) {
+        return _cashInBatches[batchId];
+    }
+
+    /**
+     * @dev See {IPixCashier-getCashInBatches}.
+     */
+    function getCashInBatches(
+        bytes32[] memory batchIds
+    ) external view returns (CashInBatchOperation[] memory cashInBatches) {
+        uint256 len = batchIds.length;
+        cashInBatches = new CashInBatchOperation[](len);
+        for (uint256 i = 0; i < len; i++) {
+            cashInBatches[i] = _cashInBatches[batchIds[i]];
         }
     }
 
@@ -217,13 +246,14 @@ contract PixCashier is
      * - The contract must not be paused.
      * - The caller must have the {CASHIER_ROLE} role.
      * - The provided `account`, `amount`, and `txId` values must not be zero.
+     * - The cash-in operation with the provided `txId` must not be already executed.
      */
     function cashIn(
         address account,
         uint256 amount,
         bytes32 txId
     ) external whenNotPaused onlyRole(CASHIER_ROLE) {
-        _cashIn(account, amount, txId);
+        _cashIn(account, amount, txId, CashInExecutionPolicy.Revert);
     }
 
     /**
@@ -235,19 +265,36 @@ contract PixCashier is
      * - The contract must not be paused.
      * - The caller must have the {CASHIER_ROLE} role.
      * - The provided `account`, `amount`, and `txId` values must not be zero.
+     * - The provided `accounts`, `amounts`, `txIds` arrays must not be empty and must have the same length.
+     * - The provided `batchId` must not be zero
+     * - The cash-in batch operation with the provided `batchId` must not be already executed.
+     * - Each cash-in operation with the provided identifier from the `txIds` array must not be already executed.
      */
     function cashInBatch(
         address[] memory accounts,
         uint256[] memory amounts,
-        bytes32[] memory txIds
+        bytes32[] memory txIds,
+        bytes32 batchId
     ) external whenNotPaused onlyRole(CASHIER_ROLE) {
-        if (accounts.length != amounts.length || accounts.length != txIds.length) {
+        if (accounts.length == 0 || accounts.length != amounts.length || accounts.length != txIds.length) {
             revert InvalidBatchArrays();
         }
+        if (_cashInBatches[batchId].status == CashInBatchStatus.Executed) {
+            revert CashInBatchAlreadyExecuted(batchId);
+        }
+        if (batchId == 0) {
+            revert ZeroBatchId();
+        }
+
+        CashInExecutionResult[] memory executionResults = new CashInExecutionResult[](txIds.length);
 
         for (uint256 i = 0; i < accounts.length; i++) {
-            _cashIn(accounts[i], amounts[i], txIds[i]);
+            executionResults[i] = _cashIn(accounts[i], amounts[i], txIds[i], CashInExecutionPolicy.Skip);
         }
+
+        _cashInBatches[batchId].status = CashInBatchStatus.Executed;
+
+        emit CashInBatch(batchId, txIds, executionResults);
     }
 
     /**
@@ -372,8 +419,9 @@ contract PixCashier is
     function _cashIn(
         address account,
         uint256 amount,
-        bytes32 txId
-    ) internal {
+        bytes32 txId,
+        CashInExecutionPolicy policy
+    ) internal returns (CashInExecutionResult){
         if (account == address(0)) {
             revert ZeroAccount();
         }
@@ -388,7 +436,11 @@ contract PixCashier is
         }
 
         if (_cashIns[txId].status != CashInStatus.Nonexistent) {
-            revert CashInAlreadyExecuted(txId);
+            if (policy == CashInExecutionPolicy.Skip) {
+                return CashInExecutionResult.AlreadyExecuted;
+            } else {
+                revert CashInAlreadyExecuted(txId);
+            }
         }
 
         _cashIns[txId] = CashInOperation({
@@ -402,6 +454,8 @@ contract PixCashier is
         if (!IERC20Mintable(_token).mint(account, amount)) {
             revert TokenMintingFailure();
         }
+
+        return CashInExecutionResult.Success;
     }
 
     /**

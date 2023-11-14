@@ -11,11 +11,47 @@ interface IPixCashierTypes {
      *
      * The possible values:
      * - Nonexistent - The operation does not exist (the default value).
-     * - Executed ---- The operations was executed.
+     * - Executed ---- The operation was executed.
      */
     enum CashInStatus {
         Nonexistent, // 0
         Executed     // 1
+    }
+
+    /**
+     * @dev Possible statuses of a cash-in batch operation as an enum.
+     *
+     * The possible values:
+     * - Nonexistent - The operation does not exist (the default value).
+     * - Executed ---- The operation was executed.
+     */
+    enum CashInBatchStatus {
+        Nonexistent, // 0
+        Executed     // 1
+    }
+
+    /**
+     * @dev Possible result statuses of a cash-in operation as an enum.
+     *
+     * The possible values:
+     * - Success --------- The operation was executed successfully.
+     * - AlreadyExecuted - The operation was already executed.
+     */
+    enum CashInExecutionResult {
+        Success,        // 0
+        AlreadyExecuted // 1
+    }
+
+    /**
+     * @dev Possible execution policies of a cash-in operation as an enum.
+     *
+     * The possible values:
+     * - Revert - In case of failure the operation will be reverted.
+     * - Skip --- In case of failure the operation will be skipped.
+     */
+    enum CashInExecutionPolicy {
+        Revert, // 0
+        Skip    // 1
     }
 
     /**
@@ -25,7 +61,7 @@ interface IPixCashierTypes {
      * - Nonexistent - The operation does not exist (the default value).
      * - Pending ----- The status immediately after the operation requesting.
      * - Reversed ---- The operation was reversed.
-     * - Confirmed --- The operations was confirmed.
+     * - Confirmed --- The operation was confirmed.
      */
     enum CashOutStatus {
         Nonexistent, // 0
@@ -39,6 +75,11 @@ interface IPixCashierTypes {
         CashInStatus status;  // The status of the cash-in operation according to the {CashInStatus} enum.
         address account;      // The owner of tokens to cash-in.
         uint256 amount;       // The amount of tokens to cash-in.
+    }
+
+    /// @dev Structure with data of a batch cash-in operation.
+    struct CashInBatchOperation {
+        CashInBatchStatus status;  // The status of the cash-in batch operation according to the {CashInBatchStatus}.
     }
 
     /// @dev Structure with data of a single cash-in operation.
@@ -59,6 +100,13 @@ interface IPixCashier is IPixCashierTypes {
         address indexed account, // The account that receives tokens.
         uint256 amount,          // The amount of tokens to receive.
         bytes32 indexed txId     // The off-chain transaction identifier.
+    );
+
+    /// @dev Emitted when a new batch of cash-in operations is executed.
+    event CashInBatch(
+        bytes32 indexed batchId,                 // The off-chain batch identifier.
+        bytes32[] txIds,                         // The array of off-chain identifiers for each operation in the batch.
+        CashInExecutionResult[] executionResults // The array of execution results for each operation in the batch.
     );
 
     /// @dev Emitted when a new cash-out operation is initiated.
@@ -98,10 +146,24 @@ interface IPixCashier is IPixCashierTypes {
     function getCashIn(bytes32 txId) external view returns (CashInOperation memory);
 
     /**
-     * @dev Returns the data of multiple cash-out operations.
+     * @dev Returns the data of multiple cash-in operations.
      * @param txIds The off-chain transaction identifiers of the operations.
      */
     function getCashIns(bytes32[] memory txIds) external view returns (CashInOperation[] memory cashIns);
+
+    /**
+     * @dev Returns the data of a cash-in batch operation.
+     * @param batchId The off-chain identifier of the cash-in batch operation.
+     */
+    function getCashInBatch(bytes32 batchId) external view returns (CashInBatchOperation memory);
+
+    /**
+     * @dev Returns the data of multiple cash-in batch operations.
+     * @param batchIds The off-chain identifiers of the cash-in batch operations.
+     */
+    function getCashInBatches(
+        bytes32[] memory batchIds
+    ) external view returns (CashInBatchOperation[] memory cashInBatches);
 
     /**
      * @dev Returns the pending cash-out balance for an account.
@@ -173,16 +235,19 @@ interface IPixCashier is IPixCashierTypes {
      * This function is expected to be called by a limited number of accounts
      * that are allowed to execute cash-in operations.
      *
-     * Emits {CashIn} events.
+     * Emits a {CashInBatch} event.
+     * Emits a {CashIn} events.
      *
      * @param accounts The array of the addresses of the tokens recipient.
      * @param amounts The array of the token amounts to be received.
      * @param txIds The array of the off-chain transaction identifiers of the operation.
+     * @param batchId The off-chain batch identifier.
      */
     function cashInBatch(
         address[] memory accounts,
         uint256[] memory amounts,
-        bytes32[] memory txIds
+        bytes32[] memory txIds,
+        bytes32 batchId
     ) external;
 
     /**
