@@ -133,7 +133,7 @@ contract CashbackDistributor is
         } else if (IERC20Upgradeable(token).balanceOf(address(this)) < amount) {
             status = CashbackStatus.OutOfFunds;
         } else {
-            (bool accepted, uint256 acceptedAmount) = updateCashbackCap(token, recipient, amount);
+            (bool accepted, uint256 acceptedAmount) = _updateCashbackCap(token, recipient, amount);
             if (!accepted) {
                 status = CashbackStatus.Capped;
             } else if (acceptedAmount < amount) {
@@ -228,6 +228,7 @@ contract CashbackDistributor is
 
         if (revocationStatus == RevocationStatus.Success) {
             cashback.revokedAmount = context.newAmount;
+            _reduceOverallCashback(context.token, context.recipient, amount);
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] -= amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] -= amount;
             IERC20Upgradeable(context.token).safeTransferFrom(context.sender, address(this), amount);
@@ -269,7 +270,7 @@ contract CashbackDistributor is
         } else if (IERC20Upgradeable(context.token).balanceOf(address(this)) < amount) {
             status = IncreaseStatus.OutOfFunds;
         } else {
-            (bool accepted, uint256 acceptedAmount) = updateCashbackCap(context.token, context.recipient, amount);
+            (bool accepted, uint256 acceptedAmount) = _updateCashbackCap(context.token, context.recipient, amount);
             if (!accepted) {
                 status = IncreaseStatus.Capped;
             } else {
@@ -417,24 +418,38 @@ contract CashbackDistributor is
         return _cashbackLastTimeReset[token][recipient];
     }
 
-    function updateCashbackCap(
+    function _updateCashbackCap(
         address token,
         address recipient,
         uint256 amount
     ) internal returns (bool accepted, uint256 acceptedAmount) {
-        uint256 collectedAmount = 0;
+        uint256 overallCashback = 0;
 
         if (block.timestamp - _cashbackLastTimeReset[token][recipient] > CASHBACK_RESET_PERIOD) {
             _cashbackLastTimeReset[token][recipient] = block.timestamp;
         } else {
-            collectedAmount = _cashbackSinceLastReset[token][recipient];
+            overallCashback = _cashbackSinceLastReset[token][recipient];
         }
 
-        if (collectedAmount < MAX_CASHBACK_FOR_PERIOD) {
-            uint256 leftAmount = MAX_CASHBACK_FOR_PERIOD - collectedAmount;
+        if (overallCashback < MAX_CASHBACK_FOR_PERIOD) {
+            uint256 leftAmount = MAX_CASHBACK_FOR_PERIOD - overallCashback;
             acceptedAmount = leftAmount >= amount ? amount : leftAmount;
-            _cashbackSinceLastReset[token][recipient] = collectedAmount + acceptedAmount;
+            _cashbackSinceLastReset[token][recipient] = overallCashback + acceptedAmount;
             accepted = true;
         }
+    }
+
+    function _reduceOverallCashback(
+        address token,
+        address recipient,
+        uint256 amount
+    ) internal {
+        uint256 overallCashback = _cashbackSinceLastReset[token][recipient];
+        if (overallCashback > amount) {
+            overallCashback -= amount;
+        } else {
+            overallCashback = 0;
+        }
+        _cashbackSinceLastReset[token][recipient] = overallCashback;
     }
 }
