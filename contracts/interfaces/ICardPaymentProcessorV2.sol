@@ -145,8 +145,11 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
         bytes addendum // Empty. Reserved for future possible additional information.
     );
 
-    /// @dev Emitted when a payment is confirmed or partially confirmed.
-    event PaymentConfirmed(
+    /**
+     * @dev Emitted when the confirmed amount of a payment is changed.
+     *      It can be emitted during any operation except payment making
+     */
+    event PaymentConfirmedAmountChanged(
         bytes32 indexed authorizationId,
         bytes32 indexed correlationId,
         address indexed payer,
