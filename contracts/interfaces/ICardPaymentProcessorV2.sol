@@ -33,7 +33,23 @@ interface ICardPaymentProcessorV2Types {
         Finalized    // 5 // DEV Maybe this status is redundant.
     }
 
-    /// @dev Structure with data of a single payment.
+    /** @dev Structure with data of a single payment.
+     *
+     *  The following additional payment parameters can be derived from the structure fields:
+     *
+     *  - sumAmount = baseAmount + extraAmount.
+     *  - commonReminder = sumAmount - refundAmount.
+     *  - unconfirmedAmount = commonReminder - confirmedAmount.
+     *  - payerBaseAmount = (baseAmount > subsidyLimit) ? (baseAmount - subsidyLimit) : 0.
+     *  - payerSumAmount = (sumAmount > subsidyLimit) ? (sumAmount - subsidyLimit) : 0.
+     *  - assumedSponsorRefundAmount = (baseAmount > subsidyLimit)
+     *                                 ? (refundAmount * subsidyLimit / baseAmount)
+     *                                 : refundAmount.
+     *  - sponsorRefundAmount = (assumedSponsorRefundAmount < subsidyLimit) ? assumedSponsorRefundAmount : subsidyLimit.
+     *  - payerRefundAmount = refundAmount - sponsorRefundAmount.
+     *  - payerRemainder = payerSumAmount - payerRefundAmount.
+     *  - sponsorReminder = sumAmount - payerSumAmount - payerRemainder.
+     */
     // DEV Type `uint64` allows us execute payments up to 1.8E13 BRLC. I believe, instead of that, we can use `uint56` (up to 72E9 BRLC) or even `uint48` (up to 281M BRLC). It will save more storage.
     struct Payment {
         //slot1
@@ -114,7 +130,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
         bytes32 indexed authorizationId,
         bytes32 indexed correlationId,
         address indexed payer,
-        uint256 amountToPayer,
+        uint256 payerReminder,
         bytes addendum // Empty. Reserved for future possible additional information.
     );
 
@@ -123,7 +139,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
         bytes32 indexed authorizationId,
         bytes32 indexed correlationId,
         address indexed sponsor,
-        uint256 amountToSponsor,
+        uint256 sponsorReminder,
         bytes addendum // Empty. Reserved for future possible additional information.
     );
 
@@ -132,16 +148,16 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
         bytes32 indexed authorizationId,
         bytes32 indexed correlationId,
         address indexed payer,
-        uint256 amountToPayer,
+        uint256 payerReminder,
         bytes addendum // Empty. Reserved for future possible additional information.
     );
 
     /// @dev Emitted along with the {PaymentReversed} event when a subsidized payment is reversed.
-    event PaymentReverseSubsidized(
-        bytes16 indexed authorizationId,
-        bytes16 indexed correlationId,
+    event PaymentReversedSubsidized(
+        bytes32 indexed authorizationId,
+        bytes32 indexed correlationId,
         address indexed sponsor,
-        uint256 amountToSponsor,
+        uint256 sponsorReminder,
         bytes addendum // Empty. Reserved for future possible additional information.
     );
 
@@ -168,14 +184,13 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
         uint256 newExtraAmount,
         uint256 oldPayerRefundAmount,
         uint256 newPayerRefundAmount,
-        uint256 amountToPayer,
         bytes addendum // Empty. Reserved for future possible additional information.
     );
 
     /// @dev Emitted along with the {PaymentRefunded} event when a subsidized payment is refunded.
     event PaymentRefundedSubsidized(
-        bytes16 indexed authorizationId,
-        bytes16 indexed correlationId,
+        bytes32 indexed authorizationId,
+        bytes32 indexed correlationId,
         address indexed sponsor,
         uint256 oldSponsorRefundAmount,
         uint256 newSponsorRefundAmount,
