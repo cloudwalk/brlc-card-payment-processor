@@ -35,13 +35,13 @@ abstract contract CardPaymentProcessorV2StorageV1 is ICardPaymentProcessorV2Type
     /// @dev The account to transfer confirmed tokens to.
     address internal _cashOutAccount;
 
-    /// @dev Mapping of a payment for a given authorization ID.
+    /// @dev Mapping of a payment for a given payment ID.
     mapping(bytes32 => Payment) internal _payments;
 
     /// @dev The address of the cashback distributor contract.
     address internal _cashbackDistributor;
 
-    /// @dev Mapping of a structure with cashback data for a given authorization ID.
+    /// @dev Mapping of a structure with cashback data for a given payment ID.
     mapping(bytes32 => Cashback) internal _cashbacks;
 }
 

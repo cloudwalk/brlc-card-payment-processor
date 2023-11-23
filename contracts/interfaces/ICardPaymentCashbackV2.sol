@@ -101,10 +101,10 @@ interface ICardPaymentCashbackV2 is ICardPaymentCashbackV2Types {
     function cashbackRate() external view returns (uint256);
 
     /**
-     * @dev Returns the cashback details for the transaction authorization ID.
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * @dev Returns the cashback details for a payment with the provided ID.
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      */
-    function getCashback(bytes32 authorizationId) external view returns (Cashback memory);
+    function getCashback(bytes32 paymentId) external view returns (Cashback memory);
 
     /**
      * @dev Sets a new address of the cashback distributor contract.

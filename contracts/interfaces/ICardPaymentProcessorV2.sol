@@ -15,14 +15,14 @@ interface ICardPaymentProcessorV2Types {
      * - Reserved ---- The unused status, reserved for future changes.
      * - Revoked ----- The payment was revoked due to some technical reason.
      *                 The related tokens have been transferred back to the customer.
-     *                 The payment can be made again with the same authorizationId
+     *                 The payment can be made again with the same ID
      *                 if its revocation counter does not reach the configure limit.
      * - Reversed ---- The payment was reversed due to the decision of the off-chain card processing service.
      *                 The related tokens have been transferred back to the customer.
-     *                 The payment cannot be made again with the same authorizationId.
+     *                 The payment cannot be made again with the same ID.
      * - Finalized --- The payment is finalized and can not be changed in the future.
      *                 The related tokens have been transferred to a special cash-out address.
-     *                 The payment cannot be made again with the same authorizationId.
+     *                 The payment cannot be made again with the same ID.
      */
     enum PaymentStatus {
         Nonexistent, // 0
@@ -71,9 +71,9 @@ interface ICardPaymentProcessorV2Types {
 
     /// @dev Structure with data of a single confirmation operation
     struct PaymentConfirmation {
-        bytes32 authorizationId; // The card transaction authorization ID from the off-chain card processing backend.
-        bytes32 correlationId;   // The ID that is correlated to the operation in the off-chain card processing backend.
-        uint64 amount;           // The amount to confirm for the payment.
+        bytes32 paymentId;      // The card transaction payment ID from the off-chain card processing backend.
+        bytes32 correlationId;  // The ID that is correlated to the operation in the off-chain card processing backend.
+        uint64 amount;          // The amount to confirm for the payment.
     }
 }
 
@@ -84,7 +84,7 @@ interface ICardPaymentProcessorV2Types {
 interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
     /// @dev Emitted when a payment is made.
     event PaymentMade(
-        bytes32 indexed authorizationId,
+        bytes32 indexed paymentId,
         bytes32 indexed correlationId,
         address indexed payer,
         uint256 payerSumAmount,
@@ -93,7 +93,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
 
     /// @dev Emitted along with the {PaymentMade} event when a subsidized payment is made.
     event PaymentMadeSubsidized(
-        bytes32 indexed authorizationId,
+        bytes32 indexed paymentId,
         bytes32 indexed correlationId,
         address indexed sponsor,
         uint256 subsidyLimit,
@@ -103,7 +103,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
 
     /// @dev Emitted when a payment is updated.
     event PaymentUpdated(
-        bytes32 indexed authorizationId,
+        bytes32 indexed paymentId,
         bytes32 indexed correlationId,
         address indexed payer,
         uint256 oldBaseAmount,
@@ -117,7 +117,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
 
     /// @dev Emitted along with the {PaymentUpdated} event when the amount of a subsidized payment is updated.
     event PaymentUpdatedSubsidized(
-        bytes32 indexed authorizationId,
+        bytes32 indexed paymentId,
         bytes32 indexed correlationId,
         address indexed sponsor,
         uint256 oldSponsorSumAmount,
@@ -127,7 +127,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
 
     /// @dev Emitted when a payment is revoked.
     event PaymentRevoked(
-        bytes32 indexed authorizationId,
+        bytes32 indexed paymentId,
         bytes32 indexed correlationId,
         address indexed payer,
         uint256 payerReminder,
@@ -136,7 +136,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
 
     /// @dev Emitted along with the {PaymentRevoked} event when a subsidized payment is revoked.
     event PaymentRevokedSubsidized(
-        bytes32 indexed authorizationId,
+        bytes32 indexed paymentId,
         bytes32 indexed correlationId,
         address indexed sponsor,
         uint256 sponsorReminder,
@@ -145,7 +145,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
 
     /// @dev Emitted when a payment is reversed.
     event PaymentReversed(
-        bytes32 indexed authorizationId,
+        bytes32 indexed paymentId,
         bytes32 indexed correlationId,
         address indexed payer,
         uint256 payerReminder,
@@ -154,7 +154,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
 
     /// @dev Emitted along with the {PaymentReversed} event when a subsidized payment is reversed.
     event PaymentReversedSubsidized(
-        bytes32 indexed authorizationId,
+        bytes32 indexed paymentId,
         bytes32 indexed correlationId,
         address indexed sponsor,
         uint256 sponsorReminder,
@@ -166,7 +166,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *      It can be emitted during any operation except payment making
      */
     event PaymentConfirmedAmountChanged(
-        bytes32 indexed authorizationId,
+        bytes32 indexed paymentId,
         bytes32 indexed correlationId,
         address indexed payer,
         address sponsor,
@@ -177,7 +177,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
 
     /// @dev Emitted when a payment is refunded.
     event PaymentRefunded(
-        bytes32 indexed authorizationId,
+        bytes32 indexed paymentId,
         bytes32 indexed correlationId,
         address indexed payer,
         uint256 oldExtraAmount,
@@ -189,7 +189,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
 
     /// @dev Emitted along with the {PaymentRefunded} event when a subsidized payment is refunded.
     event PaymentRefundedSubsidized(
-        bytes32 indexed authorizationId,
+        bytes32 indexed paymentId,
         bytes32 indexed correlationId,
         address indexed sponsor,
         uint256 oldSponsorRefundAmount,
@@ -213,13 +213,13 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *
      * Emits a {MakePayment} event.
      *
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param baseAmount The base amount of tokens to transfer because of the payment.
      * @param extraAmount The extra amount of tokens to transfer because of the payment. No cashback is applied.
      */
     function makePayment(
-        bytes32 authorizationId,
+        bytes32 paymentId,
         bytes32 correlationId,
         uint64 baseAmount,
         uint64 extraAmount
@@ -239,7 +239,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * @param payer The account on that behalf the payment is made.
      * @param baseAmount The base amount of tokens to transfer because of the payment.
      * @param extraAmount The extra amount of tokens to transfer because of the payment. No cashback is applied.
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param sponsor The address of a sponsor if the payment is subsidized, otherwise zero.
      * @param subsidyLimit The amount of tokens that the sponsor is compensating for the payment.
@@ -248,7 +248,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *                     If zero then cashback is not sent.
      */
     function makePaymentFor(
-        bytes32 authorizationId,
+        bytes32 paymentId,
         bytes32 correlationId,
         address payer,
         uint64 baseAmount,
@@ -267,13 +267,13 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *
      * Emits a {PaymentUpdated} event.
      *
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param newBaseAmount The new base amount of the payment.
      * @param newExtraAmount The new extra amount of the payment.
      */
     function updatePayment(
-        bytes32 authorizationId,
+        bytes32 paymentId,
         bytes32 correlationId,
         uint64 newBaseAmount,
         uint64 newExtraAmount
@@ -288,28 +288,28 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *
      * Emits a {PaymentReversed} event.
      *
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
     function reversePayment(
-        bytes32 authorizationId,
+        bytes32 paymentId,
         bytes32 correlationId
     ) external;
 
     /**
      * @dev Performs the revocation of a previously made card payment.
      *
-     * Does not finalize the payment: it can be made again with the same authorizationId.
+     * Does not finalize the payment: it can be made again with the same paymentId.
      * Transfers tokens back from this contract or cash-out account to the payer.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentRevoked} event.
      *
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
     function revokePayment(
-        bytes32 authorizationId,
+        bytes32 paymentId,
         bytes32 correlationId
     ) external;
 
@@ -322,12 +322,12 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *
      * Emits a {PaymentConfirmed} event.
      *
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param amount The amount to confirm for the payment.
      */
     function confirmPayment(
-        bytes32 authorizationId,
+        bytes32 paymentId,
         bytes32 correlationId,
         uint64 amount
     ) external;
@@ -356,14 +356,14 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * Emits a {PaymentUpdated} event if the update operation is executed.
      * Emits a {PaymentConfirmed} event.
      *
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param newBaseAmount The new base amount of the payment.
      * @param newExtraAmount The new extra amount of the payment.
      * @param confirmationAmount The amount to confirm for the payment.
      */
     function updateLazyAndConfirmPayment(
-        bytes32 authorizationId,
+        bytes32 paymentId,
         bytes32 correlationId,
         uint64 newBaseAmount,
         uint64 newExtraAmount,
@@ -376,13 +376,13 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *
      * Emits a {PaymentRefunded} event.
      *
-     * @param authorizationId The card transaction authorization ID.
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param refundAmount The amount of tokens to refund.
      * @param newExtraAmount The new extra amount of the payment.
      */
     function refundPayment(
-        bytes32 authorizationId,
+        bytes32 paymentId,
         bytes32 correlationId,
         uint64 refundAmount,
         uint64 newExtraAmount
@@ -416,8 +416,8 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
     function cashOutAccount() external view returns (address);
 
     /**
-     * @dev Returns payment data for a card transaction authorization ID.
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     * @dev Returns payment data for a card transaction payment ID.
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      */
-    function getPayment(bytes32 authorizationId) external view returns (Payment memory);
+    function getPayment(bytes32 paymentId) external view returns (Payment memory);
 }
