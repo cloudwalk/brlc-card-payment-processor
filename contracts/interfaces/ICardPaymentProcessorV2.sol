@@ -12,7 +12,7 @@ interface ICardPaymentProcessorV2Types {
      * The possible values:
      * - Nonexistent - The payment does not exist (the default value).
      * - Active ------ The status immediately after the payment making.
-     * - Reserved ---- The unused status, reserved for future changes.
+     * - Unused ------ The unused status, reserved for future changes.
      * - Revoked ----- The payment was revoked due to some technical reason.
      *                 The related tokens have been transferred back to the customer.
      *                 The payment can be made again with the same ID
@@ -20,17 +20,14 @@ interface ICardPaymentProcessorV2Types {
      * - Reversed ---- The payment was reversed due to the decision of the off-chain card processing service.
      *                 The related tokens have been transferred back to the customer.
      *                 The payment cannot be made again with the same ID.
-     * - Finalized --- The payment is finalized and can not be changed in the future.
-     *                 The related tokens have been transferred to a special cash-out address.
-     *                 The payment cannot be made again with the same ID.
      */
     enum PaymentStatus {
         Nonexistent, // 0
         Active,      // 1
-        Reserved,    // 2
+        Unused,      // 2
         Revoked,     // 3
-        Reversed,    // 4
-        Finalized    // 5 // DEV Maybe this status is redundant.
+        Reversed     // 4
+        // DEV The `Finalized` status can be added along with an appropriate function and event if the option to block a payment for further operations is needed.
     }
 
     /** @dev Structure with data of a single payment.
@@ -280,23 +277,6 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
     ) external;
 
     /**
-     * @dev Performs the reverse of a previously made card payment.
-     *
-     * Finalizes the payment: no other operations can be done for the payment after this one.
-     * Transfers tokens back from this contract or cash-out account to the payer.
-     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
-     *
-     * Emits a {PaymentReversed} event.
-     *
-     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
-     */
-    function reversePayment(
-        bytes32 paymentId,
-        bytes32 correlationId
-    ) external;
-
-    /**
      * @dev Performs the revocation of a previously made card payment.
      *
      * Does not finalize the payment: it can be made again with the same paymentId.
@@ -309,6 +289,23 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
     function revokePayment(
+        bytes32 paymentId,
+        bytes32 correlationId
+    ) external;
+
+    /**
+     * @dev Performs the reverse of a previously made card payment.
+     *
+     * Finalizes the payment: no other operations can be done for the payment after this one.
+     * Transfers tokens back from this contract or cash-out account to the payer.
+     * This function can be called by a limited number of accounts that are allowed to execute processing operations.
+     *
+     * Emits a {PaymentReversed} event.
+     *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
+     */
+    function reversePayment(
         bytes32 paymentId,
         bytes32 correlationId
     ) external;
