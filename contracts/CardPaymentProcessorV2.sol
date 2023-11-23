@@ -694,6 +694,10 @@ contract CardPaymentProcessorV2 is
 
         _checkActivePaymentStatus(payment.status);
 
+        if (payment.refundAmount > uint256(newBaseAmount) + uint256(newExtraAmount)) {
+            revert InappropriateRefundAmount();
+        }
+
         PaymentDetails memory oldPaymentDetails = _definePaymentDetails(payment, PaymentRecalculationKind.None);
         uint64 oldBaseAmount = payment.baseAmount;
         uint64 oldExtraAmount = payment.extraAmount;
