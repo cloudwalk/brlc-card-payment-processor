@@ -9,20 +9,6 @@ import { ICardPaymentCashbackV2Types } from "./interfaces/ICardPaymentCashbackV2
  * @title CardPaymentProcessorV2 storage version 1
  */
 abstract contract CardPaymentProcessorV2StorageV1 is ICardPaymentProcessorV2Types, ICardPaymentCashbackV2Types {
-    /// @dev The factor to represent the cashback rates in the contract, e.g. number 15 means 1.5% cashback rate.
-    /// @dev The formula to calculate cashback by an amount: cashbackAmount = cashbackRate * amount / CASHBACK_FACTOR
-    uint16 public constant CASHBACK_FACTOR = 1000;
-
-    /// @dev The maximum allowable cashback rate in units of `CASHBACK_FACTOR`.
-    uint16 public constant MAX_CASHBACK_RATE = 250;
-
-    /**
-     * @dev The coefficient used to round the cashback according to the formula:
-     *      `roundedCashback = [(cashback + coef / 2) / coef] * coef`.
-     * Currently, it can only be changed by deploying a new implementation of the contract.
-     */
-    uint16 public constant CASHBACK_ROUNDING_COEF = 10000;
-
     /// @dev The address of the underlying token.
     address internal _token;
 

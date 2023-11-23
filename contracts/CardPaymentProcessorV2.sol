@@ -38,6 +38,24 @@ contract CardPaymentProcessorV2 is
     /// @dev The role of executor that is allowed to execute the card payment operations.
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
 
+    /**
+     * @dev The factor to represent the cashback rates in the contract, e.g. number 15 means 1.5% cashback rate.
+     *
+     * The formula to calculate cashback by an amount: cashbackAmount = cashbackRate * amount / CASHBACK_FACTOR
+     */
+    uint16 public constant CASHBACK_FACTOR = 1000;
+
+    /// @dev The maximum allowable cashback rate in units of `CASHBACK_FACTOR`.
+    uint16 public constant MAX_CASHBACK_RATE = 250;
+
+    /**
+     * @dev The coefficient used to round the cashback according to the formula:
+     *      `roundedCashback = ((cashback + coef / 2) / coef) * coef`.
+     *
+     * Currently, it can only be changed by deploying a new implementation of the contract.
+     */
+    uint16 public constant CASHBACK_ROUNDING_COEF = 10000;
+
     // -------------------- Events -----------------------------------
 
     /// @dev Emitted when the cash-out account is changed.
