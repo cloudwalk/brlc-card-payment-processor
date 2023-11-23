@@ -96,8 +96,8 @@ contract CardPaymentProcessorV2 is
     /// @dev A new cash-out account is the same as the previously set one.
     error CashOutAccountUnchanged();
 
-    /// @dev The requested refund amount does not meet the requirements.
-    error InappropriateRefundAmount();
+    /// @dev The requested refunding amount does not meet the requirements.
+    error InappropriateRefundingAmount();
 
     /// @dev The requested confirmation amount does not meet the requirements.
     error InappropriateConfirmationAmount();
@@ -353,9 +353,9 @@ contract CardPaymentProcessorV2 is
     function confirmPayment(
         bytes32 paymentId,
         bytes32 correlationId,
-        uint64 amount
+        uint64 confirmationAmount
     ) public whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        uint256 transferAmount = _confirmPayment(paymentId, correlationId, amount);
+        uint256 transferAmount = _confirmPayment(paymentId, correlationId, confirmationAmount);
         IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), transferAmount);
     }
 
@@ -435,10 +435,10 @@ contract CardPaymentProcessorV2 is
     function refundPayment(
         bytes32 paymentId,
         bytes32 correlationId,
-        uint64 refundAmount,
+        uint64 refundingAmount,
         uint64 newExtraAmount
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        _refundPayment(paymentId, correlationId, refundAmount, newExtraAmount);
+        _refundPayment(paymentId, correlationId, refundingAmount, newExtraAmount);
     }
 
     /**
@@ -453,7 +453,7 @@ contract CardPaymentProcessorV2 is
     function refundAccount(
         bytes32 correlationId,
         address account,
-        uint64 refundAmount
+        uint64 refundingAmount
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (account == address(0)) {
             revert AccountZeroAddress();
@@ -462,11 +462,11 @@ contract CardPaymentProcessorV2 is
         emit RefundAccount(
             correlationId,
             account,
-            refundAmount,
+            refundingAmount,
             bytes("")
         );
 
-        IERC20Upgradeable(_token).safeTransferFrom(_requireCashOutAccount(), account, refundAmount);
+        IERC20Upgradeable(_token).safeTransferFrom(_requireCashOutAccount(), account, refundingAmount);
     }
 
     /**
@@ -695,7 +695,7 @@ contract CardPaymentProcessorV2 is
         _checkActivePaymentStatus(payment.status);
 
         if (payment.refundAmount > uint256(newBaseAmount) + uint256(newExtraAmount)) {
-            revert InappropriateRefundAmount();
+            revert InappropriateRefundingAmount();
         }
 
         PaymentDetails memory oldPaymentDetails = _definePaymentDetails(payment, PaymentRecalculationKind.None);
@@ -799,7 +799,7 @@ contract CardPaymentProcessorV2 is
     function _confirmPayment(
         bytes32 paymentId,
         bytes32 correlationId,
-        uint64 amount
+        uint64 confirmationAmount
     ) internal returns (uint256) {
         if (paymentId == 0) {
             revert PaymentZeroId();
@@ -807,13 +807,13 @@ contract CardPaymentProcessorV2 is
         Payment storage payment = _payments[paymentId];
         _checkActivePaymentStatus(payment.status);
 
-        if (amount == 0) {
-            return amount;
+        if (confirmationAmount == 0) {
+            return confirmationAmount;
         }
 
-        uint256 reminder = payment.baseAmount + payment.extraAmount - payment.refundAmount;
+        uint256 reminder = uint256(payment.baseAmount) + uint256(payment.extraAmount) - uint256(payment.refundAmount);
         uint256 oldConfirmedAmount = payment.confirmedAmount;
-        uint256 newConfirmedAmount = oldConfirmedAmount + amount;
+        uint256 newConfirmedAmount = oldConfirmedAmount + confirmationAmount;
         if (newConfirmedAmount > reminder || newConfirmedAmount > type(uint64).max) {
             revert InappropriateConfirmationAmount();
         }
@@ -829,14 +829,14 @@ contract CardPaymentProcessorV2 is
             bytes("")
         );
 
-        return amount;
+        return confirmationAmount;
     }
 
     /// @dev Makes a refund for a payment internally
     function _refundPayment(
         bytes32 paymentId,
         bytes32 correlationId,
-        uint64 refundAmount,
+        uint64 refundingAmount,
         uint64 newExtraAmount
     ) internal {
         if (paymentId == 0) {
@@ -847,12 +847,12 @@ contract CardPaymentProcessorV2 is
         Payment memory payment = storedPayment;
         _checkActivePaymentStatus(payment.status);
 
-        uint256 newRefundAmount = uint256(payment.refundAmount) + uint256(refundAmount);
+        uint256 newRefundAmount = uint256(payment.refundAmount) + uint256(refundingAmount);
         if (
             newRefundAmount > uint256(payment.baseAmount) + uint256(newExtraAmount) ||
             newRefundAmount > type(uint64).max
         ) {
-            revert InappropriateRefundAmount();
+            revert InappropriateRefundingAmount();
         }
 
         PaymentDetails memory oldPaymentDetails = _definePaymentDetails(payment, PaymentRecalculationKind.None);
@@ -1027,17 +1027,17 @@ contract CardPaymentProcessorV2 is
     ) internal returns (uint256) {
         address distributor = _cashbackDistributor;
         uint256 cashbackNonce = _cashbacks[paymentId].lastCashbackNonce;
-        uint256 sentAmount = 0;
+        uint256 increaseAmount = 0;
         if (cashbackNonce != 0 && distributor != address(0)) {
             bool success;
-            (success, sentAmount) = ICashbackDistributor(distributor).increaseCashback(cashbackNonce, amount);
+            (success, increaseAmount) = ICashbackDistributor(distributor).increaseCashback(cashbackNonce, amount);
             if (success) {
-                emit IncreaseCashbackSuccess(distributor, sentAmount, cashbackNonce);
+                emit IncreaseCashbackSuccess(distributor, increaseAmount, cashbackNonce);
             } else {
                 emit IncreaseCashbackFailure(distributor, amount, cashbackNonce);
             }
         }
-        return sentAmount;
+        return increaseAmount;
     }
 
     /// @dev Stores the data of a newly created payment.
@@ -1157,16 +1157,13 @@ contract CardPaymentProcessorV2 is
         uint256 baseAmount,
         uint256 subsidyLimit
     ) internal pure returns (uint256) {
-        uint256 sponsorRefund = 0;
-        if (subsidyLimit >= baseAmount) {
-            sponsorRefund = refundAmount;
-        } else {
-            sponsorRefund = refundAmount * subsidyLimit / baseAmount;
+        if (subsidyLimit < baseAmount) {
+            refundAmount = refundAmount * subsidyLimit / baseAmount;
         }
-        if (sponsorRefund > subsidyLimit) {
-            sponsorRefund = subsidyLimit;
+        if (refundAmount > subsidyLimit) {
+            refundAmount = subsidyLimit;
         }
-        return sponsorRefund;
+        return refundAmount;
     }
 
     /// @dev Defines the new confirmed amount of a payment according to the new old confirmed amount and the reminder.
@@ -1187,7 +1184,7 @@ contract CardPaymentProcessorV2 is
         uint256 payerRefund,
         uint256 cashbackRate_
     ) internal pure returns (uint256) {
-        if (payerBaseAmount <= payerRefund || cashbackRate_ == 0) {
+        if (cashbackRate_ == 0 || payerBaseAmount <= payerRefund) {
             return 0;
         }
         return _calculateCashback(payerBaseAmount - payerRefund, cashbackRate_);

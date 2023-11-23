@@ -198,7 +198,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
     event RefundAccount(
         bytes32 indexed correlationId,
         address indexed account,
-        uint64 refundAmount,
+        uint64 refundingAmount,
         bytes addendum // Empty. Reserved for future possible additional information.
     );
 
@@ -327,12 +327,12 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
-     * @param amount The amount to confirm for the payment.
+     * @param confirmationAmount The amount to confirm for the payment.
      */
     function confirmPayment(
         bytes32 paymentId,
         bytes32 correlationId,
-        uint64 amount
+        uint64 confirmationAmount
     ) external;
 
     /**
@@ -383,13 +383,13 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
-     * @param refundAmount The amount of tokens to refund.
+     * @param refundingAmount The amount of tokens to refund.
      * @param newExtraAmount The new extra amount of the payment.
      */
     function refundPayment(
         bytes32 paymentId,
         bytes32 correlationId,
-        uint64 refundAmount,
+        uint64 refundingAmount,
         uint64 newExtraAmount
     ) external;
 
@@ -402,12 +402,12 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param account The address of the account to refund.
-     * @param refundAmount The amount of tokens to refund.
+     * @param refundingAmount The amount of tokens to refund.
      */
     function refundAccount(
         bytes32 correlationId,
         address account,
-        uint64 refundAmount
+        uint64 refundingAmount
     ) external;
 
     /**
