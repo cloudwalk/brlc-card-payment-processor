@@ -3,7 +3,7 @@
 pragma solidity 0.8.16;
 
 /**
- * @title CardPaymentCashback types interface
+ * @title CardPaymentCashbackV2 types interface
  */
 interface ICardPaymentCashbackV2Types {
     /// @dev Structure with data of a single cashback operation.
@@ -13,7 +13,7 @@ interface ICardPaymentCashbackV2Types {
 }
 
 /**
- * @title CardPaymentCashback interface
+ * @title CardPaymentCashbackV2 interface
  * @dev The interface of the wrapper contract for the card payment cashback operations.
  */
 interface ICardPaymentCashbackV2 is ICardPaymentCashbackV2Types {

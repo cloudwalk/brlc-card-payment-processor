@@ -232,12 +232,13 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentMade} event.
+     * Emits a {PaymentMadeSubsidized} event if the payment is subsidized.
      *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
      * @param baseAmount The base amount of tokens to transfer because of the payment.
      * @param extraAmount The extra amount of tokens to transfer because of the payment. No cashback is applied.
-     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param sponsor The address of a sponsor if the payment is subsidized, otherwise zero.
      * @param subsidyLimit The amount of tokens that the sponsor is compensating for the payment.
      * @param cashbackRate If positive then it is a special cashback rate for the payment in units of `CASHBACK_FACTOR`.
@@ -255,7 +256,6 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
         int16 cashbackRate
     ) external;
 
-
     /**
      * @dev Updates a previously made payment.
      *
@@ -263,6 +263,8 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentUpdated} event.
+     * Emits a {PaymentUpdatedSubsidized} event if the payment is subsidized.
+     * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
@@ -284,6 +286,8 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentRevoked} event.
+     * Emits a {PaymentRevokedSubsidized} event if the payment is subsidized.
+     * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
@@ -301,6 +305,8 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentReversed} event.
+     * Emits a {PaymentReversedSubsidized} event if the payment is subsidized.
+     * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
@@ -317,7 +323,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * Transfers tokens gotten from a payer and a sponsor to a dedicated cash-out account for further operations.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
-     * Emits a {PaymentConfirmed} event.
+     * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
@@ -336,7 +342,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * Transfers tokens gotten from payers and sponsors to a dedicated cash-out account for further operations.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
-     * Emits a {PaymentConfirmed} event for each payment.
+     * Emits a {PaymentConfirmedAmountChanged} event for each payment if the confirmed amount of the payment is changed.
      *
      * @param paymentConfirmations The array of structures with payment confirmation parameters.
      */
@@ -351,7 +357,8 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentUpdated} event if the update operation is executed.
-     * Emits a {PaymentConfirmed} event.
+     * Emits a {PaymentUpdatedSubsidized} event if the update operation is executed and the payment is subsidized.
+     * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
@@ -367,11 +374,12 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
         uint64 confirmationAmount
     ) external;
 
-
     /**
      * @dev Makes a refund for a previously made card payment.
      *
      * Emits a {PaymentRefunded} event.
+     * Emits a {PaymentRefundedSubsidized} event if the payment is subsidized.
+     * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.

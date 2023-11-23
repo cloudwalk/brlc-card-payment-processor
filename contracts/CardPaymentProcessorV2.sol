@@ -18,7 +18,7 @@ import { ICashbackDistributor, ICashbackDistributorTypes } from "./interfaces/IC
 
 /**
  * @title CardPaymentProcessorV2 contract
- * @dev Wrapper contract for the card payment operations.
+ * @dev A wrapper contract for the card payment operations.
  */
 contract CardPaymentProcessorV2 is
     AccessControlUpgradeable,
@@ -86,7 +86,7 @@ contract CardPaymentProcessorV2 is
 
     /**
      * @dev The payment with the provided ID has an inappropriate status.
-     * @param currentStatus The current status of payment with the provided ID.
+     * @param currentStatus The current status of the payment.
      */
     error InappropriatePaymentStatus(PaymentStatus currentStatus);
 
@@ -161,6 +161,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /// @dev Contains parameters of a payment making operation.
+    // DEV Maybe it is worth to make all the numeric fields uint256 for lower gas consumption. It should be checked after testing.
     struct MakingOperation {
         bytes32 paymentId;
         bytes32 correlationId;
@@ -183,7 +184,7 @@ contract CardPaymentProcessorV2 is
      * - The contract must not be paused.
      * - The caller must must not be blacklisted.
      * - The payment ID must not be zero.
-     * - The payment linked with the provided ID must not exist or be revoked or be finalized.
+     * - The payment linked with the provided ID must be revoked or not exist.
      */
     function makePayment(
         bytes32 paymentId,
@@ -200,7 +201,7 @@ contract CardPaymentProcessorV2 is
             baseAmount: baseAmount,
             extraAmount: extraAmount,
             subsidyLimit: 0,
-            cashbackAmount : 0,
+            cashbackAmount: 0,
             payerSumAmount: 0,
             sponsorSumAmount: 0
         });
@@ -216,7 +217,7 @@ contract CardPaymentProcessorV2 is
      * - The caller must have the {EXECUTOR_ROLE} role.
      * - The payment account address must not be zero.
      * - The payment ID must not be zero.
-     * - The payment linked with the provided ID must not exist or be revoked or be finalized.
+     * - The payment linked with the provided ID must be revoked or not exist.
      * - The requested cashback rate must not exceed the maximum allowable cashback rate defined in the contract.
      */
     function makePaymentFor(
@@ -250,7 +251,7 @@ contract CardPaymentProcessorV2 is
             baseAmount: baseAmount,
             extraAmount: extraAmount,
             subsidyLimit: subsidyLimit,
-            cashbackAmount : 0,
+            cashbackAmount: 0,
             payerSumAmount: 0,
             sponsorSumAmount: 0
         });
@@ -265,11 +266,7 @@ contract CardPaymentProcessorV2 is
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
      * - The input payment ID must not be zero.
-     * - The payment linked with the provided ID must have the "uncleared" status.
-     * - The new base amount must not exceed the existing refund amount.
-     * - If the base amount of the payment increases the extra amount must increase too or keep unchanged.
-     * - If the base amount of the payment decreases the extra amount must decrease too or keep unchanged.
-     * - If the base amount of the payment does not change the extra amount is allowed to change in any way.
+     * - The the new base amount plus the new extra amount must not be less than the the existing refund amount.
      */
     function updatePayment(
         bytes32 paymentId,
@@ -294,7 +291,6 @@ contract CardPaymentProcessorV2 is
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
      * - The input payment ID must not be zero.
-     * - The
      */
     function reversePayment(
         bytes32 paymentId,
@@ -315,7 +311,6 @@ contract CardPaymentProcessorV2 is
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
      * - The input payment ID must not be zero.
-     * -
      */
     function revokePayment(
         bytes32 paymentId,
@@ -375,7 +370,6 @@ contract CardPaymentProcessorV2 is
         IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), totalTransferAmount);
     }
 
-
     /**
      * @inheritdoc ICardPaymentProcessorV2
      *
@@ -384,10 +378,7 @@ contract CardPaymentProcessorV2 is
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
      * - The input payment ID must not be zero.
-     * - The new base amount must not exceed the existing refund amount.
-     * - If the base amount of the payment is increased the extra amount must be increased too or kept unchanged.
-     * - If the base amount of the payment is decreased the extra amount must be decreased too or kept unchanged.
-     * - If the base amount of the payment is not changed the extra amount is allowed to be changed in any way.
+     * - The the new base amount plus the new extra amount must not be less than the the existing refund amount.
      */
     function updateLazyAndConfirmPayment(
         bytes32 paymentId,
@@ -408,7 +399,9 @@ contract CardPaymentProcessorV2 is
             correlationId,
             confirmationAmount
         );
-        IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), transferAmount);
+        if (transferAmount > 0) {
+            IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), transferAmount);
+        }
     }
 
     /**
@@ -419,7 +412,7 @@ contract CardPaymentProcessorV2 is
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
      * - The input payment ID must not be zero.
-     * - The new extra amount must not be greater than the current one of the payment.
+     * - The result refund amount of the payment must not be higher than the new extra amount plus the base amount.
      */
     function refundPayment(
         bytes32 paymentId,
@@ -581,7 +574,6 @@ contract CardPaymentProcessorV2 is
         return _token;
     }
 
-
     /**
      * @inheritdoc ICardPaymentProcessorV2
      */
@@ -616,7 +608,6 @@ contract CardPaymentProcessorV2 is
     function getCashback(bytes32 paymentId) external view returns (Cashback memory) {
         return _cashbacks[paymentId];
     }
-
 
     /// @dev Making a payment internally
     function _makePayment(MakingOperation memory operation) internal {
@@ -662,7 +653,7 @@ contract CardPaymentProcessorV2 is
         Lazy  // 1 The operation is executed only if the new amounts differ from the current ones of the payment.
     }
 
-    /// @dev Updates the base amount and extra amount of a payment. See {ICardPaymentCashback-updatePaymentAmount}.
+    /// @dev Updates the base amount and extra amount of a payment internally
     function _updatePayment(
         bytes32 paymentId,
         bytes32 correlationId,
@@ -720,7 +711,7 @@ contract CardPaymentProcessorV2 is
         }
     }
 
-    /// @dev Cancels a payment. For parameters see {ICardPaymentCashback-revokePayment}.
+    /// @dev Cancels a payment internally
     function _cancelPayment(
         bytes32 paymentId,
         bytes32 correlationId,
@@ -782,7 +773,7 @@ contract CardPaymentProcessorV2 is
         }
     }
 
-    /// @dev Confirms a payment. See {ICardPaymentCashback-confirmPayment}.
+    /// @dev Confirms a payment internally
     function _confirmPayment(
         bytes32 paymentId,
         bytes32 correlationId,
@@ -794,6 +785,10 @@ contract CardPaymentProcessorV2 is
         Payment storage payment = _payments[paymentId];
         _checkActivePaymentStatus(payment.status);
 
+        if (amount == 0) {
+            return amount;
+        }
+
         uint256 reminder = payment.baseAmount + payment.extraAmount - payment.refundAmount;
         uint256 oldConfirmedAmount = payment.confirmedAmount;
         uint256 newConfirmedAmount = oldConfirmedAmount + amount;
@@ -802,7 +797,7 @@ contract CardPaymentProcessorV2 is
         }
 
         payment.confirmedAmount = uint64(newConfirmedAmount);
-        emit PaymentConfirmedAmountChanged (
+        emit PaymentConfirmedAmountChanged(
             paymentId,
             correlationId,
             payment.payer,
@@ -815,7 +810,7 @@ contract CardPaymentProcessorV2 is
         return amount;
     }
 
-    /// @dev Makes a refund for a payment. See {ICardPaymentCashback-refundPayment}.
+    /// @dev Makes a refund for a payment internally
     function _refundPayment(
         bytes32 paymentId,
         bytes32 correlationId,
@@ -871,6 +866,7 @@ contract CardPaymentProcessorV2 is
         }
     }
 
+    /// @dev Executes token transfers related to a new payment.
     function _processPaymentMaking(MakingOperation memory operation) internal {
         uint256 sumAmount = operation.baseAmount + operation.extraAmount;
         (uint256 payerSumAmount, uint256 sponsorSumAmount) = _defineSumAmountParts(sumAmount, operation.subsidyLimit);
@@ -886,6 +882,7 @@ contract CardPaymentProcessorV2 is
         }
     }
 
+    /// @dev Checks if the status of a payment is active. Otherwise reverts with an appropriate error.
     function _checkActivePaymentStatus(PaymentStatus status) internal pure {
         if (status == PaymentStatus.Nonexistent) {
             revert PaymentNonExistent();
@@ -895,6 +892,7 @@ contract CardPaymentProcessorV2 is
         }
     }
 
+    /// @dev Executes token transfers related to changes of a payment and emits additional events.
     function _processPaymentChange(
         bytes32 paymentId,
         bytes32 correlationId,
@@ -908,7 +906,7 @@ contract CardPaymentProcessorV2 is
         if (newPaymentDetails.confirmedAmount < oldPaymentDetails.confirmedAmount) {
             uint256 amount = oldPaymentDetails.confirmedAmount - newPaymentDetails.confirmedAmount;
             erc20Token.safeTransferFrom(_requireCashOutAccount(), address(this), amount);
-            emit PaymentConfirmedAmountChanged (
+            emit PaymentConfirmedAmountChanged(
                 paymentId,
                 correlationId,
                 payment.payer,
@@ -1020,6 +1018,7 @@ contract CardPaymentProcessorV2 is
         return sentAmount;
     }
 
+    /// @dev Stores the data of a newly created payment.
     function _storeNewPayment(
         Payment storage storedPayment,
         MakingOperation memory operation
@@ -1039,6 +1038,7 @@ contract CardPaymentProcessorV2 is
         storedPayment.refundAmount = 0;
     }
 
+    /// @dev Stores the data of a changed payment.
     function _storeChangedPayment(
         Payment storage storedPayment,
         Payment memory changedPayment,
@@ -1060,6 +1060,7 @@ contract CardPaymentProcessorV2 is
         return ((cashback + CASHBACK_ROUNDING_COEF / 2) / CASHBACK_ROUNDING_COEF) * CASHBACK_ROUNDING_COEF;
     }
 
+    /// @dev Contains details of a payment.
     struct PaymentDetails {
         uint256 confirmedAmount;
         uint256 cashbackAmount;
@@ -1069,11 +1070,13 @@ contract CardPaymentProcessorV2 is
         uint256 sponsorReminder;
     }
 
+    /// @dev Kind of a payment recalculation operation.
     enum PaymentRecalculationKind {
         None,
         Full
     }
 
+    /// @dev Defines details of a payment.
     function _definePaymentDetails(
         Payment memory payment,
         PaymentRecalculationKind kind
@@ -1126,6 +1129,7 @@ contract CardPaymentProcessorV2 is
         }
     }
 
+    /// @dev Defines the sponsor refund amount according to a subsidy limit.
     function _defineSponsorRefund(
         uint256 refundAmount,
         uint256 baseAmount,
@@ -1143,6 +1147,7 @@ contract CardPaymentProcessorV2 is
         return sponsorRefund;
     }
 
+    /// @dev Defines the new confirmed amount of a payment according to the new old confirmed amount and the reminder.
     function _defineNewConfirmedAmount(
         uint256 oldConfirmedAmount,
         uint256 commonReminder
@@ -1154,6 +1159,7 @@ contract CardPaymentProcessorV2 is
         }
     }
 
+    /// @dev Defines the new cashback amount of a payment according to the payer base amount and refund amount.
     function _defineNewCashback(
         uint256 payerBaseAmount,
         uint256 payerRefund,

@@ -6,7 +6,7 @@ import { ICardPaymentProcessorV2Types } from "./interfaces/ICardPaymentProcessor
 import { ICardPaymentCashbackV2Types } from "./interfaces/ICardPaymentCashbackV2.sol";
 
 /**
- * @title CardPaymentProcessor storage version 1
+ * @title CardPaymentProcessorV2 storage version 1
  */
 abstract contract CardPaymentProcessorV2StorageV1 is ICardPaymentProcessorV2Types, ICardPaymentCashbackV2Types {
     /// @dev The factor to represent the cashback rates in the contract, e.g. number 15 means 1.5% cashback rate.
@@ -46,8 +46,8 @@ abstract contract CardPaymentProcessorV2StorageV1 is ICardPaymentProcessorV2Type
 }
 
 /**
- * @title CardPaymentProcessor storage
- * @dev Contains storage variables of the {CardPaymentProcessor} contract.
+ * @title CardPaymentProcessorV2 storage
+ * @dev Contains storage variables of the {CardPaymentProcessorV2} contract.
  *
  * We are following Compound's approach of upgrading new contract implementations.
  * See https://github.com/compound-finance/compound-protocol.
