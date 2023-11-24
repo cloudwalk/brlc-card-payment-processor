@@ -1021,6 +1021,13 @@ contract CardPaymentProcessor is
                 bytes("")
             );
         }
+
+        // Increase cashback ahead any other token transfers to avoid conner cases with lack of customer balance
+        if (!operation.cashbackDecreased) {
+            uint256 cashbackIncreaseAmount = increaseCashbackInternal(authorizationId, operation.cashbackAmountChange);
+            payment.compensationAmount = operation.oldCompensationAmount + cashbackIncreaseAmount;
+        }
+
         updateExtraAmountInternal(
             authorizationId,
             correlationId,
@@ -1048,9 +1055,6 @@ contract CardPaymentProcessor is
         if (operation.cashbackDecreased) {
             revokeCashbackInternal(authorizationId, operation.cashbackAmountChange);
             payment.compensationAmount = operation.oldCompensationAmount - operation.cashbackAmountChange;
-        } else {
-            uint256 cashbackIncreaseAmount = increaseCashbackInternal(authorizationId, operation.cashbackAmountChange);
-            payment.compensationAmount = operation.oldCompensationAmount + cashbackIncreaseAmount;
         }
     }
 
