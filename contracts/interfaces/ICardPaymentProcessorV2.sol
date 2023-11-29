@@ -228,7 +228,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * The payment can be subsidized with full or partial reimbursement from a specified sponsor account.
      * If cashback is disabled in the contract it will not be sent in any case.
      *
-     * Transfers the underlying tokens from the account and/or sponsor to this contract.
+     * Transfers the underlying tokens from the payer and/or sponsor to this contract.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentMade} event.
@@ -259,7 +259,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
     /**
      * @dev Updates a previously made payment.
      *
-     * Transfers the underlying tokens from the account to this contract or vise versa.
+     * Transfers the underlying tokens from the payer and/or sponsor to this contract or vise versa.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentUpdated} event.
@@ -282,7 +282,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * @dev Performs the revocation of a previously made card payment.
      *
      * Does not finalize the payment: it can be made again with the same paymentId.
-     * Transfers tokens back from this contract or cash-out account to the payer.
+     * Transfers tokens back from this contract or cash-out account to the payer and/or sponsor.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentRevoked} event.
@@ -301,7 +301,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * @dev Performs the reverse of a previously made card payment.
      *
      * Finalizes the payment: no other operations can be done for the payment after this one.
-     * Transfers tokens back from this contract or cash-out account to the payer.
+     * Transfers tokens back from this contract or cash-out account to the payer and/or sponsor.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentReversed} event.
