@@ -96,17 +96,21 @@ contract CardPaymentProcessorV2 is
     /// @dev A new cash-out account is the same as the previously set one.
     error CashOutAccountUnchanged();
 
-    /// @dev The requested refunding amount does not meet the requirements.
-    error InappropriateRefundingAmount();
-
     /// @dev The requested confirmation amount does not meet the requirements.
     error InappropriateConfirmationAmount();
 
+    /// @dev The requested refunding amount does not meet the requirements.
+    error InappropriateRefundingAmount();
+
+    /// @dev The requested or result sum amount (base + extra) does not meet the requirements.
+    error InappropriateSumAmount();
+
     /**
      * @dev The payment with the provided ID has an inappropriate status.
+     * @param paymentId The ID of the payment that does not exist.
      * @param currentStatus The current status of the payment.
      */
-    error InappropriatePaymentStatus(PaymentStatus currentStatus);
+    error InappropriatePaymentStatus(bytes32 paymentId, PaymentStatus currentStatus);
 
     /// @dev The zero payer address has been passed as a function argument.
     error PayerZeroAddress();
@@ -117,11 +121,47 @@ contract CardPaymentProcessorV2 is
     /// @dev The array of payment confirmations is empty.
     error PaymentConfirmationArrayEmpty();
 
-    /// @dev The payment with the provided ID does not exist.
-    error PaymentNonExistent();
+    /**
+     * @dev The payment with the provided ID does not exist.
+     * @param paymentId The ID of the payment that does not exist.
+     */
+    error PaymentNonExistent(bytes32 paymentId);
+
+    /**
+     * @dev The payment is subsidized, but this is prohibited by the terms of the function.
+     * @param paymentId The ID of the payment that is subsidized.
+     */
+    error PaymentSubsidized(bytes32 paymentId);
 
     /// @dev Zero payment ID has been passed as a function argument.
     error PaymentZeroId();
+
+    /// @dev The array of merged payment Ids is empty.
+    error MergedPaymentIdArrayEmpty();
+
+    /**
+     * @dev The payer of a merged payment does not match the payer of the target payment.
+     * @param mergedPaymentId The ID of the merged payment with a mismatched payer.
+     * @param mergedPaymentPayer The payer address of the merged payment.
+     * @param targetPaymentPayer The payer address of the target payment.
+     */
+    error MergedPaymentPayerMismatch(
+        bytes32 mergedPaymentId,
+        address mergedPaymentPayer,
+        address targetPaymentPayer
+    );
+
+    /**
+     * @dev The cashback rate of a merged payment does not match the rate of the target payment.
+     * @param mergedPaymentId The ID of the merged payment with a mismatched payer.
+     * @param mergedPaymentCashbackRate The cashback rate of the merged payment.
+     * @param targetPaymentCashbackRate The cashback rate of the target payment.
+     */
+    error MergedPaymentCashbackRateMismatch(
+        bytes32 mergedPaymentId,
+        uint16 mergedPaymentCashbackRate,
+        uint16 targetPaymentCashbackRate
+    );
 
     /// @dev The zero token address has been passed as a function argument.
     error TokenZeroAddress();
@@ -182,7 +222,6 @@ contract CardPaymentProcessorV2 is
     // DEV Maybe it is worth to make all the numeric fields uint256 for lower gas consumption. It should be checked after testing.
     struct MakingOperation {
         bytes32 paymentId;
-        bytes32 correlationId;
         address payer;
         address sponsor;
         uint16 cashbackRate;
@@ -200,38 +239,6 @@ contract CardPaymentProcessorV2 is
      * @dev Requirements:
      *
      * - The contract must not be paused.
-     * - The caller must must not be blacklisted.
-     * - The payment ID must not be zero.
-     * - The payment linked with the provided ID must be revoked or not exist.
-     */
-    function makePayment(
-        bytes32 paymentId,
-        bytes32 correlationId,
-        uint64 baseAmount,
-        uint64 extraAmount
-    ) external whenNotPaused notBlacklisted(_msgSender()) {
-        MakingOperation memory operation = MakingOperation({
-            paymentId: paymentId,
-            correlationId: correlationId,
-            payer: _msgSender(),
-            sponsor: address(0),
-            cashbackRate: _cashbackRate,
-            baseAmount: baseAmount,
-            extraAmount: extraAmount,
-            subsidyLimit: 0,
-            cashbackAmount: 0,
-            payerSumAmount: 0,
-            sponsorSumAmount: 0
-        });
-        _makePayment(operation);
-    }
-
-    /**
-     * @inheritdoc ICardPaymentProcessorV2
-     *
-     * @dev Requirements:
-     *
-     * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
      * - The payment account address must not be zero.
      * - The payment ID must not be zero.
@@ -240,13 +247,13 @@ contract CardPaymentProcessorV2 is
      */
     function makePaymentFor(
         bytes32 paymentId,
-        bytes32 correlationId,
         address payer,
         uint64 baseAmount,
         uint64 extraAmount,
         address sponsor,
         uint64 subsidyLimit,
-        int16 cashbackRate_
+        int16 cashbackRate_,
+        uint64 confirmationAmount
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (payer == address(0)) {
             revert PayerZeroAddress();
@@ -262,7 +269,6 @@ contract CardPaymentProcessorV2 is
         }
         MakingOperation memory operation = MakingOperation({
             paymentId: paymentId,
-            correlationId: correlationId,
             payer: payer,
             sponsor: sponsor,
             cashbackRate: cashbackRateActual,
@@ -273,7 +279,12 @@ contract CardPaymentProcessorV2 is
             payerSumAmount: 0,
             sponsorSumAmount: 0
         });
+
         _makePayment(operation);
+        if (confirmationAmount > 0){
+            uint256 transferAmount = _confirmPayment(paymentId, confirmationAmount);
+            IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), transferAmount);
+        }
     }
 
     /**
@@ -288,13 +299,11 @@ contract CardPaymentProcessorV2 is
      */
     function updatePayment(
         bytes32 paymentId,
-        bytes32 correlationId,
         uint64 newBaseAmount,
         uint64 newExtraAmount
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         _updatePayment(
             paymentId,
-            correlationId,
             newBaseAmount,
             newExtraAmount,
             UpdatingOperationKind.Full
@@ -311,12 +320,10 @@ contract CardPaymentProcessorV2 is
      * - The input payment ID must not be zero.
      */
     function reversePayment(
-        bytes32 paymentId,
-        bytes32 correlationId
+        bytes32 paymentId
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         _cancelPayment(
             paymentId,
-            correlationId,
             PaymentStatus.Reversed
         );
     }
@@ -331,12 +338,10 @@ contract CardPaymentProcessorV2 is
      * - The input payment ID must not be zero.
      */
     function revokePayment(
-        bytes32 paymentId,
-        bytes32 correlationId
+        bytes32 paymentId
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         _cancelPayment(
             paymentId,
-            correlationId,
             PaymentStatus.Revoked
         );
     }
@@ -352,10 +357,9 @@ contract CardPaymentProcessorV2 is
      */
     function confirmPayment(
         bytes32 paymentId,
-        bytes32 correlationId,
         uint64 confirmationAmount
     ) public whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        uint256 transferAmount = _confirmPayment(paymentId, correlationId, confirmationAmount);
+        uint256 transferAmount = _confirmPayment(paymentId, confirmationAmount);
         IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), transferAmount);
     }
 
@@ -380,7 +384,6 @@ contract CardPaymentProcessorV2 is
         for (uint256 i = 0; i < paymentConfirmations.length; i++) {
             totalTransferAmount += _confirmPayment(
                 paymentConfirmations[i].paymentId,
-                paymentConfirmations[i].correlationId,
                 paymentConfirmations[i].amount
             );
         }
@@ -400,21 +403,18 @@ contract CardPaymentProcessorV2 is
      */
     function updateLazyAndConfirmPayment(
         bytes32 paymentId,
-        bytes32 correlationId,
         uint64 newBaseAmount,
         uint64 newExtraAmount,
         uint64 confirmationAmount
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         _updatePayment(
             paymentId,
-            correlationId,
             newBaseAmount,
             newExtraAmount,
             UpdatingOperationKind.Lazy
         );
         uint256 transferAmount = _confirmPayment(
             paymentId,
-            correlationId,
             confirmationAmount
         );
         if (transferAmount > 0) {
@@ -434,11 +434,28 @@ contract CardPaymentProcessorV2 is
      */
     function refundPayment(
         bytes32 paymentId,
-        bytes32 correlationId,
-        uint64 refundingAmount,
-        uint64 newExtraAmount
+        uint64 refundingAmount
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        _refundPayment(paymentId, correlationId, refundingAmount, newExtraAmount);
+        _refundPayment(paymentId, refundingAmount);
+    }
+
+    /**
+     * @inheritdoc ICardPaymentProcessorV2
+     *
+     * @dev Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The input payment IDs must not be zero.
+     * - Each source payment must be active.
+     * - The target payment and the source payments must have the same payer address.
+     * - The target payment and the source payments must not be subsidized.
+     */
+    function mergePayments(
+        bytes32 targetPaymentId,
+        bytes32[] calldata sourcePaymentIds
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        _mergePayments(targetPaymentId, sourcePaymentIds);
     }
 
     /**
@@ -451,7 +468,6 @@ contract CardPaymentProcessorV2 is
      * - The account address must not be zero.
      */
     function refundAccount(
-        bytes32 correlationId,
         address account,
         uint64 refundingAmount
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
@@ -460,7 +476,6 @@ contract CardPaymentProcessorV2 is
         }
 
         emit RefundAccount(
-            correlationId,
             account,
             refundingAmount,
             bytes("")
@@ -646,7 +661,6 @@ contract CardPaymentProcessorV2 is
 
         emit PaymentMade(
             operation.paymentId,
-            operation.correlationId,
             operation.payer,
             operation.payerSumAmount,
             bytes("")
@@ -656,7 +670,6 @@ contract CardPaymentProcessorV2 is
         if (sponsor != address(0)) {
             emit PaymentMadeSubsidized(
                 operation.paymentId,
-                operation.correlationId,
                 sponsor,
                 operation.sponsorSumAmount,
                 operation.subsidyLimit,
@@ -674,7 +687,6 @@ contract CardPaymentProcessorV2 is
     /// @dev Updates the base amount and extra amount of a payment internally
     function _updatePayment(
         bytes32 paymentId,
-        bytes32 correlationId,
         uint64 newBaseAmount,
         uint64 newExtraAmount,
         UpdatingOperationKind kind
@@ -692,7 +704,7 @@ contract CardPaymentProcessorV2 is
             }
         }
 
-        _checkActivePaymentStatus(payment.status);
+        _checkActivePaymentStatus(paymentId, payment.status);
 
         if (payment.refundAmount > uint256(newBaseAmount) + uint256(newExtraAmount)) {
             revert InappropriateRefundingAmount();
@@ -705,12 +717,11 @@ contract CardPaymentProcessorV2 is
         payment.extraAmount = newExtraAmount;
         PaymentDetails memory newPaymentDetails = _definePaymentDetails(payment, PaymentRecalculationKind.Full);
 
-        _processPaymentChange(paymentId, correlationId, payment, oldPaymentDetails, newPaymentDetails);
+        _processPaymentChange(paymentId, payment, oldPaymentDetails, newPaymentDetails);
         _storeChangedPayment(storedPayment, payment, newPaymentDetails);
 
         emit PaymentUpdated(
             paymentId,
-            correlationId,
             payment.payer,
             oldBaseAmount,
             newBaseAmount,
@@ -724,7 +735,6 @@ contract CardPaymentProcessorV2 is
         if (payment.sponsor != address(0)) {
             emit PaymentUpdatedSubsidized(
                 paymentId,
-                correlationId,
                 payment.sponsor,
                 oldPaymentDetails.sponsorSumAmount,
                 newPaymentDetails.sponsorSumAmount,
@@ -736,7 +746,6 @@ contract CardPaymentProcessorV2 is
     /// @dev Cancels a payment internally
     function _cancelPayment(
         bytes32 paymentId,
-        bytes32 correlationId,
         PaymentStatus targetStatus
     ) internal {
         if (paymentId == 0) {
@@ -746,18 +755,17 @@ contract CardPaymentProcessorV2 is
         Payment storage storedPayment = _payments[paymentId];
         Payment memory payment = storedPayment;
 
-        _checkActivePaymentStatus(payment.status);
+        _checkActivePaymentStatus(paymentId, payment.status);
 
         PaymentDetails memory oldPaymentDetails = _definePaymentDetails(payment, PaymentRecalculationKind.None);
         PaymentDetails memory newPaymentDetails; //all fields are zero
 
-        _processPaymentChange(paymentId, correlationId, payment, oldPaymentDetails, newPaymentDetails);
+        _processPaymentChange(paymentId, payment, oldPaymentDetails, newPaymentDetails);
 
         storedPayment.status = targetStatus;
         if (targetStatus == PaymentStatus.Revoked) {
             emit PaymentRevoked(
                 paymentId,
-                correlationId,
                 payment.payer,
                 oldPaymentDetails.payerReminder,
                 bytes("")
@@ -767,7 +775,6 @@ contract CardPaymentProcessorV2 is
             if (sponsor != address(0)) {
                 emit PaymentRevokedSubsidized(
                     paymentId,
-                    correlationId,
                     sponsor,
                     oldPaymentDetails.sponsorReminder,
                     bytes("")
@@ -776,7 +783,6 @@ contract CardPaymentProcessorV2 is
         } else {
             emit PaymentReversed(
                 paymentId,
-                correlationId,
                 payment.payer,
                 oldPaymentDetails.payerReminder,
                 bytes("")
@@ -786,7 +792,6 @@ contract CardPaymentProcessorV2 is
             if (sponsor != address(0)) {
                 emit PaymentReversedSubsidized(
                     paymentId,
-                    correlationId,
                     sponsor,
                     oldPaymentDetails.sponsorReminder,
                     bytes("")
@@ -798,14 +803,13 @@ contract CardPaymentProcessorV2 is
     /// @dev Confirms a payment internally
     function _confirmPayment(
         bytes32 paymentId,
-        bytes32 correlationId,
         uint64 confirmationAmount
     ) internal returns (uint256) {
         if (paymentId == 0) {
             revert PaymentZeroId();
         }
         Payment storage payment = _payments[paymentId];
-        _checkActivePaymentStatus(payment.status);
+        _checkActivePaymentStatus(paymentId, payment.status);
 
         if (confirmationAmount == 0) {
             return confirmationAmount;
@@ -821,7 +825,6 @@ contract CardPaymentProcessorV2 is
         payment.confirmedAmount = uint64(newConfirmedAmount);
         emit PaymentConfirmedAmountChanged(
             paymentId,
-            correlationId,
             payment.payer,
             payment.sponsor,
             uint64(oldConfirmedAmount),
@@ -835,9 +838,7 @@ contract CardPaymentProcessorV2 is
     /// @dev Makes a refund for a payment internally
     function _refundPayment(
         bytes32 paymentId,
-        bytes32 correlationId,
-        uint64 refundingAmount,
-        uint64 newExtraAmount
+        uint64 refundingAmount
     ) internal {
         if (paymentId == 0) {
             revert PaymentZeroId();
@@ -845,31 +846,26 @@ contract CardPaymentProcessorV2 is
 
         Payment storage storedPayment = _payments[paymentId];
         Payment memory payment = storedPayment;
-        _checkActivePaymentStatus(payment.status);
+        _checkActivePaymentStatus(paymentId, payment.status);
 
         uint256 newRefundAmount = uint256(payment.refundAmount) + uint256(refundingAmount);
         if (
-            newRefundAmount > uint256(payment.baseAmount) + uint256(newExtraAmount) ||
+            newRefundAmount > uint256(payment.baseAmount) + uint256(payment.extraAmount) ||
             newRefundAmount > type(uint64).max
         ) {
             revert InappropriateRefundingAmount();
         }
 
         PaymentDetails memory oldPaymentDetails = _definePaymentDetails(payment, PaymentRecalculationKind.None);
-        uint256 oldExtraAmount = payment.extraAmount;
         payment.refundAmount = uint64(newRefundAmount);
-        payment.extraAmount = newExtraAmount;
         PaymentDetails memory newPaymentDetails = _definePaymentDetails(payment, PaymentRecalculationKind.Full);
 
-        _processPaymentChange(paymentId, correlationId, payment, oldPaymentDetails, newPaymentDetails);
+        _processPaymentChange(paymentId, payment, oldPaymentDetails, newPaymentDetails);
         _storeChangedPayment(storedPayment, payment, newPaymentDetails);
 
         emit PaymentRefunded(
             paymentId,
-            correlationId,
             payment.payer,
-            oldExtraAmount,
-            newExtraAmount,
             oldPaymentDetails.payerSumAmount - oldPaymentDetails.payerReminder, // oldPayerRefundAmount
             newPaymentDetails.payerSumAmount - newPaymentDetails.payerReminder, // newPayerRefundAmount
             bytes("")
@@ -879,7 +875,6 @@ contract CardPaymentProcessorV2 is
         if (sponsor != address(0)) {
             emit PaymentRefundedSubsidized(
                 paymentId,
-                correlationId,
                 sponsor,
                 oldPaymentDetails.sponsorSumAmount - oldPaymentDetails.sponsorReminder, // oldSponsorRefundAmount
                 newPaymentDetails.sponsorSumAmount - newPaymentDetails.sponsorReminder, // newSponsorRefundAmount
@@ -888,9 +883,103 @@ contract CardPaymentProcessorV2 is
         }
     }
 
+    /// @dev Merge payments internally
+    function _mergePayments(
+        bytes32 targetPaymentId,
+        bytes32[] calldata mergedPaymentIds
+    ) internal {
+        if (targetPaymentId == 0) {
+            revert PaymentZeroId();
+        }
+        if (mergedPaymentIds.length == 0) {
+            revert MergedPaymentIdArrayEmpty();
+        }
+
+        Payment storage storedTargetPayment = _payments[targetPaymentId];
+        Payment memory targetPayment = storedTargetPayment;
+        _checkActivePaymentStatus(targetPaymentId, targetPayment.status);
+
+        uint256 oldPaymentConfirmedAmount = targetPayment.confirmedAmount;
+        if (targetPayment.sponsor != address(0)) {
+            revert PaymentSubsidized(targetPaymentId);
+        }
+
+        uint256 sumAmount = targetPayment.baseAmount + targetPayment.extraAmount;
+        for (uint256 i = 0; i < mergedPaymentIds.length; i++) {
+            bytes32 mergedPaymentId = mergedPaymentIds[i];
+            if (mergedPaymentId == 0) {
+                revert PaymentZeroId();
+            }
+
+            Payment storage mergedPayment = _payments[mergedPaymentId];
+            _checkActivePaymentStatus(mergedPaymentId, mergedPayment.status);
+
+            address mergedPaymentPayer = mergedPayment.payer;
+            if (mergedPaymentPayer != targetPayment.payer) {
+                revert MergedPaymentPayerMismatch(mergedPaymentId, mergedPaymentPayer, targetPayment.payer);
+            }
+            if (mergedPayment.sponsor != address(0)) {
+                revert PaymentSubsidized(mergedPaymentId);
+            }
+            if (mergedPayment.cashbackRate != targetPayment.cashbackRate) {
+                revert MergedPaymentCashbackRateMismatch(
+                    mergedPaymentId,
+                    mergedPayment.cashbackRate,
+                    targetPayment.cashbackRate
+                );
+            }
+            uint256 mergedPaymentBaseAmount = mergedPayment.baseAmount;
+            uint256 mergedPaymentExtraAmount = mergedPayment.extraAmount;
+            unchecked {
+                sumAmount += mergedPaymentBaseAmount + mergedPaymentExtraAmount;
+            }
+            if (sumAmount > type(uint64).max) {
+                revert InappropriateSumAmount();
+            }
+            uint256 cashbackAmount = mergedPayment.cashbackAmount;
+            cashbackAmount = _revokeCashback(mergedPaymentId, cashbackAmount);
+            cashbackAmount = _increaseCashback(targetPaymentId, cashbackAmount);
+            unchecked {
+                targetPayment.baseAmount += uint64(mergedPaymentBaseAmount);
+                targetPayment.extraAmount += uint64(mergedPaymentExtraAmount);
+                targetPayment.refundAmount += uint64(mergedPayment.refundAmount);
+                targetPayment.cashbackAmount += uint64(cashbackAmount);
+                targetPayment.confirmedAmount += mergedPayment.confirmedAmount;
+            }
+            mergedPayment.status = PaymentStatus.Merged;
+
+            emit PaymentMerged(
+                mergedPaymentId,
+                targetPaymentId,
+                mergedPaymentPayer,
+                bytes("")
+            );
+        }
+
+        storedTargetPayment.baseAmount = targetPayment.baseAmount;
+        storedTargetPayment.extraAmount = targetPayment.extraAmount;
+        storedTargetPayment.cashbackAmount = targetPayment.cashbackAmount;
+        storedTargetPayment.refundAmount = targetPayment.refundAmount;
+
+        if (oldPaymentConfirmedAmount != targetPayment.confirmedAmount) {
+            storedTargetPayment.confirmedAmount = targetPayment.confirmedAmount;
+            emit PaymentConfirmedAmountChanged(
+                targetPaymentId,
+                targetPayment.payer,
+                targetPayment.sponsor,
+                uint64(oldPaymentConfirmedAmount),
+                uint64(targetPayment.confirmedAmount),
+                bytes("")
+            );
+        }
+    }
+
     /// @dev Executes token transfers related to a new payment.
     function _processPaymentMaking(MakingOperation memory operation) internal {
         uint256 sumAmount = operation.baseAmount + operation.extraAmount;
+        if (sumAmount > type(uint64).max) {
+            revert InappropriateSumAmount();
+        }
         (uint256 payerSumAmount, uint256 sponsorSumAmount) = _defineSumAmountParts(sumAmount, operation.subsidyLimit);
         IERC20Upgradeable erc20Token = IERC20Upgradeable(_token);
         operation.payerSumAmount = payerSumAmount;
@@ -905,19 +994,18 @@ contract CardPaymentProcessorV2 is
     }
 
     /// @dev Checks if the status of a payment is active. Otherwise reverts with an appropriate error.
-    function _checkActivePaymentStatus(PaymentStatus status) internal pure {
+    function _checkActivePaymentStatus(bytes32 paymentId, PaymentStatus status) internal pure {
         if (status == PaymentStatus.Nonexistent) {
-            revert PaymentNonExistent();
+            revert PaymentNonExistent(paymentId);
         }
         if (status != PaymentStatus.Active) {
-            revert InappropriatePaymentStatus(status);
+            revert InappropriatePaymentStatus(paymentId, status);
         }
     }
 
     /// @dev Executes token transfers related to changes of a payment and emits additional events.
     function _processPaymentChange(
         bytes32 paymentId,
-        bytes32 correlationId,
         Payment memory payment,
         PaymentDetails memory oldPaymentDetails,
         PaymentDetails memory newPaymentDetails
@@ -930,7 +1018,6 @@ contract CardPaymentProcessorV2 is
             erc20Token.safeTransferFrom(_requireCashOutAccount(), address(this), amount);
             emit PaymentConfirmedAmountChanged(
                 paymentId,
-                correlationId,
                 payment.payer,
                 payment.sponsor,
                 uint64(oldPaymentDetails.confirmedAmount),
@@ -1104,6 +1191,9 @@ contract CardPaymentProcessorV2 is
         PaymentRecalculationKind kind
     ) internal pure returns (PaymentDetails memory) {
         uint256 sumAmount = uint256(payment.baseAmount) + uint256(payment.extraAmount);
+        if (kind != PaymentRecalculationKind.None && sumAmount > type(uint64).max) {
+            revert InappropriateSumAmount();
+        }
         uint256 payerBaseAmount = _definePayerBaseAmount(payment.baseAmount, payment.subsidyLimit);
         (uint256 payerSumAmount, uint256 sponsorSumAmount) = _defineSumAmountParts(sumAmount, payment.subsidyLimit);
         uint256 sponsorRefund = _defineSponsorRefund(payment.refundAmount, payment.baseAmount, payment.subsidyLimit);
