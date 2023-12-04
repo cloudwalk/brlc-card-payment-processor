@@ -79,116 +79,170 @@ interface ICardPaymentProcessorV2Types {
  * @dev The interface of the wrapper contract for the card payment operations.
  */
 interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
-    /// @dev Emitted when a payment is made.
+    /**
+     * @dev Emitted when a payment is made.
+     *
+     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * with the following arguments:
+     *
+     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - bool(isSubsidized) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(payerSumAmount) -- the payer sum amount part.
+     * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
+     * - uint64(sponsorSumAmount) -- the sponsor sum amount part or skipped if the payment is not subsidized.
+     *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param payer The account on that behalf the payment is made.
+     * @param data The main data of the event as described above.
+     */
     event PaymentMade(
         bytes32 indexed paymentId,
         address indexed payer,
-        uint256 payerSumAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
-    );
-
-    // DEV Merge several events into a single one for each operation
-
-    /// @dev Emitted along with the {PaymentMade} event when a subsidized payment is made.
-    event PaymentMadeSubsidized(
-        bytes32 indexed paymentId,
-        address indexed sponsor,
-        uint256 subsidyLimit,
-        uint256 sponsorSumAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
-    );
-
-    /// @dev Emitted when a payment is updated.
-    event PaymentUpdated(
-        bytes32 indexed paymentId,
-        address indexed payer,
-        uint256 oldBaseAmount,
-        uint256 newBaseAmount,
-        uint256 oldExtraAmount,
-        uint256 newExtraAmount,
-        uint256 oldPayerSumAmount,
-        uint256 newPayerSumAmount,
-        bytes addendum // Empty. Reserved for future possible additional information
-    );
-
-    /// @dev Emitted along with the {PaymentUpdated} event when the amount of a subsidized payment is updated.
-    event PaymentUpdatedSubsidized(
-        bytes32 indexed paymentId,
-        address indexed sponsor,
-        uint256 oldSponsorSumAmount,
-        uint256 newSponsorSumAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
-    );
-
-    /// @dev Emitted when a payment is revoked.
-    event PaymentRevoked(
-        bytes32 indexed paymentId,
-        address indexed payer,
-        uint256 payerReminder,
-        bytes addendum // Empty. Reserved for future possible additional information.
-    );
-
-    /// @dev Emitted along with the {PaymentRevoked} event when a subsidized payment is revoked.
-    event PaymentRevokedSubsidized(
-        bytes32 indexed paymentId,
-        address indexed sponsor,
-        uint256 sponsorReminder,
-        bytes addendum // Empty. Reserved for future possible additional information.
-    );
-
-    /// @dev Emitted when a payment is reversed.
-    event PaymentReversed(
-        bytes32 indexed paymentId,
-        address indexed payer,
-        uint256 payerReminder,
-        bytes addendum // Empty. Reserved for future possible additional information.
-    );
-
-    /// @dev Emitted along with the {PaymentReversed} event when a subsidized payment is reversed.
-    event PaymentReversedSubsidized(
-        bytes32 indexed paymentId,
-        address indexed sponsor,
-        uint256 sponsorReminder,
-        bytes addendum // Empty. Reserved for future possible additional information.
+        bytes data
     );
 
     /**
-     * @dev Emitted when the confirmed amount of a payment is changed.
-     *      It can be emitted during any operation except payment making
+     * @dev Emitted when a payment is updated.
+     *
+     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments:
+     *
+     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - bool(isSubsidized) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(oldBaseAmount) -- the old base amount of the payment.
+     * - uint64(newBaseAmount) -- the new base amount of the payment.
+     * - uint64(oldExtraAmount) -- the old extra amount of the payment.
+     * - uint64(newExtraAmount) -- the new extra amount of the payment.
+     * - uint64(oldPayerSumAmount) -- the old payer sum amount part.
+     * - uint64(newPayerSumAmount) -- the new payer sum amount part.
+     * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
+     * - uint64(oldSponsorSumAmount) -- the old sponsor sum amount part or skipped if the payment is not subsidized.
+     * - uint64(newSponsorSumAmount) -- the new sponsor sum amount part or skipped if the payment is not subsidized.
+     *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param payer The account on that behalf the payment is made.
+     * @param data The main data of the event as described above.
+     */
+    event PaymentUpdated(
+        bytes32 indexed paymentId,
+        address indexed payer,
+        bytes data
+    );
+
+    /**
+     * @dev Emitted when a payment is revoked.
+     *
+     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments:
+     *
+     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - bool(isSubsidized) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(payerReminder) -- the payer reminder part of the payment.
+     * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
+     * - uint64(sponsorReminder) -- the sponsor reminder part or skipped if the payment is not subsidized.
+     *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param payer The account on that behalf the payment is made.
+     * @param data The main data of the event as described above.
+     */
+    event PaymentRevoked(
+        bytes32 indexed paymentId,
+        address indexed payer,
+        bytes data
+    );
+
+    /**
+     * @dev Emitted when a payment is reversed.
+     *
+     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments:
+     *
+     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - bool(isSubsidized) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(payerReminder) -- the payer reminder part of the payment.
+     * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
+     * - uint64(sponsorReminder) -- the sponsor reminder part or skipped if the payment is not subsidized.
+     *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param payer The account on that behalf the payment is made.
+     * @param data The main data of the event as described above.
+     */
+    event PaymentReversed(
+        bytes32 indexed paymentId,
+        address indexed payer,
+        bytes data
+    );
+
+    /**
+     * @dev Emitted when the confirmed amount of a payment is changed. It can be emitted during any operation.
+     *
+     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments:
+     *
+     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - bool(isSubsidized) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(oldConfirmedAmount) -- the old confirmed amount of the payment.
+     * - uint64(newConfirmedAmount) -- the new confirmed amount of the payment.
+     * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
+     *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param payer The account on that behalf the payment is made.
+     * @param data The main data of the event as described above.
      */
     event PaymentConfirmedAmountChanged(
         bytes32 indexed paymentId,
         address indexed payer,
-        address sponsor,
-        uint64 oldConfirmedAmount,
-        uint64 newConfirmedAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
+        bytes data
     );
 
-    /// @dev Emitted when a payment is refunded.
+    /**
+     * @dev Emitted when a payment is refunded.
+     *
+     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments:
+     *
+     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - bool(isSubsidized) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(oldPayerRefundAmount) -- the old payer refund amount of the payment.
+     * - uint64(newPayerRefundAmount) -- the new payer refund amount of the payment.
+     * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
+     * - uint64(oldSponsorRefundAmount) -- the old sponsor refund amount or skipped if the payment is not subsidized.
+     * - uint64(newSponsorRefundAmount) -- the new sponsor refund amount or skipped if the payment is not subsidized.
+     *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param payer The account on that behalf the payment is made.
+     * @param data The main data of the event as described above.
+     */
     event PaymentRefunded(
         bytes32 indexed paymentId,
         address indexed payer,
-        uint256 oldPayerRefundAmount,
-        uint256 newPayerRefundAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
+        bytes data
     );
 
-    /// @dev Emitted along with the {PaymentRefunded} event when a subsidized payment is refunded.
-    event PaymentRefundedSubsidized(
-        bytes32 indexed paymentId,
-        address indexed sponsor,
-        uint256 oldSponsorRefundAmount,
-        uint256 newSponsorRefundAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
-    );
-
-    /// @dev Emitted when a payment is merged.
+    /**
+     * @dev Emitted when a payment is merged.
+     *
+     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments:
+     *
+     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     *
+     * @param mergedPaymentId The ID of the merged payment.
+     * @param targetPaymentId  The ID of the target payment to merge with.
+     * @param payer The account on that behalf the payment is made.
+     * @param data The main data of the event as described above.
+     */
     event PaymentMerged(
         bytes32 indexed mergedPaymentId,
         bytes32 indexed targetPaymentId,
         address indexed payer,
-        bytes addendum // Empty. Reserved for future possible additional information.
+        bytes data
     );
 
     /// @dev Emitted when an account is refunded.

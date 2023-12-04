@@ -659,23 +659,20 @@ contract CardPaymentProcessorV2 is
         _sendCashback(operation);
         _storeNewPayment(storedPayment, operation);
 
+        address sponsor = operation.sponsor;
+        bytes memory eventData = abi.encodePacked(
+            uint8(0x01),
+            sponsor != address(0),
+            uint64(operation.payerSumAmount)
+        );
+        if (sponsor != address(0)) {
+            eventData = abi.encodePacked(eventData, sponsor, uint64(operation.sponsorSumAmount));
+        }
         emit PaymentMade(
             operation.paymentId,
             operation.payer,
-            operation.payerSumAmount,
-            bytes("")
+            eventData
         );
-
-        address sponsor = operation.sponsor;
-        if (sponsor != address(0)) {
-            emit PaymentMadeSubsidized(
-                operation.paymentId,
-                sponsor,
-                operation.sponsorSumAmount,
-                operation.subsidyLimit,
-                bytes("")
-            );
-        }
     }
 
     /// @dev Kind of a payment updating operation
@@ -720,27 +717,30 @@ contract CardPaymentProcessorV2 is
         _processPaymentChange(paymentId, payment, oldPaymentDetails, newPaymentDetails);
         _storeChangedPayment(storedPayment, payment, newPaymentDetails);
 
+        address sponsor = payment.sponsor;
+        bytes memory eventData = abi.encodePacked(
+            uint8(0x01),
+            sponsor != address(0),
+            uint64(oldBaseAmount),
+            uint64(newBaseAmount),
+            uint64(oldExtraAmount),
+            uint64(newExtraAmount),
+            uint64(oldPaymentDetails.payerSumAmount),
+            uint64(newPaymentDetails.payerSumAmount)
+        );
+        if (sponsor != address(0)) {
+            eventData = abi.encodePacked(
+                eventData,
+                sponsor,
+                uint64(oldPaymentDetails.sponsorSumAmount),
+                uint64(newPaymentDetails.sponsorSumAmount)
+            );
+        }
         emit PaymentUpdated(
             paymentId,
             payment.payer,
-            oldBaseAmount,
-            newBaseAmount,
-            oldExtraAmount,
-            newExtraAmount,
-            oldPaymentDetails.payerSumAmount,
-            newPaymentDetails.payerSumAmount,
-            bytes("")
+            eventData
         );
-
-        if (payment.sponsor != address(0)) {
-            emit PaymentUpdatedSubsidized(
-                paymentId,
-                payment.sponsor,
-                oldPaymentDetails.sponsorSumAmount,
-                newPaymentDetails.sponsorSumAmount,
-                bytes("")
-            );
-        }
     }
 
     /// @dev Cancels a payment internally
@@ -763,40 +763,33 @@ contract CardPaymentProcessorV2 is
         _processPaymentChange(paymentId, payment, oldPaymentDetails, newPaymentDetails);
 
         storedPayment.status = targetStatus;
+
+        address sponsor = payment.sponsor;
+        bytes memory eventData = abi.encodePacked(
+            uint8(0x01),
+            sponsor != address(0),
+            uint64(oldPaymentDetails.payerReminder)
+        );
+        if (sponsor != address(0)) {
+            eventData = abi.encodePacked(
+                eventData,
+                sponsor,
+                uint64(oldPaymentDetails.sponsorReminder)
+            );
+        }
+
         if (targetStatus == PaymentStatus.Revoked) {
             emit PaymentRevoked(
                 paymentId,
                 payment.payer,
-                oldPaymentDetails.payerReminder,
-                bytes("")
+                eventData
             );
-
-            address sponsor = payment.sponsor;
-            if (sponsor != address(0)) {
-                emit PaymentRevokedSubsidized(
-                    paymentId,
-                    sponsor,
-                    oldPaymentDetails.sponsorReminder,
-                    bytes("")
-                );
-            }
         } else {
             emit PaymentReversed(
                 paymentId,
                 payment.payer,
-                oldPaymentDetails.payerReminder,
-                bytes("")
+                eventData
             );
-
-            address sponsor = payment.sponsor;
-            if (sponsor != address(0)) {
-                emit PaymentReversedSubsidized(
-                    paymentId,
-                    sponsor,
-                    oldPaymentDetails.sponsorReminder,
-                    bytes("")
-                );
-            }
         }
     }
 
@@ -823,13 +816,12 @@ contract CardPaymentProcessorV2 is
         }
 
         payment.confirmedAmount = uint64(newConfirmedAmount);
-        emit PaymentConfirmedAmountChanged(
+        _emitPaymentConfirmedAmountChanged(
             paymentId,
             payment.payer,
             payment.sponsor,
-            uint64(oldConfirmedAmount),
-            uint64(newConfirmedAmount),
-            bytes("")
+            oldConfirmedAmount,
+            newConfirmedAmount
         );
 
         return confirmationAmount;
@@ -863,24 +855,27 @@ contract CardPaymentProcessorV2 is
         _processPaymentChange(paymentId, payment, oldPaymentDetails, newPaymentDetails);
         _storeChangedPayment(storedPayment, payment, newPaymentDetails);
 
+        address sponsor = payment.sponsor;
+        bytes memory eventData = abi.encodePacked(
+            uint8(0x01),
+            sponsor != address(0),
+            uint64(oldPaymentDetails.payerSumAmount - oldPaymentDetails.payerReminder),// oldPayerRefundAmount
+            uint64(newPaymentDetails.payerSumAmount - newPaymentDetails.payerReminder) // newPayerRefundAmount
+        );
+        if (sponsor != address(0)) {
+            eventData = abi.encodePacked(
+                eventData,
+                sponsor,
+                uint64(oldPaymentDetails.sponsorSumAmount - oldPaymentDetails.sponsorReminder),// oldSponsorRefundAmount
+                uint64(newPaymentDetails.sponsorSumAmount - newPaymentDetails.sponsorReminder) // newSponsorRefundAmount
+            );
+        }
+
         emit PaymentRefunded(
             paymentId,
             payment.payer,
-            oldPaymentDetails.payerSumAmount - oldPaymentDetails.payerReminder, // oldPayerRefundAmount
-            newPaymentDetails.payerSumAmount - newPaymentDetails.payerReminder, // newPayerRefundAmount
-            bytes("")
+            eventData
         );
-
-        address sponsor = payment.sponsor;
-        if (sponsor != address(0)) {
-            emit PaymentRefundedSubsidized(
-                paymentId,
-                sponsor,
-                oldPaymentDetails.sponsorSumAmount - oldPaymentDetails.sponsorReminder, // oldSponsorRefundAmount
-                newPaymentDetails.sponsorSumAmount - newPaymentDetails.sponsorReminder, // newSponsorRefundAmount
-                bytes("")
-            );
-        }
     }
 
     /// @dev Merge payments internally
@@ -952,7 +947,7 @@ contract CardPaymentProcessorV2 is
                 mergedPaymentId,
                 targetPaymentId,
                 mergedPaymentPayer,
-                bytes("")
+                bytes("01")
             );
         }
 
@@ -963,13 +958,12 @@ contract CardPaymentProcessorV2 is
 
         if (oldPaymentConfirmedAmount != targetPayment.confirmedAmount) {
             storedTargetPayment.confirmedAmount = targetPayment.confirmedAmount;
-            emit PaymentConfirmedAmountChanged(
+            _emitPaymentConfirmedAmountChanged(
                 targetPaymentId,
                 targetPayment.payer,
                 targetPayment.sponsor,
-                uint64(oldPaymentConfirmedAmount),
-                uint64(targetPayment.confirmedAmount),
-                bytes("")
+                oldPaymentConfirmedAmount,
+                targetPayment.confirmedAmount
             );
         }
     }
@@ -1016,13 +1010,12 @@ contract CardPaymentProcessorV2 is
         if (newPaymentDetails.confirmedAmount < oldPaymentDetails.confirmedAmount) {
             uint256 amount = oldPaymentDetails.confirmedAmount - newPaymentDetails.confirmedAmount;
             erc20Token.safeTransferFrom(_requireCashOutAccount(), address(this), amount);
-            emit PaymentConfirmedAmountChanged(
+            _emitPaymentConfirmedAmountChanged(
                 paymentId,
                 payment.payer,
                 payment.sponsor,
-                uint64(oldPaymentDetails.confirmedAmount),
-                uint64(newPaymentDetails.confirmedAmount),
-                bytes("")
+                oldPaymentDetails.confirmedAmount,
+                newPaymentDetails.confirmedAmount
             );
         }
 
@@ -1062,6 +1055,30 @@ contract CardPaymentProcessorV2 is
             amount = _revokeCashback(paymentId, amount);
             newPaymentDetails.cashbackAmount = oldPaymentDetails.cashbackAmount - amount;
         }
+    }
+
+    function _emitPaymentConfirmedAmountChanged(
+        bytes32 paymentId,
+        address payer,
+        address sponsor,
+        uint256 oldConfirmedAmount,
+        uint256 newConfirmedAmount
+    ) internal {
+        bytes memory eventData = abi.encodePacked(
+            uint8(0x01),
+            sponsor != address(0),
+            uint64(oldConfirmedAmount),
+            uint64(newConfirmedAmount)
+        );
+        if (sponsor != address(0)) {
+            eventData = abi.encodePacked(eventData, sponsor);
+        }
+
+        emit PaymentConfirmedAmountChanged(
+            paymentId,
+            payer,
+            eventData
+        );
     }
 
     /// @dev Sends cashback related to a payment.
