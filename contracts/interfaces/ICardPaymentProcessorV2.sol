@@ -86,7 +86,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - bool(isSubsidized) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint8(flags) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
      * - uint64(payerSumAmount) -- the payer sum amount part.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
      * - uint64(sponsorSumAmount) -- the sponsor sum amount part or skipped if the payment is not subsidized.
@@ -109,7 +109,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - bool(isSubsidized) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint8(flags) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
      * - uint64(oldBaseAmount) -- the old base amount of the payment.
      * - uint64(newBaseAmount) -- the new base amount of the payment.
      * - uint64(oldExtraAmount) -- the old extra amount of the payment.
@@ -138,7 +138,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - bool(isSubsidized) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint8(flags) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
      * - uint64(payerReminder) -- the payer reminder part of the payment.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
      * - uint64(sponsorReminder) -- the sponsor reminder part or skipped if the payment is not subsidized.
@@ -161,7 +161,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - bool(isSubsidized) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint8(flags) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
      * - uint64(payerReminder) -- the payer reminder part of the payment.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
      * - uint64(sponsorReminder) -- the sponsor reminder part or skipped if the payment is not subsidized.
@@ -184,9 +184,9 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - bool(isSubsidized) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
-     * - uint64(oldConfirmedAmount) -- the old confirmed amount of the payment.
-     * - uint64(newConfirmedAmount) -- the new confirmed amount of the payment.
+     * - uint8(flags) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(oldConfirmedAmount) -- the old confirmed amount of the payment or skipped if it was not changed.
+     * - uint64(newConfirmedAmount) -- the new confirmed amount of the payment or skipped if it was not changed.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
@@ -207,7 +207,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - bool(isSubsidized) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint8(flags) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
      * - uint64(oldPayerRefundAmount) -- the old payer refund amount of the payment.
      * - uint64(newPayerRefundAmount) -- the new payer refund amount of the payment.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
@@ -225,23 +225,34 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
     );
 
     /**
-     * @dev Emitted when a payment is merged.
+     * @dev Emitted when non-subsidized payments are merged.
      *
      * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
      * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - uint8(flags) -- whether the payment is subsidized (`0x01`) or not (`0x00`). Always `0x0` for this event
+     * - uint64(oldBaseAmount) -- the old base amount of the payment.
+     * - uint64(newBaseAmount) -- the new base amount of the payment.
+     * - uint64(oldExtraAmount) -- the old extra amount of the payment.
+     * - uint64(newExtraAmount) -- the new extra amount of the payment.
+     * - uint64(oldCashbackAmount) -- the old cashback amount of the payment.
+     * - uint64(newCashbackAmount) -- the new cashback amount of the payment.
+     * - uint64(oldRefundAmount) -- the old refund amount of the payment.
+     * - uint64(newRefundAmount) -- the new refund amount of the payment.
      *
-     * @param mergedPaymentId The ID of the merged payment.
+     * Note: all the data of this event is related to the target payment, not to the merged ones.
+     *
      * @param targetPaymentId  The ID of the target payment to merge with.
-     * @param payer The account on that behalf the payment is made.
+     * @param payer The account on that behalf the target payment and the merged ones.
+     * @param mergedPaymentIds The IDs of the merged payments.
      * @param data The main data of the event as described above.
      */
-    event PaymentMerged(
-        bytes32 indexed mergedPaymentId,
+    event PaymentsMerged(
         bytes32 indexed targetPaymentId,
         address indexed payer,
+        bytes32[] mergedPaymentIds,
         bytes data
     );
 
@@ -262,7 +273,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentMade} event.
-     * Emits a {PaymentMadeSubsidized} event if the payment is subsidized.
+     * Emits a {PaymentConfirmedAmountChanged} event if the payment is confirmed immediately after making.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
@@ -274,6 +285,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *                     If negative then the contract settings are used to determine cashback.
      *                     If zero then cashback is not sent.
      * @param confirmationAmount The amount to confirm for the payment immediately after making.
+     *                           Zero if confirmation is not needed.
      */
     function makePaymentFor(
         bytes32 paymentId,
@@ -293,7 +305,6 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentUpdated} event.
-     * Emits a {PaymentUpdatedSubsidized} event if the payment is subsidized.
      * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
@@ -314,7 +325,6 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentRevoked} event.
-     * Emits a {PaymentRevokedSubsidized} event if the payment is subsidized.
      * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
@@ -329,7 +339,6 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentReversed} event.
-     * Emits a {PaymentReversedSubsidized} event if the payment is subsidized.
      * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
@@ -343,7 +352,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * Transfers tokens gotten from a payer and a sponsor to a dedicated cash-out account for further operations.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
-     * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
+     * Emits a {PaymentConfirmedAmountChanged} event.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param confirmationAmount The amount to confirm for the payment.
@@ -360,7 +369,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * Transfers tokens gotten from payers and sponsors to a dedicated cash-out account for further operations.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
-     * Emits a {PaymentConfirmedAmountChanged} event for each payment if the confirmed amount of the payment is changed.
+     * Emits a {PaymentConfirmedAmountChanged} event for each payment.
      *
      * @param paymentConfirmations The array of structures with payment confirmation parameters.
      */
@@ -375,8 +384,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentUpdated} event if the update operation is executed.
-     * Emits a {PaymentUpdatedSubsidized} event if the update operation is executed and the payment is subsidized.
-     * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
+     * Emits a {PaymentConfirmedAmountChanged} event.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param newBaseAmount The new base amount of the payment.
@@ -406,7 +414,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
     ) external;
 
     /**
-     * @dev Merges several payments into a single one.
+     * @dev Merges several non-subsidized payments into a single one.
      *
      * Emits a {PaymentMerged} event for each merged payment.
      * Emits a {PaymentConfirmedAmountChanged} event for the target payment if its confirmed amount is changed.

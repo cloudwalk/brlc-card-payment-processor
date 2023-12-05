@@ -56,6 +56,12 @@ contract CardPaymentProcessorV2 is
      */
     uint16 public constant CASHBACK_ROUNDING_COEF = 10000;
 
+    /// @dev Event data flag mask defining whether the payment is sponsored.
+    uint256 internal constant EVENT_FLAG_MASK_SPONSORED = 1;
+
+    /// @dev Default version of the event data.
+    uint8 internal constant EVENT_DEFAULT_VERSION = 1;
+
     // -------------------- Events -----------------------------------
 
     /// @dev Emitted when the cash-out account is changed.
@@ -413,10 +419,7 @@ contract CardPaymentProcessorV2 is
             newExtraAmount,
             UpdatingOperationKind.Lazy
         );
-        uint256 transferAmount = _confirmPayment(
-            paymentId,
-            confirmationAmount
-        );
+        uint256 transferAmount = _confirmPayment(paymentId, confirmationAmount);
         if (transferAmount > 0) {
             IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), transferAmount);
         }
@@ -660,13 +663,18 @@ contract CardPaymentProcessorV2 is
         _storeNewPayment(storedPayment, operation);
 
         address sponsor = operation.sponsor;
+        uint256 eventFlags = _defineEventFlags(sponsor);
         bytes memory eventData = abi.encodePacked(
-            uint8(0x01),
-            sponsor != address(0),
+            EVENT_DEFAULT_VERSION,
+            uint8(eventFlags),
             uint64(operation.payerSumAmount)
         );
-        if (sponsor != address(0)) {
-            eventData = abi.encodePacked(eventData, sponsor, uint64(operation.sponsorSumAmount));
+        if (eventFlags & EVENT_FLAG_MASK_SPONSORED != 0) {
+            eventData = abi.encodePacked(
+                eventData,
+                sponsor,
+                uint64(operation.sponsorSumAmount)
+            );
         }
         emit PaymentMade(
             operation.paymentId,
@@ -718,9 +726,10 @@ contract CardPaymentProcessorV2 is
         _storeChangedPayment(storedPayment, payment, newPaymentDetails);
 
         address sponsor = payment.sponsor;
+        uint256 eventFlags = _defineEventFlags(sponsor);
         bytes memory eventData = abi.encodePacked(
-            uint8(0x01),
-            sponsor != address(0),
+            EVENT_DEFAULT_VERSION,
+            uint8(eventFlags),
             uint64(oldBaseAmount),
             uint64(newBaseAmount),
             uint64(oldExtraAmount),
@@ -728,7 +737,7 @@ contract CardPaymentProcessorV2 is
             uint64(oldPaymentDetails.payerSumAmount),
             uint64(newPaymentDetails.payerSumAmount)
         );
-        if (sponsor != address(0)) {
+        if (eventFlags & EVENT_FLAG_MASK_SPONSORED != 0) {
             eventData = abi.encodePacked(
                 eventData,
                 sponsor,
@@ -765,12 +774,13 @@ contract CardPaymentProcessorV2 is
         storedPayment.status = targetStatus;
 
         address sponsor = payment.sponsor;
+        uint256 eventFlags = _defineEventFlags(sponsor);
         bytes memory eventData = abi.encodePacked(
-            uint8(0x01),
-            sponsor != address(0),
+            EVENT_DEFAULT_VERSION,
+            eventFlags,
             uint64(oldPaymentDetails.payerReminder)
         );
-        if (sponsor != address(0)) {
+        if (eventFlags & EVENT_FLAG_MASK_SPONSORED != 0) {
             eventData = abi.encodePacked(
                 eventData,
                 sponsor,
@@ -856,13 +866,14 @@ contract CardPaymentProcessorV2 is
         _storeChangedPayment(storedPayment, payment, newPaymentDetails);
 
         address sponsor = payment.sponsor;
+        uint256 eventFlags = _defineEventFlags(sponsor);
         bytes memory eventData = abi.encodePacked(
-            uint8(0x01),
-            sponsor != address(0),
+            EVENT_DEFAULT_VERSION,
+            uint8(eventFlags),
             uint64(oldPaymentDetails.payerSumAmount - oldPaymentDetails.payerReminder),// oldPayerRefundAmount
             uint64(newPaymentDetails.payerSumAmount - newPaymentDetails.payerReminder) // newPayerRefundAmount
         );
-        if (sponsor != address(0)) {
+        if (eventFlags & EVENT_FLAG_MASK_SPONSORED != 0) {
             eventData = abi.encodePacked(
                 eventData,
                 sponsor,
@@ -878,6 +889,22 @@ contract CardPaymentProcessorV2 is
         );
     }
 
+    /// @dev Defines the payment merge operation details
+    // DEV Maybe old values are redundant and it is less gas consuming to use stored values instead.
+    // DEV Maybe fields of type uint64 are less gas consuming. The same for other structs.
+    struct MergeOperation {
+        uint256 oldBaseAmount;
+        uint256 newBaseAmount;
+        uint256 oldExtraAmount;
+        uint256 newExtraAmount;
+        uint256 oldCashbackAmount;
+        uint256 newCashbackAmount;
+        uint256 oldRefundAmount;
+        uint256 newRefundAmount;
+        uint256 oldConfirmedAmount;
+        uint256 newConfirmedAmount;
+    }
+
     /// @dev Merge payments internally
     function _mergePayments(
         bytes32 targetPaymentId,
@@ -891,15 +918,26 @@ contract CardPaymentProcessorV2 is
         }
 
         Payment storage storedTargetPayment = _payments[targetPaymentId];
-        Payment memory targetPayment = storedTargetPayment;
-        _checkActivePaymentStatus(targetPaymentId, targetPayment.status);
-
-        uint256 oldPaymentConfirmedAmount = targetPayment.confirmedAmount;
-        if (targetPayment.sponsor != address(0)) {
+        _checkActivePaymentStatus(targetPaymentId, storedTargetPayment.status);
+        if (storedTargetPayment.sponsor != address(0)) {
             revert PaymentSubsidized(targetPaymentId);
         }
 
-        uint256 sumAmount = targetPayment.baseAmount + targetPayment.extraAmount;
+        // DEV Check if the compiler optimizes the double reading of the stored payment structure
+        MergeOperation memory operation = MergeOperation({
+            oldBaseAmount: storedTargetPayment.baseAmount,
+            newBaseAmount: storedTargetPayment.extraAmount,
+            oldExtraAmount: storedTargetPayment.extraAmount,
+            newExtraAmount: storedTargetPayment.extraAmount,
+            oldCashbackAmount: storedTargetPayment.cashbackAmount,
+            newCashbackAmount: storedTargetPayment.cashbackAmount,
+            oldRefundAmount: storedTargetPayment.refundAmount,
+            newRefundAmount: storedTargetPayment.refundAmount,
+            oldConfirmedAmount: storedTargetPayment.confirmedAmount,
+            newConfirmedAmount: storedTargetPayment.confirmedAmount
+        });
+
+        address payer = storedTargetPayment.payer;
         for (uint256 i = 0; i < mergedPaymentIds.length; i++) {
             bytes32 mergedPaymentId = mergedPaymentIds[i];
             if (mergedPaymentId == 0) {
@@ -910,23 +948,26 @@ contract CardPaymentProcessorV2 is
             _checkActivePaymentStatus(mergedPaymentId, mergedPayment.status);
 
             address mergedPaymentPayer = mergedPayment.payer;
-            if (mergedPaymentPayer != targetPayment.payer) {
-                revert MergedPaymentPayerMismatch(mergedPaymentId, mergedPaymentPayer, targetPayment.payer);
+            if (mergedPaymentPayer != payer) {
+                revert MergedPaymentPayerMismatch(mergedPaymentId, mergedPaymentPayer, payer);
             }
             if (mergedPayment.sponsor != address(0)) {
                 revert PaymentSubsidized(mergedPaymentId);
             }
-            if (mergedPayment.cashbackRate != targetPayment.cashbackRate) {
+            if (mergedPayment.cashbackRate != storedTargetPayment.cashbackRate) {
                 revert MergedPaymentCashbackRateMismatch(
                     mergedPaymentId,
                     mergedPayment.cashbackRate,
-                    targetPayment.cashbackRate
+                    storedTargetPayment.cashbackRate
                 );
             }
-            uint256 mergedPaymentBaseAmount = mergedPayment.baseAmount;
-            uint256 mergedPaymentExtraAmount = mergedPayment.extraAmount;
+            uint256 newBaseAmount;
+            uint256 newExtraAmount;
+            uint256 sumAmount;
             unchecked {
-                sumAmount += mergedPaymentBaseAmount + mergedPaymentExtraAmount;
+                newBaseAmount = operation.newBaseAmount + mergedPayment.baseAmount;
+                newExtraAmount = operation.newExtraAmount + mergedPayment.extraAmount;
+                sumAmount = newBaseAmount + newExtraAmount;
             }
             if (sumAmount > type(uint64).max) {
                 revert InappropriateSumAmount();
@@ -935,35 +976,46 @@ contract CardPaymentProcessorV2 is
             cashbackAmount = _revokeCashback(mergedPaymentId, cashbackAmount);
             cashbackAmount = _increaseCashback(targetPaymentId, cashbackAmount);
             unchecked {
-                targetPayment.baseAmount += uint64(mergedPaymentBaseAmount);
-                targetPayment.extraAmount += uint64(mergedPaymentExtraAmount);
-                targetPayment.refundAmount += uint64(mergedPayment.refundAmount);
-                targetPayment.cashbackAmount += uint64(cashbackAmount);
-                targetPayment.confirmedAmount += mergedPayment.confirmedAmount;
+                operation.newBaseAmount = newBaseAmount;
+                operation.newExtraAmount = newExtraAmount;
+                operation.newRefundAmount += mergedPayment.refundAmount;
+                operation.newCashbackAmount += cashbackAmount;
+                operation.newConfirmedAmount += mergedPayment.confirmedAmount;
             }
             mergedPayment.status = PaymentStatus.Merged;
-
-            emit PaymentMerged(
-                mergedPaymentId,
-                targetPaymentId,
-                mergedPaymentPayer,
-                bytes("01")
-            );
         }
 
-        storedTargetPayment.baseAmount = targetPayment.baseAmount;
-        storedTargetPayment.extraAmount = targetPayment.extraAmount;
-        storedTargetPayment.cashbackAmount = targetPayment.cashbackAmount;
-        storedTargetPayment.refundAmount = targetPayment.refundAmount;
+        emit PaymentsMerged(
+            targetPaymentId,
+            payer,
+            mergedPaymentIds,
+            abi.encodePacked(
+                EVENT_DEFAULT_VERSION,
+                uint8(0),
+                uint64(operation.oldBaseAmount),
+                uint64(operation.newBaseAmount),
+                uint64(operation.oldExtraAmount),
+                uint64(operation.newExtraAmount),
+                uint64(operation.oldCashbackAmount),
+                uint64(operation.newCashbackAmount),
+                uint64(operation.oldRefundAmount),
+                uint64(operation.newRefundAmount)
+            )
+        );
 
-        if (oldPaymentConfirmedAmount != targetPayment.confirmedAmount) {
-            storedTargetPayment.confirmedAmount = targetPayment.confirmedAmount;
+        storedTargetPayment.baseAmount = uint64(operation.newBaseAmount);
+        storedTargetPayment.extraAmount = uint64(operation.newExtraAmount);
+        storedTargetPayment.cashbackAmount = uint64(operation.newCashbackAmount);
+        storedTargetPayment.refundAmount = uint64(operation.newRefundAmount);
+
+        if (operation.newConfirmedAmount != operation.oldConfirmedAmount) {
+            storedTargetPayment.confirmedAmount = uint64(operation.oldConfirmedAmount);
             _emitPaymentConfirmedAmountChanged(
                 targetPaymentId,
-                targetPayment.payer,
-                targetPayment.sponsor,
-                oldPaymentConfirmedAmount,
-                targetPayment.confirmedAmount
+                payer,
+                address(0), //sponsor
+                operation.oldConfirmedAmount,
+                operation.newConfirmedAmount
             );
         }
     }
@@ -1064,14 +1116,18 @@ contract CardPaymentProcessorV2 is
         uint256 oldConfirmedAmount,
         uint256 newConfirmedAmount
     ) internal {
+        uint256 eventFlags = _defineEventFlags(sponsor);
         bytes memory eventData = abi.encodePacked(
-            uint8(0x01),
-            sponsor != address(0),
+            EVENT_DEFAULT_VERSION,
+            uint8(eventFlags),
             uint64(oldConfirmedAmount),
             uint64(newConfirmedAmount)
         );
-        if (sponsor != address(0)) {
-            eventData = abi.encodePacked(eventData, sponsor);
+        if (eventFlags & EVENT_FLAG_MASK_SPONSORED != 0) {
+            eventData = abi.encodePacked(
+                eventData,
+                sponsor
+            );
         }
 
         emit PaymentConfirmedAmountChanged(
@@ -1303,5 +1359,14 @@ contract CardPaymentProcessorV2 is
         if (account == address(0)) {
             revert CashOutAccountNotConfigured();
         }
+    }
+
+    /// @dev Defines event flags according to the input parameters.
+    function _defineEventFlags(address sponsor) internal pure returns (uint256) {
+        uint256 eventFlags = 0;
+        if (sponsor != address(0)) {
+            eventFlags |= EVENT_FLAG_MASK_SPONSORED;
+        }
+        return eventFlags;
     }
 }
