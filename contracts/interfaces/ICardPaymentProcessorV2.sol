@@ -420,7 +420,6 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * @dev Makes a refund for a previously made card payment.
      *
      * Emits a {PaymentRefunded} event.
-     * Emits a {PaymentRefundedSubsidized} event if the payment is subsidized.
      * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
