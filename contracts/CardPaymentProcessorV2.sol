@@ -487,10 +487,11 @@ contract CardPaymentProcessorV2 is
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The input payment IDs must not be zero.
-     * - Each source payment must be active.
-     * - The target payment and the source payments must have the same payer address.
-     * - The target payment and the source payments must not be subsidized.
+     * - The target payment ID and the merged payment ones must not be zero.
+     * - The target payment and the merged ones must be active.
+     * - The target payment and the merged ones must have the same payer address.
+     * - The target payment and the merged ones must not be subsidized.
+     * - The target payment and the merged ones must have the same cashback rate.
      */
     function mergePayments(
         bytes32 targetPaymentId,
