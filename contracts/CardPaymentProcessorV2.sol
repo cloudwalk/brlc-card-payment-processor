@@ -250,6 +250,7 @@ contract CardPaymentProcessorV2 is
      * - The payment ID must not be zero.
      * - The payment linked with the provided ID must be revoked or not exist.
      * - The requested cashback rate must not exceed the maximum allowable cashback rate defined in the contract.
+     * - The provided confirmation amount must not exceed the sum amount of the payment.
      */
     function makePaymentFor(
         bytes32 paymentId,
@@ -291,6 +292,43 @@ contract CardPaymentProcessorV2 is
             uint256 transferAmount = _confirmPayment(paymentId, confirmationAmount);
             IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), transferAmount);
         }
+    }
+
+    /**
+     * @inheritdoc ICardPaymentProcessorV2
+     *
+     * @dev Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The payment account address must not be zero.
+     * - The payment ID must not be zero.
+     * - The payment linked with the provided ID must be revoked or not exist.
+     */
+    function makeCommonPaymentFor(
+        bytes32 paymentId,
+        address payer,
+        uint64 baseAmount,
+        uint64 extraAmount
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        if (payer == address(0)) {
+            revert PayerZeroAddress();
+        }
+
+        MakingOperation memory operation = MakingOperation({
+            paymentId: paymentId,
+            payer: payer,
+            sponsor: address(0),
+            cashbackRate: _cashbackRate,
+            baseAmount: baseAmount,
+            extraAmount: extraAmount,
+            subsidyLimit: 0,
+            cashbackAmount: 0,
+            payerSumAmount: 0,
+            sponsorSumAmount: 0
+        });
+
+        _makePayment(operation);
     }
 
     /**

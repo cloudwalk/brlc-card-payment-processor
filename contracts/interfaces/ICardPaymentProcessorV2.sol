@@ -299,6 +299,24 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
     ) external;
 
     /**
+     * @dev Makes a common card payment for a given account initiated by a service account.
+     *
+     * It is the same as the `makePaymentFor()` function but with less parameters.
+     * The payment is not subsidized, with the cashback defined by the contract settings, and without a confirmation.
+     *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param payer The account on that behalf the payment is made.
+     * @param baseAmount The base amount of tokens to transfer because of the payment.
+     * @param extraAmount The extra amount of tokens to transfer because of the payment. No cashback is applied.
+     */
+    function makeCommonPaymentFor(
+        bytes32 paymentId,
+        address payer,
+        uint64 baseAmount,
+        uint64 extraAmount
+    ) external;
+
+    /**
      * @dev Updates a previously made payment.
      *
      * Transfers the underlying tokens from the payer and/or sponsor to this contract or vise versa.
