@@ -1,6 +1,5 @@
 {
   "devDependencies": {
-    "@cloudwalkinc/brlc-contracts": "^1.0.0",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "@openzeppelin/contracts": "^4.9.3",
     "@openzeppelin/contracts-upgradeable": "^4.9.3",

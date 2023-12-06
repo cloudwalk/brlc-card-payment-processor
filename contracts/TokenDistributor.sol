@@ -6,9 +6,9 @@ import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import { PausableExtUpgradeable } from "@cloudwalkinc/brlc-contracts/contracts/access-control/PausableExtUpgradeable.sol";
-import { RescuableUpgradeable } from "@cloudwalkinc/brlc-contracts/contracts/access-control/RescuableUpgradeable.sol";
-import { StoragePlaceholder200 } from "@cloudwalkinc/brlc-contracts/contracts/storage/StoragePlaceholder200.sol";
+import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
+import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
+import { StoragePlaceholder200 } from "./base/StoragePlaceholder200.sol";
 
 import { ITokenDistributor } from "./interfaces/ITokenDistributor.sol";
 
