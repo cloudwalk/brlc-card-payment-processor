@@ -87,8 +87,8 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
      * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
-     * - uint64(baseAmount) -- the new base amount of the payment.
-     * - uint64(extraAmount) -- the new extra amount of the payment.
+     * - uint64(baseAmount) -- the base amount of the payment.
+     * - uint64(extraAmount) -- the extra amount of the payment.
      * - uint64(payerSumAmount) -- the payer sum amount part.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
      * - uint64(sponsorSumAmount) -- the sponsor sum amount part or skipped if the payment is not subsidized.
