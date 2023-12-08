@@ -517,7 +517,7 @@ contract CardPaymentProcessorV2 is
             revert AccountZeroAddress();
         }
 
-        emit RefundAccount(
+        emit AccountRefunded(
             account,
             refundingAmount,
             bytes("")

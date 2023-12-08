@@ -259,7 +259,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
     );
 
     /// @dev Emitted when an account is refunded.
-    event RefundAccount(
+    event AccountRefunded(
         address indexed account,
         uint64 refundingAmount,
         bytes addendum // Empty. Reserved for future possible additional information.
