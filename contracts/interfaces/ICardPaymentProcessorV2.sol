@@ -86,7 +86,9 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - uint8(flags) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(baseAmount) -- the new base amount of the payment.
+     * - uint64(extraAmount) -- the new extra amount of the payment.
      * - uint64(payerSumAmount) -- the payer sum amount part.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
      * - uint64(sponsorSumAmount) -- the sponsor sum amount part or skipped if the payment is not subsidized.
@@ -109,7 +111,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - uint8(flags) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
      * - uint64(oldBaseAmount) -- the old base amount of the payment.
      * - uint64(newBaseAmount) -- the new base amount of the payment.
      * - uint64(oldExtraAmount) -- the old extra amount of the payment.
@@ -138,7 +140,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - uint8(flags) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
      * - uint64(payerReminder) -- the payer reminder part of the payment.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
      * - uint64(sponsorReminder) -- the sponsor reminder part or skipped if the payment is not subsidized.
@@ -161,7 +163,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - uint8(flags) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
      * - uint64(payerReminder) -- the payer reminder part of the payment.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
      * - uint64(sponsorReminder) -- the sponsor reminder part or skipped if the payment is not subsidized.
@@ -184,7 +186,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - uint8(flags) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
      * - uint64(oldConfirmedAmount) -- the old confirmed amount of the payment or skipped if it was not changed.
      * - uint64(newConfirmedAmount) -- the new confirmed amount of the payment or skipped if it was not changed.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
@@ -207,7 +209,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - uint8(flags) -- whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
      * - uint64(oldPayerRefundAmount) -- the old payer refund amount of the payment.
      * - uint64(newPayerRefundAmount) -- the new payer refund amount of the payment.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
@@ -232,7 +234,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - uint8(flags) -- whether the payment is subsidized (`0x01`) or not (`0x00`). Always `0x0` for this event
+     * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
      * - uint64(oldBaseAmount) -- the old base amount of the payment.
      * - uint64(newBaseAmount) -- the new base amount of the payment.
      * - uint64(oldExtraAmount) -- the old extra amount of the payment.
