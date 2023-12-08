@@ -5276,6 +5276,40 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       });
     });
 
+    describe("Executes as expected and emits the correct events if the account is", async () => {
+      it("blacklisted", async () => {
+        const context = await beforeMakingPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+        await cardPaymentProcessorShell.enableCashback();
+        await cardPaymentProcessorShell.makePayments([payment]);
+
+        const refundAmount = Math.floor(payment.baseAmount * 0.1);
+
+        await proveTx(cardPaymentProcessorShell.contract.connect(deployer).grantRole(blacklisterRole, executor.address));
+        await proveTx(cardPaymentProcessorShell.contract.connect(executor).blacklist(payment.account.address));
+
+        expect(await cardPaymentProcessorShell.contract.isBlacklisted(payment.account.address)).to.eq(true);
+
+        cardPaymentProcessorShell.model.refundPayment(
+          refundAmount,
+          payment.extraAmount,
+          payment.authorizationId,
+          PAYMENT_REFUNDING_CORRELATION_ID_STUB
+        );
+        const tx = cardPaymentProcessorShell.contract.connect(executor).functions[FUNCTION_REFUND_PAYMENT_PRUNED](
+          refundAmount,
+          payment.authorizationId,
+          PAYMENT_REFUNDING_CORRELATION_ID_STUB
+        );
+        expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
+
+        expect(await cardPaymentProcessorShell.contract.isBlacklisted(payment.account.address)).to.eq(true);
+
+        await context.checkPaymentOperationsForTx(tx);
+        await context.checkCardPaymentProcessorState();
+      })
+    });
+
     describe("Is reverted if", async () => {
       it("The contract is paused", async () => {
         const context = await prepareForPayments();
@@ -5343,6 +5377,41 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       it("Zero", async () => {
         await checkRefundingAccount(zeroTokenAmount);
+      });
+    });
+
+    describe("Executes as expected and emits the correct events if the user is", async () => {
+      it("blacklisted", async () => {
+        const { cardPaymentProcessorShell, tokenMock } = await prepareForPayments();
+        await proveTx(tokenMock.mint(cashOutAccount.address, nonZeroTokenAmount));
+
+        await proveTx(cardPaymentProcessorShell.contract.connect(deployer).grantRole(blacklisterRole, executor.address));
+        await proveTx(cardPaymentProcessorShell.contract.connect(executor).blacklist(user1.address));
+
+        expect(await cardPaymentProcessorShell.contract.isBlacklisted(user1.address)).to.eq(true);
+
+        const tx = await cardPaymentProcessorShell.contract.connect(executor).refundAccount(
+          user1.address,
+          nonZeroTokenAmount,
+          PAYMENT_REFUNDING_CORRELATION_ID_STUB
+        );
+
+        await expect(tx).to.emit(
+          cardPaymentProcessorShell.contract,
+          EVENT_NAME_REFUND_ACCOUNT
+        ).withArgs(
+          PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          user1.address,
+          nonZeroTokenAmount
+        );
+
+        expect(await cardPaymentProcessorShell.contract.isBlacklisted(user1.address)).to.eq(true);
+
+        await expect(tx).to.changeTokenBalances(
+          tokenMock,
+          [user1, cashOutAccount, cardPaymentProcessorShell.contract],
+          [+nonZeroTokenAmount, -nonZeroTokenAmount, 0]
+        );
       });
     });
 
