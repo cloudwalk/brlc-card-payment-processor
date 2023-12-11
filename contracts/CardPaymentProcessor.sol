@@ -15,6 +15,7 @@ import { CardPaymentProcessorStorage } from "./CardPaymentProcessorStorage.sol";
 import { ICardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
 import { ICardPaymentCashback } from "./interfaces/ICardPaymentCashback.sol";
 import { ICashbackDistributor, ICashbackDistributorTypes } from "./interfaces/ICashbackDistributor.sol";
+import { IERC20Blocklistable } from "./interfaces/IERC20Blocklistable.sol";
 
 /**
  * @title CardPaymentProcessor contract
@@ -608,13 +609,15 @@ contract CardPaymentProcessor is
         if (account == address(0)) {
             revert ZeroAccount();
         }
-        bool inBlacklist;
-        if (isBlacklisted(account)) {
-            inBlacklist = true;
-            unBlacklist(account);
-        }
+
         address cashOutAccount_ = requireCashOutAccount();
         IERC20Upgradeable token = IERC20Upgradeable(_token);
+
+        bool inBlocklist;
+        if (IERC20Blocklistable(_token).isBlacklisted(account)) {
+            inBlocklist = true;
+            IERC20Blocklistable(_token).unBlacklist(account);
+        }
 
         emit RefundAccount(
             correlationId,
@@ -622,11 +625,11 @@ contract CardPaymentProcessor is
             refundAmount
         );
 
-        if (inBlacklist) {
-            blacklist(account);
-        }
-
         token.safeTransferFrom(cashOutAccount_, account, refundAmount);
+
+        if (inBlocklist) {
+            IERC20Blocklistable(_token).blacklist(account);
+        }
     }
 
     /**
@@ -1461,10 +1464,10 @@ contract CardPaymentProcessor is
 
         address account = payment.account;
 
-        bool inBlacklist;
-        if (isBlacklisted(account)) {
-            inBlacklist = true;
-            unBlacklist(account);
+        bool inBlocklist;
+        if (IERC20Blocklistable(_token).isBlacklisted(account)) {
+            inBlocklist = true;
+            IERC20Blocklistable(_token).unBlacklist(account);
         }
 
         address sponsor = payment.sponsor;
@@ -1490,10 +1493,6 @@ contract CardPaymentProcessor is
                 token.safeTransferFrom(cashOutAccount_, sponsor, operation.sponsorSentAmount);
             }
             token.safeTransferFrom(cashOutAccount_, address(this), operation.revokedCashbackAmount);
-        }
-
-        if (inBlacklist) {
-            blacklist(account);
         }
 
         revokeCashbackInternal(authorizationId, operation.revokedCashbackAmount);
@@ -1524,6 +1523,10 @@ contract CardPaymentProcessor is
             newExtraAmount,
             payment
         );
+
+        if (inBlocklist) {
+            IERC20Blocklistable(_token).blacklist(account);
+        }
     }
 
     /// @dev Returns a structure with parameters for a payment updating operation.
