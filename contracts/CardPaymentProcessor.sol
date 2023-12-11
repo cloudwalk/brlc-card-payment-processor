@@ -613,22 +613,18 @@ contract CardPaymentProcessor is
         address cashOutAccount_ = requireCashOutAccount();
         IERC20Upgradeable token = IERC20Upgradeable(_token);
 
-        bool inBlocklist;
-        if (IERC20Blocklistable(_token).isBlacklisted(account)) {
-            inBlocklist = true;
-            IERC20Blocklistable(_token).unBlacklist(account);
-        }
-
         emit RefundAccount(
             correlationId,
             account,
             refundAmount
         );
 
-        token.safeTransferFrom(cashOutAccount_, account, refundAmount);
-
-        if (inBlocklist) {
+        if (IERC20Blocklistable(_token).isBlacklisted(account)) {
+            IERC20Blocklistable(_token).unBlacklist(account);
+            token.safeTransferFrom(cashOutAccount_, account, refundAmount);
             IERC20Blocklistable(_token).blacklist(account);
+        } else {
+            token.safeTransferFrom(cashOutAccount_, account, refundAmount);
         }
     }
 
