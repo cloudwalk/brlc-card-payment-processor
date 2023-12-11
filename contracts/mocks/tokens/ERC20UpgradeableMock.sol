@@ -11,6 +11,28 @@ import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC2
 contract ERC20UpgradeableMock is ERC20Upgradeable {
     bool public mintResult;
 
+    /// @notice Mapping of presence in the blocklist for a given address
+    mapping(address => bool) private _blocklisted;
+
+    /**
+     * @notice The account is blocklisted
+     *
+     * @param account The address of the blocklisted account
+     */
+    error BlocklistedAccount(address account);
+
+    /**
+     * @notice Throws if the account is blocklisted
+     *
+     * @param account The address to check for presence in the blocklist
+     */
+    modifier notBlacklisted(address account) {
+        if (_blocklisted[account]) {
+            revert BlocklistedAccount(account);
+        }
+        _;
+    }
+
     /**
      * @dev The initialize function of the upgradable contract.
      * @param name_ The name of the token to set for this ERC20-comparable contract.
@@ -42,4 +64,48 @@ contract ERC20UpgradeableMock is ERC20Upgradeable {
     function setMintResult(bool _newMintResult) external {
         mintResult = _newMintResult;
     }
+
+    /**
+     * @notice Adds an account to the blocklist
+     *
+     * @param account The address to blocklist
+     */
+    function blacklist(address account) public {
+        if (_blocklisted[account]) {
+            return;
+        }
+
+        _blocklisted[account] = true;
+    }
+
+    /**
+     * @notice Removes an account from the blocklist
+     *
+     * @param account The address to remove from the blocklist
+     */
+    function unBlacklist(address account) public {
+        if (!_blocklisted[account]) {
+            return;
+        }
+        _blocklisted[account] = false;
+    }
+
+    /**
+     * @notice Checks if an account is present in the blocklist
+     *
+     * @param account The address to check for presence in the blocklist
+     * @return True if the account is present in the blocklist, false otherwise
+     */
+    function isBlacklisted(address account) public view returns (bool) {
+        return _blocklisted[account];
+    }
+
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal virtual override notBlacklisted(from) notBlacklisted(to) {
+        super._beforeTokenTransfer(from, to, amount);
+    }
+
 }

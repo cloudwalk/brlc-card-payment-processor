@@ -5279,16 +5279,15 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     describe("Executes as expected and emits the correct events if the account is", async () => {
       it("blacklisted", async () => {
         const context = await beforeMakingPayments();
-        const { cardPaymentProcessorShell, payments: [payment] } = context;
+        const { cardPaymentProcessorShell, payments: [payment], tokenMock } = context;
         await cardPaymentProcessorShell.enableCashback();
         await cardPaymentProcessorShell.makePayments([payment]);
 
         const refundAmount = Math.floor(payment.baseAmount * 0.1);
 
-        await proveTx(cardPaymentProcessorShell.contract.connect(deployer).grantRole(blacklisterRole, executor.address));
-        await proveTx(cardPaymentProcessorShell.contract.connect(executor).blacklist(payment.account.address));
+        await proveTx(tokenMock.blacklist(payment.account.address));
 
-        expect(await cardPaymentProcessorShell.contract.isBlacklisted(payment.account.address)).to.eq(true);
+        expect(await tokenMock.isBlacklisted(payment.account.address)).to.eq(true);
 
         cardPaymentProcessorShell.model.refundPayment(
           refundAmount,
@@ -5303,7 +5302,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         );
         expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
-        expect(await cardPaymentProcessorShell.contract.isBlacklisted(payment.account.address)).to.eq(true);
+        expect(await tokenMock.isBlacklisted(payment.account.address)).to.eq(true);
 
         await context.checkPaymentOperationsForTx(tx);
         await context.checkCardPaymentProcessorState();
@@ -5385,10 +5384,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         const { cardPaymentProcessorShell, tokenMock } = await prepareForPayments();
         await proveTx(tokenMock.mint(cashOutAccount.address, nonZeroTokenAmount));
 
-        await proveTx(cardPaymentProcessorShell.contract.connect(deployer).grantRole(blacklisterRole, executor.address));
-        await proveTx(cardPaymentProcessorShell.contract.connect(executor).blacklist(user1.address));
+        await proveTx(tokenMock.blacklist(user1.address));
 
-        expect(await cardPaymentProcessorShell.contract.isBlacklisted(user1.address)).to.eq(true);
+        expect(await tokenMock.isBlacklisted(user1.address)).to.eq(true);
 
         const tx = await cardPaymentProcessorShell.contract.connect(executor).refundAccount(
           user1.address,
@@ -5405,7 +5403,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           nonZeroTokenAmount
         );
 
-        expect(await cardPaymentProcessorShell.contract.isBlacklisted(user1.address)).to.eq(true);
+        expect(await tokenMock.isBlacklisted(user1.address)).to.eq(true);
 
         await expect(tx).to.changeTokenBalances(
           tokenMock,
