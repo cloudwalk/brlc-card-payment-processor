@@ -12,7 +12,7 @@ interface ICardPaymentProcessorV2mTypes {
      * The possible values:
      * - Nonexistent - The payment does not exist (the default value).
      * - Active ------ The status immediately after the payment making.
-     * - Unused ------ The unused status, reserved for future changes.
+     * - Merged ------ The payment was merged to another payment.
      * - Revoked ----- The payment was revoked due to some technical reason.
      *                 The related tokens have been transferred back to the customer.
      *                 The payment can be made again with the same ID
@@ -24,7 +24,7 @@ interface ICardPaymentProcessorV2mTypes {
     enum PaymentStatus {
         Nonexistent, // 0
         Active,      // 1
-        Unused,      // 2
+        Merged,      // 2
         Revoked,     // 3
         Reversed     // 4
         // DEV The `Finalized` status can be added along with an appropriate function and event if the option to block a payment for further operations is needed.
@@ -41,14 +41,13 @@ interface ICardPaymentProcessorV2mTypes {
         uint96 reserve2;        // The reserved filed for future changes.
         //slot3
         uint64 payerAmount;     // The payer amount, excluding cashback, refunds and subsidy, including additional fees
-        uint64 sponsorAmount;   // The sponsor amount if it is subsidized. Otherwise zero.
+        uint64 sponsorAmount;   // The sponsor amount if the payment is subsidized. Otherwise zero.
         uint64 confirmedAmount; // The confirmed amount that was transferred to the cash-out account.
     }
 
     /// @dev Structure with data of a single confirmation operation
     struct PaymentConfirmation {
         bytes32 paymentId;      // The card transaction payment ID from the off-chain card processing backend.
-        bytes32 correlationId;  // The ID that is correlated to the operation in the off-chain card processing backend.
         uint64 amount;          // The amount to confirm for the payment.
     }
 }
@@ -58,125 +57,182 @@ interface ICardPaymentProcessorV2mTypes {
  * @dev The interface of the wrapper contract for the card payment operations.
  */
 interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2mTypes {
-    /// @dev Emitted when a payment is made.
+    /**
+     * @dev Emitted when a payment is made.
+     *
+     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * with the following arguments:
+     *
+     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(payerAmount) -- the payer amount, excluding cashback, refunds and subsidy, including additional fees
+     * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
+     * - uint64(sponsorAmount) -- the sponsor amount or skipped if the payment is not subsidized.
+     *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param payer The account on that behalf the payment is made.
+     * @param data The main data of the event as described above.
+     */
     event PaymentMade(
         bytes32 indexed paymentId,
-        bytes32 indexed correlationId,
         address indexed payer,
-        uint256 payerAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
-    );
-
-    /// @dev Emitted along with the {PaymentMade} event when a subsidized payment is made.
-    event PaymentMadeSubsidized(
-        bytes32 indexed paymentId,
-        bytes32 indexed correlationId,
-        address indexed sponsor,
-        uint256 sponsorAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
-    );
-
-    /// @dev Emitted when a payment is updated.
-    event PaymentUpdated(
-        bytes32 indexed paymentId,
-        bytes32 indexed correlationId,
-        address indexed payer,
-        uint256 oldPayerAmount,
-        uint256 newPayerAmount,
-        bytes addendum // Empty. Reserved for future possible additional information
-    );
-
-    /// @dev Emitted along with the {PaymentUpdated} event when the amount of a subsidized payment is updated.
-    event PaymentUpdatedSubsidized(
-        bytes32 indexed paymentId,
-        bytes32 indexed correlationId,
-        address indexed sponsor,
-        uint256 oldSponsorAmount,
-        uint256 newSponsorAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
-    );
-
-    /// @dev Emitted when a payment is revoked.
-    event PaymentRevoked(
-        bytes32 indexed paymentId,
-        bytes32 indexed correlationId,
-        address indexed payer,
-        uint256 payerAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
-    );
-
-    /// @dev Emitted along with the {PaymentRevoked} event when a subsidized payment is revoked.
-    event PaymentRevokedSubsidized(
-        bytes32 indexed paymentId,
-        bytes32 indexed correlationId,
-        address indexed sponsor,
-        uint256 sponsorAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
-    );
-
-    /// @dev Emitted when a payment is reversed.
-    event PaymentReversed(
-        bytes32 indexed paymentId,
-        bytes32 indexed correlationId,
-        address indexed payer,
-        uint256 payerAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
-    );
-
-    /// @dev Emitted along with the {PaymentReversed} event when a subsidized payment is reversed.
-    event PaymentReversedSubsidized(
-        bytes32 indexed paymentId,
-        bytes32 indexed correlationId,
-        address indexed sponsor,
-        uint256 sponsorAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
+        bytes data
     );
 
     /**
-     * @dev Emitted when the confirmed amount of a payment is changed.
-     *      It can be emitted during any operation except payment making
+     * @dev Emitted when a payment is updated.
+     *
+     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments:
+     *
+     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(oldPayerAmount) -- the old payer amount of the payment.
+     * - uint64(newPayerAmount) -- the new payer amount of the payment.
+     * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
+     * - uint64(oldSponsorAmount) -- the old sponsor amount or skipped if the payment is not subsidized.
+     * - uint64(newSponsorAmount) -- the new sponsor amount or skipped if the payment is not subsidized.
+     *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param payer The account on that behalf the payment is made.
+     * @param data The main data of the event as described above.
+     */
+    event PaymentUpdated(
+        bytes32 indexed paymentId,
+        address indexed payer,
+        bytes data
+    );
+
+    /**
+     * @dev Emitted when a payment is revoked.
+     *
+     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments:
+     *
+     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(payerAmount) -- the payer amount, excluding cashback, refunds and subsidy, including additional fees
+     * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
+     * - uint64(sponsorAmount) -- the sponsor amount or skipped if the payment is not subsidized.
+     *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param payer The account on that behalf the payment is made.
+     * @param data The main data of the event as described above.
+     */
+    event PaymentRevoked(
+        bytes32 indexed paymentId,
+        address indexed payer,
+        bytes data
+    );
+
+    /**
+     * @dev Emitted when a payment is reversed.
+     *
+     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments:
+     *
+     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(payerAmount) -- the payer amount, excluding cashback, refunds and subsidy, including additional fees
+     * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
+     * - uint64(sponsorAmount) -- the sponsor amount or skipped if the payment is not subsidized.
+     *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param payer The account on that behalf the payment is made.
+     * @param data The main data of the event as described above.
+     */
+    event PaymentReversed(
+        bytes32 indexed paymentId,
+        address indexed payer,
+        bytes data
+    );
+
+    /**
+     * @dev Emitted when the confirmed amount of a payment is changed. It can be emitted during any operation.
+     *
+     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments:
+     *
+     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(oldConfirmedAmount) -- the old confirmed amount of the payment
+     * - uint64(newConfirmedAmount) -- the new confirmed amount of the payment
+     * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
+     *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param payer The account on that behalf the payment is made.
+     * @param data The main data of the event as described above.
      */
     event PaymentConfirmedAmountChanged(
         bytes32 indexed paymentId,
-        bytes32 indexed correlationId,
         address indexed payer,
-        address sponsor,
-        uint64 oldConfirmedAmount,
-        uint64 newConfirmedAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
+        bytes data
     );
 
-    /// @dev Emitted when a payment is refunded.
-    // DEV Refunding events can be excluded because they are the same as updating events
+    /**
+     * @dev Emitted when a payment is refunded.
+     *
+     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments:
+     *
+     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(oldPayerAmount) -- the old payer amount of the payment.
+     * - uint64(newPayerAmount) -- the new payer amount of the payment.
+     * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
+     * - uint64(oldSponsorAmount) -- the old sponsor amount or skipped if the payment is not subsidized.
+     * - uint64(newSponsorAmount) -- the new sponsor amount or skipped if the payment is not subsidized.
+     *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param payer The account on that behalf the payment is made.
+     * @param data The main data of the event as described above.
+     */
     event PaymentRefunded(
         bytes32 indexed paymentId,
-        bytes32 indexed correlationId,
         address indexed payer,
-        uint256 oldPayerAmount,
-        uint256 newPayerAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
+        bytes data
     );
 
-    /// @dev Emitted along with the {PaymentRefunded} event when a subsidized payment is refunded.
-    event PaymentRefundedSubsidized(
-        bytes32 indexed paymentId,
-        bytes32 indexed correlationId,
-        address indexed sponsor,
-        uint256 oldSponsorAmount,
-        uint256 newSponsorAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
+    /**
+     * @dev Emitted when payments are merged.
+     *
+     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments:
+     *
+     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(oldPayerAmount) -- the old payer amount of the payment.
+     * - uint64(newPayerAmount) -- the new payer amount of the payment.
+     * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
+     * - uint64(oldSponsorAmount) -- the old sponsor amount or skipped if the payment is not subsidized.
+     * - uint64(newSponsorAmount) -- the new sponsor amount or skipped if the payment is not subsidized.
+     *
+     * Note: all the data of this event is related to the target payment, not to the merged ones.
+     *
+     * @param targetPaymentId  The ID of the target payment to merge with.
+     * @param payer The account on that behalf the target payment and the merged ones.
+     * @param mergedPaymentIds The IDs of the merged payments.
+     * @param data The main data of the event as described above.
+     */
+    event PaymentsMerged(
+        bytes32 indexed targetPaymentId,
+        address indexed payer,
+        bytes32[] mergedPaymentIds,
+        bytes data
     );
 
     /// @dev Emitted when an account is refunded.
-    event RefundAccount(
-        bytes32 indexed correlationId,
+    event AccountRefunded(
         address indexed account,
         uint64 refundingAmount,
         bytes addendum // Empty. Reserved for future possible additional information.
     );
-
-    // DEV This function does not exist anymore, because cashback and other things are calculated on the backend side
-    //function makePayment() external {};
 
     /**
      * @dev Makes a card payment for a given account initiated by a service account.
@@ -187,22 +243,39 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2mTypes {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentMade} event.
-     * Emits a {PaymentMadeSubsidized} event if the payment is subsidized.
+     * Emits a {PaymentConfirmedAmountChanged} event if the payment is confirmed immediately after making.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
      * @param payerAmount The payer amount, excluding cashback, refunds and subsidy but including additional fees.
      * @param sponsor The address of a sponsor if the payment is subsidized, otherwise zero.
      * @param sponsorAmount The amount of tokens that should be transferred from the sponsor to this contract.
+     * @param confirmationAmount The amount to confirm for the payment immediately after making.
+     *                           Zero if confirmation is not needed.
      */
     function makePaymentFor(
         bytes32 paymentId,
-        bytes32 correlationId,
         address payer,
         uint64 payerAmount,
         address sponsor,
-        uint64 sponsorAmount
+        uint64 sponsorAmount,
+        uint64 confirmationAmount
+    ) external;
+
+    /**
+     * @dev Makes a common card payment for a given account initiated by a service account.
+     *
+     * It is the same as the `makePaymentFor()` function but with less parameters.
+     * The payment is not subsidized and without a confirmation.
+     *
+     * @param paymentId The card transaction payment ID from the off-chain card processing backend.
+     * @param payer The account on that behalf the payment is made.
+     * @param payerAmount The payer amount, excluding cashback, refunds and subsidy but including additional fees.
+     */
+    function makeCommonPaymentFor(
+        bytes32 paymentId,
+        address payer,
+        uint64 payerAmount
     ) external;
 
     /**
@@ -212,17 +285,14 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2mTypes {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentUpdated} event.
-     * Emits a {PaymentUpdatedSubsidized} event if the payment is subsidized.
      * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param newPayerAmount The new payer amount, excluding cashback, refunds and subsidy, including additional fees.
      * @param newSponsorAmount The new sponsor amount of the payment.
      */
     function updatePayment(
         bytes32 paymentId,
-        bytes32 correlationId,
         uint64 newPayerAmount,
         uint64 newSponsorAmount
     ) external;
@@ -235,16 +305,11 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2mTypes {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentRevoked} event.
-     * Emits a {PaymentRevokedSubsidized} event if the payment is subsidized.
      * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
-    function revokePayment(
-        bytes32 paymentId,
-        bytes32 correlationId
-    ) external;
+    function revokePayment(bytes32 paymentId) external;
 
     /**
      * @dev Performs the reverse of a previously made card payment.
@@ -254,16 +319,11 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2mTypes {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentReversed} event.
-     * Emits a {PaymentReversedSubsidized} event if the payment is subsidized.
      * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
-    function reversePayment(
-        bytes32 paymentId,
-        bytes32 correlationId
-    ) external;
+    function reversePayment(bytes32 paymentId) external;
 
     /**
      * @dev Confirms a single previously made card payment.
@@ -275,12 +335,10 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2mTypes {
      * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param confirmationAmount The amount to confirm for the payment.
      */
     function confirmPayment(
         bytes32 paymentId,
-        bytes32 correlationId,
         uint64 confirmationAmount
     ) external;
 
@@ -306,18 +364,15 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2mTypes {
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {PaymentUpdated} event if the update operation is executed.
-     * Emits a {PaymentUpdatedSubsidized} event if the update operation is executed and the payment is subsidized.
      * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param newPayerAmount The new payer amount, excluding cashback, refunds and subsidy, including additional fees.
      * @param newSponsorAmount The new sponsor amount of the payment.
      * @param confirmationAmount The amount to confirm for the payment.
      */
     function updateLazyAndConfirmPayment(
         bytes32 paymentId,
-        bytes32 correlationId,
         uint64 newPayerAmount,
         uint64 newSponsorAmount,
         uint64 confirmationAmount
@@ -327,19 +382,30 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2mTypes {
      * @dev Makes a refund for a previously made card payment.
      *
      * Emits a {PaymentRefunded} event.
-     * Emits a {PaymentRefundedSubsidized} event if the payment is subsidized.
      * Emits a {PaymentConfirmedAmountChanged} event if the confirmed amount of the payment is changed.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
-     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param newPayerAmount The new payer amount, excluding cashback, refunds and subsidy, including additional fees.
      * @param newSponsorAmount The new sponsor amount of the payment.
      */
     function refundPayment(
         bytes32 paymentId,
-        bytes32 correlationId,
         uint64 newPayerAmount,
         uint64 newSponsorAmount
+    ) external;
+
+    /**
+     * @dev Merges several payments into a single one.
+     *
+     * Emits a {PaymentMerged} event for each merged payment.
+     * Emits a {PaymentConfirmedAmountChanged} event for the target payment if its confirmed amount is changed.
+     *
+     * @param targetPaymentId The ID of the target payment to merge with.
+     * @param mergedPaymentIds The IDs of payments to merge.
+     */
+    function mergePayments(
+        bytes32 targetPaymentId,
+        bytes32[] calldata mergedPaymentIds
     ) external;
 
     /**
@@ -347,14 +413,12 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2mTypes {
      *
      * During this operation the needed amount of tokens is transferred from the cash-out account to the target account.
      *
-     * Emits a {RefundAccount} event.
+     * Emits a {AccountRefunded} event.
      *
-     * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param account The address of the account to refund.
      * @param refundingAmount The amount of tokens to refund.
      */
     function refundAccount(
-        bytes32 correlationId,
         address account,
         uint64 refundingAmount
     ) external;
