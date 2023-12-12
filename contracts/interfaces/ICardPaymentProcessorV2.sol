@@ -187,8 +187,8 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
      * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
-     * - uint64(oldConfirmedAmount) -- the old confirmed amount of the payment or skipped if it was not changed.
-     * - uint64(newConfirmedAmount) -- the new confirmed amount of the payment or skipped if it was not changed.
+     * - uint64(oldConfirmedAmount) -- the old confirmed amount of the payment.
+     * - uint64(newConfirmedAmount) -- the new confirmed amount of the payment.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
