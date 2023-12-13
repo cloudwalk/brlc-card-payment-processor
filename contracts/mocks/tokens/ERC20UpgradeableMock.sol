@@ -3,12 +3,13 @@
 pragma solidity 0.8.16;
 
 import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import { IERC20Blocklistable } from "../../interfaces/IERC20Blocklistable.sol";
 
 /**
  * @title ERC20UpgradeableMock contract
  * @dev An implementation of the {ERC20Upgradeable} contract for test purposes.
  */
-contract ERC20UpgradeableMock is ERC20Upgradeable {
+contract ERC20UpgradeableMock is ERC20Upgradeable, IERC20Blocklistable {
     bool public mintResult;
 
     /// @notice Mapping of presence in the blocklist for a given address
