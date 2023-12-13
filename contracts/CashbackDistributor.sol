@@ -7,10 +7,10 @@ import { EnumerableSetUpgradeable } from "@openzeppelin/contracts-upgradeable/ut
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import { BlacklistableUpgradeable } from "@cloudwalkinc/brlc-contracts/contracts/access-control/BlacklistableUpgradeable.sol";
-import { PausableExtUpgradeable } from "@cloudwalkinc/brlc-contracts/contracts/access-control/PausableExtUpgradeable.sol";
-import { RescuableUpgradeable } from "@cloudwalkinc/brlc-contracts/contracts/access-control/RescuableUpgradeable.sol";
-import { StoragePlaceholder200 } from "@cloudwalkinc/brlc-contracts/contracts/storage/StoragePlaceholder200.sol";
+import { BlacklistableUpgradeable } from "./base/BlacklistableUpgradeable.sol";
+import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
+import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
+import { StoragePlaceholder200 } from "./base/StoragePlaceholder200.sol";
 
 import { CashbackDistributorStorage } from "./CashbackDistributorStorage.sol";
 import { ICashbackDistributor } from "./interfaces/ICashbackDistributor.sol";
