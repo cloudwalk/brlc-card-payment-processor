@@ -5,12 +5,12 @@ pragma solidity 0.8.16;
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { EnumerableSetUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 import { BlacklistableUpgradeable } from "./base/BlacklistableUpgradeable.sol";
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
 import { StoragePlaceholder200 } from "./base/StoragePlaceholder200.sol";
+import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
 
 import { PixCashierStorage } from "./PixCashierStorage.sol";
 import { IPixCashier } from "./interfaces/IPixCashier.sol";
@@ -24,7 +24,7 @@ import { IERC20Mintable } from "./interfaces/IERC20Mintable.sol";
  * About roles see https://docs.openzeppelin.com/contracts/4.x/api/access#AccessControl.
  */
 contract PixCashier is
-    AccessControlUpgradeable,
+    AccessControlExtUpgradeable,
     BlacklistableUpgradeable,
     PausableExtUpgradeable,
     RescuableUpgradeable,

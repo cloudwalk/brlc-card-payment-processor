@@ -2,8 +2,9 @@
 
 pragma solidity ^0.8.8;
 
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+
+import { AccessControlExtUpgradeable } from "./AccessControlExtUpgradeable.sol";
 
 /**
  * @title PausableExtUpgradeable base contract
@@ -13,7 +14,7 @@ import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/securit
  * This contract is used through inheritance. It introduces the {PAUSER_ROLE} role that is allowed to
  * trigger the paused or unpaused state of the contract that is inherited from this one.
  */
-abstract contract PausableExtUpgradeable is AccessControlUpgradeable, PausableUpgradeable {
+abstract contract PausableExtUpgradeable is AccessControlExtUpgradeable, PausableUpgradeable {
     /// @dev The role of pauser that is allowed to trigger the paused or unpaused state of the contract.
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
