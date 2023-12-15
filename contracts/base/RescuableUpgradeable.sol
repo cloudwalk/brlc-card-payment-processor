@@ -32,6 +32,7 @@ abstract contract RescuableUpgradeable is AccessControlExtUpgradeable {
         __Context_init_unchained();
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
+        __AccessControlExt_init_unchained(); // EZ we are following the existing logic of calling all unchained initializers
 
         __Rescuable_init_unchained(rescuerRoleAdmin);
     }

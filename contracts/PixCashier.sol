@@ -113,6 +113,7 @@ contract PixCashier is
         __Context_init_unchained();
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
+        __AccessControlExt_init_unchained(); // EZ we are following the existing logic of calling all unchained initializers
         __Blacklistable_init_unchained(OWNER_ROLE);
         __Pausable_init_unchained();
         __PausableExt_init_unchained(OWNER_ROLE);

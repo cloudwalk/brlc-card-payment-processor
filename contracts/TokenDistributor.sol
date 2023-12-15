@@ -63,6 +63,7 @@ contract TokenDistributor is
 
     function __TokenDistributor_init() internal onlyInitializing {
         __AccessControl_init_unchained();
+        __AccessControlExt_init_unchained(); // EZ we are following the existing logic of calling all unchained initializers
         __Context_init_unchained();
         __ERC165_init_unchained();
         __Pausable_init_unchained();

@@ -14,7 +14,6 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
  * that is allowed to grant and revoke roles in batch.
  */
 abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
-
     /**
      * @dev The internal initializer of the upgradable contract.
      *
@@ -33,8 +32,8 @@ abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
      *
      * See {AccessControlExtUpgradeable-__AccessControlExt_init}.
      */
-    function __AccessControlExt_init_unchained() internal onlyInitializing {
-    }
+    // EZ Prettier (`npm run prettier`) told me this formatting
+    function __AccessControlExt_init_unchained() internal onlyInitializing {}
 
     /**
      * @dev Grants `role` to `account` in batch.
@@ -49,7 +48,8 @@ abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
      * May emit a {RoleGranted} event for each account.
      */
     function grantRoleBatch(bytes32 role, address[] memory accounts) public virtual onlyRole(getRoleAdmin(role)) {
-        for (uint i = 0; i < accounts.length ; i++) {
+        // EZ Prettier (`npm run prettier`) told me this formatting
+        for (uint i = 0; i < accounts.length; i++) {
             _grantRole(role, accounts[i]);
         }
     }
@@ -66,7 +66,8 @@ abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
      * May emit a {RoleRevoked} event for each account.
      */
     function revokeRoleBatch(bytes32 role, address[] memory accounts) public virtual onlyRole(getRoleAdmin(role)) {
-        for (uint i = 0; i < accounts.length ; i++) {
+        // EZ Prettier (`npm run prettier`) told me this formatting
+        for (uint i = 0; i < accounts.length; i++) {
             _revokeRole(role, accounts[i]);
         }
     }
@@ -76,5 +77,6 @@ abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[49] private __gap;
+    // EZ It is wrong because adds 49 more storage slots.
+    //uint256[49] private __gap;
 }

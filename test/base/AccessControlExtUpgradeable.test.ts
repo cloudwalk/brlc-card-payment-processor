@@ -4,6 +4,8 @@ import { Contract, ContractFactory } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { proveTx } from "../../test-utils/eth";
+import { TransactionResponse } from "@ethersproject/abstract-provider";
+import { createRevertMessageDueToMissingRole } from "../../test-utils/misc";
 
 async function setUpFixture(func: any) {
   if (network.name === "hardhat") {
@@ -25,17 +27,18 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
 
   let accessControlExtMockFactory: ContractFactory;
   let deployer: SignerWithAddress;
+  let attacker: SignerWithAddress; // EZ Add more readability
   let users: SignerWithAddress[];
   let userAddresses: string[];
 
   before(async () => {
     accessControlExtMockFactory = await ethers.getContractFactory("AccessControlExtUpgradeableMock");
-    [deployer, ...users] = await ethers.getSigners();
+    [deployer, attacker, ...users] = await ethers.getSigners();
+    // EZ 3 users is more than enough
     userAddresses = [
       users[0].address,
       users[1].address,
-      users[2].address,
-      users[3].address
+      users[2].address
     ];
   });
 
@@ -51,9 +54,11 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
 
       //The roles
       expect((await accessControlExtMock.OWNER_ROLE()).toLowerCase()).to.equal(ownerRole);
+      expect((await accessControlExtMock.USER_ROLE()).toLowerCase()).to.equal(userRole);
 
       // The role admins
       expect(await accessControlExtMock.getRoleAdmin(ownerRole)).to.equal(ethers.constants.HashZero);
+      expect(await accessControlExtMock.getRoleAdmin(userRole)).to.equal(ownerRole);
 
       // The deployer should have the owner role, but not the other roles
       expect(await accessControlExtMock.hasRole(ownerRole, deployer.address)).to.equal(true);
@@ -81,91 +86,136 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
     });
   });
 
+  // EZ Split tests by the functions
   describe("Function 'grantRoleBatch()'", async () => {
-    it("The function 'grantRoleBatch' executes as expected with 1 user", async () => {
-      const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
-      await proveTx(accessControlExtMock.setUserRoleAdmin());
+    // EZ Split tests by the checking way (positive and negative ones)
+    describe("Executes as expected if the input account array contains", async () => {
+      it("A single account without the previously granted role", async () => {
+        const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
+        expect(await accessControlExtMock.hasRole(userRole, userAddresses[0])).to.equal(false);
 
-      await expect(accessControlExtMock.grantRoleBatch(userRole, [userAddresses[0]]))
-        .to.emit(accessControlExtMock, EVENT_NAME_ROLE_GRANTED)
-        .withArgs(userRole, userAddresses[0], deployer.address);
+        await expect(
+          accessControlExtMock.grantRoleBatch(userRole, [userAddresses[0]])
+        ).to.emit(
+          accessControlExtMock, EVENT_NAME_ROLE_GRANTED
+        ).withArgs(userRole, userAddresses[0], deployer.address);
 
-      expect(await accessControlExtMock.hasRole(userRole, userAddresses[0])).to.equal(true);
+        expect(await accessControlExtMock.hasRole(userRole, userAddresses[0])).to.equal(true);
+      });
+
+      // EZ We should test this too
+      it("A single account with the previously granted role", async () => {
+        const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
+        await proveTx(accessControlExtMock.grantRoleBatch(userRole, [userAddresses[0]]));
+        expect(await accessControlExtMock.hasRole(userRole, userAddresses[0])).to.equal(true);
+
+        await expect(
+          accessControlExtMock.grantRoleBatch(userRole, [userAddresses[0]])
+        ).not.to.emit(accessControlExtMock, EVENT_NAME_ROLE_GRANTED);
+      });
+
+      it("Multiple accounts without the previously granted role", async () => {
+        const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
+        for (let userAddress: string of userAddresses) {
+          expect(await accessControlExtMock.hasRole(userRole, userAddress)).to.equal(false);
+        }
+
+        const tx: Promise<TransactionResponse> = accessControlExtMock.grantRoleBatch(userRole, userAddresses);
+
+        for (const userAddress of userAddresses) {
+          await expect(tx).to.emit(
+            accessControlExtMock,
+            EVENT_NAME_ROLE_GRANTED
+          ).withArgs(userRole, userAddress, deployer.address);
+          expect(await accessControlExtMock.hasRole(userRole, userAddress)).to.equal(true);
+        }
+      });
+
+      // EZ Testing when the input array is empty
+      it("No accounts", async () => {
+        const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
+
+        await expect(
+          accessControlExtMock.grantRoleBatch(userRole, [])
+        ).not.to.emit(accessControlExtMock, EVENT_NAME_ROLE_GRANTED);
+      });
     });
 
-    it("The function 'grantRoleBatch' executes as expected with multiple users", async () => {
-      const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
-      await proveTx(accessControlExtMock.setUserRoleAdmin());
+    describe("Is reverted if", async () => {
+      it("The sender does not have the expected admin role", async () => {
+        const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
 
-      await expect(accessControlExtMock.grantRoleBatch(userRole, userAddresses))
-        .to.emit(accessControlExtMock, EVENT_NAME_ROLE_GRANTED)
-        .withArgs(userRole, userAddresses[0], deployer.address)
-        .and.to.emit(accessControlExtMock, EVENT_NAME_ROLE_GRANTED)
-        .withArgs(userRole, userAddresses[1], deployer.address)
-        .and.to.emit(accessControlExtMock, EVENT_NAME_ROLE_GRANTED)
-        .withArgs(userRole, userAddresses[2], deployer.address)
-        .and.to.emit(accessControlExtMock, EVENT_NAME_ROLE_GRANTED)
-        .withArgs(userRole, userAddresses[3], deployer.address)
-      ;
-      for (let userAddress of userAddresses) {
-        expect(await accessControlExtMock.hasRole(userRole, userAddress)).to.equal(true);
-      }
+        await expect(
+          accessControlExtMock.connect(attacker).grantRoleBatch(userRole, [])
+        ).to.be.revertedWith(createRevertMessageDueToMissingRole(attacker.address, ownerRole));
+      });
     });
 
-    it("The function 'grantRoleBatch' revert if user does not have rights", async () => {
-      const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
-      const REVERT_MESSAGE_IF_USER_DOES_NOT_HAVE_RIGHTS = `AccessControl: account ${userAddresses[0].toLowerCase()} is missing role ${ownerRole.toLowerCase()}`;
-      await proveTx(accessControlExtMock.setUserRoleAdmin());
+    // EZ Split tests by the functions
+    describe("Function 'revokeRoleBatch()'", async () => {
+      // EZ Split tests by the checking way (positive and negative ones)
+      describe("Executes as expected if the input account array contains", async () => {
+        it("A single account with the previously granted role", async () => {
+          const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
+          await proveTx(accessControlExtMock.grantRoleBatch(userRole, [userAddresses[0]]));
+          expect(await accessControlExtMock.hasRole(userRole, userAddresses[0])).to.equal(true);
 
-      await expect(
-        accessControlExtMock.connect(users[0]).grantRoleBatch(userRole, [])
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_USER_DOES_NOT_HAVE_RIGHTS);
-    });
+          await expect(
+            accessControlExtMock.revokeRoleBatch(userRole, [userAddresses[0]])
+          ).to.emit(
+            accessControlExtMock, EVENT_NAME_ROLE_REVOKED
+          ).withArgs(userRole, userAddresses[0], deployer.address);
 
-    it("The function 'revokeRoleBatch' executes as expected with 1 user", async () => {
-      const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
-      await proveTx(accessControlExtMock.setUserRoleAdmin());
-      await proveTx(accessControlExtMock.grantRoleBatch(userRole, [userAddresses[0]]));
-      await expect(accessControlExtMock.revokeRoleBatch(userRole, [
-        userAddresses[0]
-      ]))
-        .to.emit(accessControlExtMock, EVENT_NAME_ROLE_REVOKED)
-        .withArgs(userRole, userAddresses[0], deployer.address);
+          expect(await accessControlExtMock.hasRole(userRole, userAddresses[0])).to.equal(false);
+        });
 
-      expect(await accessControlExtMock.hasRole(userRole, userAddresses[0])).to.equal(false);
-    });
+        // EZ We should test this too
+        it("A single account without the previously granted role", async () => {
+          const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
+          expect(await accessControlExtMock.hasRole(userRole, userAddresses[0])).to.equal(false);
 
-    it("The function 'revokeRoleBatch' executes as expected with multiple users", async () => {
-      const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
-      await proveTx(accessControlExtMock.setUserRoleAdmin());
-      await proveTx(accessControlExtMock.grantRoleBatch(userRole, userAddresses));
-      for (let userAddress of userAddresses) {
-        expect(await accessControlExtMock.hasRole(userRole, userAddress)).to.equal(true);
-      }
-      await expect(accessControlExtMock.revokeRoleBatch(userRole, userAddresses))
-        .to.emit(accessControlExtMock, EVENT_NAME_ROLE_REVOKED)
-        .withArgs(userRole, userAddresses[0], deployer.address)
-        .and.to.emit(accessControlExtMock, EVENT_NAME_ROLE_REVOKED)
-        .withArgs(userRole, userAddresses[1], deployer.address)
-        .and.to.emit(accessControlExtMock, EVENT_NAME_ROLE_REVOKED)
-        .withArgs(userRole, userAddresses[2], deployer.address)
-        .and.to.emit(accessControlExtMock, EVENT_NAME_ROLE_REVOKED)
-        .withArgs(userRole, userAddresses[3], deployer.address)
-      ;
+          await expect(
+            accessControlExtMock.revokeRoleBatch(userRole, [userAddresses[0]])
+          ).not.to.emit(accessControlExtMock, EVENT_NAME_ROLE_REVOKED);
+        });
 
-      for (let userAddress of userAddresses) {
-        expect(await accessControlExtMock.hasRole(userRole, userAddress)).to.equal(false);
-      }
-    });
+        it("Multiple accounts with the previously granted role", async () => {
+          const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
+          await proveTx(accessControlExtMock.grantRoleBatch(userRole, userAddresses));
+          for (let userAddress: string of userAddresses) {
+            expect(await accessControlExtMock.hasRole(userRole, userAddress)).to.equal(true);
+          }
 
-    it("The function 'revokeRoleBatch' revert if user does not have rights", async () => {
-      const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
-      const REVERT_MESSAGE_IF_USER_DOES_NOT_HAVE_RIGHTS = `AccessControl: account ${userAddresses[0].toLowerCase()} is missing role ${ownerRole.toLowerCase()}`;
-      await proveTx(accessControlExtMock.setUserRoleAdmin());
-      await proveTx(accessControlExtMock.grantRoleBatch(userRole, userAddresses));
-      await expect(
-        accessControlExtMock.connect(users[0]).revokeRoleBatch(userRole, userAddresses)
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_USER_DOES_NOT_HAVE_RIGHTS);
+          const tx: Promise<TransactionResponse> = accessControlExtMock.revokeRoleBatch(userRole, userAddresses);
+
+          for (const userAddress: string of userAddresses) {
+            await expect(tx).to.emit(
+              accessControlExtMock,
+              EVENT_NAME_ROLE_REVOKED
+            ).withArgs(userRole, userAddress, deployer.address);
+            expect(await accessControlExtMock.hasRole(userRole, userAddress)).to.equal(false);
+          }
+        });
+
+        // EZ Testing when the input array is empty
+        it("No accounts", async () => {
+          const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
+
+          await expect(
+            accessControlExtMock.revokeRoleBatch(userRole, [])
+          ).not.to.emit(accessControlExtMock, EVENT_NAME_ROLE_REVOKED);
+        });
+      });
+
+      describe("Is reverted if", async () => {
+        it("The sender does not have the expected admin role", async () => {
+          const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
+
+          await expect(
+            accessControlExtMock.connect(attacker).revokeRoleBatch(userRole, [])
+          ).to.be.revertedWith(createRevertMessageDueToMissingRole(attacker.address, ownerRole));
+        });
+      });
     });
   });
 });
