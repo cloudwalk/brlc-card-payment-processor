@@ -27,14 +27,14 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
 
   let accessControlExtMockFactory: ContractFactory;
   let deployer: SignerWithAddress;
-  let attacker: SignerWithAddress; // EZ Add more readability
+  let attacker: SignerWithAddress;
   let users: SignerWithAddress[];
   let userAddresses: string[];
 
   before(async () => {
     accessControlExtMockFactory = await ethers.getContractFactory("AccessControlExtUpgradeableMock");
     [deployer, attacker, ...users] = await ethers.getSigners();
-    // EZ 3 users is more than enough
+
     userAddresses = [
       users[0].address,
       users[1].address,
@@ -86,9 +86,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
     });
   });
 
-  // EZ Split tests by the functions
   describe("Function 'grantRoleBatch()'", async () => {
-    // EZ Split tests by the checking way (positive and negative ones)
     describe("Executes as expected if the input account array contains", async () => {
       it("A single account without the previously granted role", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
@@ -103,7 +101,6 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
         expect(await accessControlExtMock.hasRole(userRole, userAddresses[0])).to.equal(true);
       });
 
-      // EZ We should test this too
       it("A single account with the previously granted role", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
         await proveTx(accessControlExtMock.grantRoleBatch(userRole, [userAddresses[0]]));
@@ -131,7 +128,6 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
         }
       });
 
-      // EZ Testing when the input array is empty
       it("No accounts", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
 
@@ -151,9 +147,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
       });
     });
 
-    // EZ Split tests by the functions
     describe("Function 'revokeRoleBatch()'", async () => {
-      // EZ Split tests by the checking way (positive and negative ones)
       describe("Executes as expected if the input account array contains", async () => {
         it("A single account with the previously granted role", async () => {
           const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
@@ -169,7 +163,6 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
           expect(await accessControlExtMock.hasRole(userRole, userAddresses[0])).to.equal(false);
         });
 
-        // EZ We should test this too
         it("A single account without the previously granted role", async () => {
           const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
           expect(await accessControlExtMock.hasRole(userRole, userAddresses[0])).to.equal(false);
@@ -197,7 +190,6 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
           }
         });
 
-        // EZ Testing when the input array is empty
         it("No accounts", async () => {
           const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
 

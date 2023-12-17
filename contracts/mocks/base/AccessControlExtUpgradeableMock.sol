@@ -20,21 +20,12 @@ contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable {
      * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
      */
     function initialize() public initializer {
-        //EZ The configuration should be done only after initialization
-        //_setupRole(OWNER_ROLE, _msgSender());
-        //_setRoleAdmin(USER_ROLE, OWNER_ROLE);
-
         __AccessControlExt_init();
-        __AccessControlExt_init_unchained(); // EZ we are following the existing logic of calling all unchained initializers
+        __AccessControlExt_init_unchained();
 
         _setupRole(OWNER_ROLE, _msgSender());
         _setRoleAdmin(USER_ROLE, OWNER_ROLE);
     }
-
-    // EZ It is redundant for testing and can be executed directly in the initialize function
-    //    function setUserRoleAdmin() public {
-    //        _setRoleAdmin(USER_ROLE, OWNER_ROLE);
-    //    }
 
     /**
      * @dev Needed to check that the initialize function of the ancestor contract

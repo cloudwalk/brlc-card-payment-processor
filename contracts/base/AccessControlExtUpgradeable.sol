@@ -32,7 +32,6 @@ abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
      *
      * See {AccessControlExtUpgradeable-__AccessControlExt_init}.
      */
-    // EZ Prettier (`npm run prettier`) told me this formatting
     function __AccessControlExt_init_unchained() internal onlyInitializing {}
 
     /**
@@ -48,7 +47,6 @@ abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
      * May emit a {RoleGranted} event for each account.
      */
     function grantRoleBatch(bytes32 role, address[] memory accounts) public virtual onlyRole(getRoleAdmin(role)) {
-        // EZ Prettier (`npm run prettier`) told me this formatting
         for (uint i = 0; i < accounts.length; i++) {
             _grantRole(role, accounts[i]);
         }
@@ -66,17 +64,8 @@ abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
      * May emit a {RoleRevoked} event for each account.
      */
     function revokeRoleBatch(bytes32 role, address[] memory accounts) public virtual onlyRole(getRoleAdmin(role)) {
-        // EZ Prettier (`npm run prettier`) told me this formatting
         for (uint i = 0; i < accounts.length; i++) {
             _revokeRole(role, accounts[i]);
         }
     }
-
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    // EZ It is wrong because adds 49 more storage slots.
-    //uint256[49] private __gap;
 }
