@@ -1067,6 +1067,9 @@ contract CardPaymentProcessorV2 is
         if (sumAmount > type(uint64).max) {
             revert InappropriateSumAmount();
         }
+        if (operation.sponsor == address(0)) {
+            operation.subsidyLimit = 0;
+        }
         (uint256 payerSumAmount, uint256 sponsorSumAmount) = _defineSumAmountParts(sumAmount, operation.subsidyLimit);
         IERC20Upgradeable erc20Token = IERC20Upgradeable(_token);
         operation.payerSumAmount = payerSumAmount;
