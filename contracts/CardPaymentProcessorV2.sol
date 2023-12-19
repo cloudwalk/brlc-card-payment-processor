@@ -105,18 +105,45 @@ contract CardPaymentProcessorV2 is
     /// @dev The requested confirmation amount does not meet the requirements.
     error InappropriateConfirmationAmount();
 
-    /// @dev The requested refunding amount does not meet the requirements.
-    error InappropriateRefundingAmount();
-
-    /// @dev The requested or result sum amount (base + extra) does not meet the requirements.
-    error InappropriateSumAmount();
-
     /**
      * @dev The payment with the provided ID has an inappropriate status.
      * @param paymentId The ID of the payment that does not exist.
      * @param currentStatus The current status of the payment.
      */
     error InappropriatePaymentStatus(bytes32 paymentId, PaymentStatus currentStatus);
+
+    /// @dev The requested refunding amount does not meet the requirements.
+    error InappropriateRefundingAmount();
+
+    /// @dev The requested or result sum amount (base + extra) does not meet the requirements.
+    error InappropriateSumAmount();
+
+    /// @dev The array of merged payment Ids is empty.
+    error MergedPaymentIdArrayEmpty();
+
+    /**
+     * @dev The cashback rate of a merged payment does not match the rate of the target payment.
+     * @param mergedPaymentId The ID of the merged payment with a mismatched payer.
+     * @param mergedPaymentCashbackRate The cashback rate of the merged payment.
+     * @param targetPaymentCashbackRate The cashback rate of the target payment.
+     */
+    error MergedPaymentCashbackRateMismatch(
+        bytes32 mergedPaymentId,
+        uint16 mergedPaymentCashbackRate,
+        uint16 targetPaymentCashbackRate
+    );
+
+    /**
+     * @dev The payer of a merged payment does not match the payer of the target payment.
+     * @param mergedPaymentId The ID of the merged payment with a mismatched payer.
+     * @param mergedPaymentPayer The payer address of the merged payment.
+     * @param targetPaymentPayer The payer address of the target payment.
+     */
+    error MergedPaymentPayerMismatch(
+        bytes32 mergedPaymentId,
+        address mergedPaymentPayer,
+        address targetPaymentPayer
+    );
 
     /// @dev The zero payer address has been passed as a function argument.
     error PayerZeroAddress();
@@ -141,33 +168,6 @@ contract CardPaymentProcessorV2 is
 
     /// @dev Zero payment ID has been passed as a function argument.
     error PaymentZeroId();
-
-    /// @dev The array of merged payment Ids is empty.
-    error MergedPaymentIdArrayEmpty();
-
-    /**
-     * @dev The payer of a merged payment does not match the payer of the target payment.
-     * @param mergedPaymentId The ID of the merged payment with a mismatched payer.
-     * @param mergedPaymentPayer The payer address of the merged payment.
-     * @param targetPaymentPayer The payer address of the target payment.
-     */
-    error MergedPaymentPayerMismatch(
-        bytes32 mergedPaymentId,
-        address mergedPaymentPayer,
-        address targetPaymentPayer
-    );
-
-    /**
-     * @dev The cashback rate of a merged payment does not match the rate of the target payment.
-     * @param mergedPaymentId The ID of the merged payment with a mismatched payer.
-     * @param mergedPaymentCashbackRate The cashback rate of the merged payment.
-     * @param targetPaymentCashbackRate The cashback rate of the target payment.
-     */
-    error MergedPaymentCashbackRateMismatch(
-        bytes32 mergedPaymentId,
-        uint16 mergedPaymentCashbackRate,
-        uint16 targetPaymentCashbackRate
-    );
 
     /// @dev The zero token address has been passed as a function argument.
     error TokenZeroAddress();
