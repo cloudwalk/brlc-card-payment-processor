@@ -4,11 +4,11 @@ pragma solidity 0.8.16;
 
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
 import { StoragePlaceholder200 } from "./base/StoragePlaceholder200.sol";
+import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
 
 import { ITokenDistributor } from "./interfaces/ITokenDistributor.sol";
 
@@ -20,7 +20,7 @@ import { ITokenDistributor } from "./interfaces/ITokenDistributor.sol";
  * About roles see https://docs.openzeppelin.com/contracts/4.x/api/access#AccessControl.
  */
 contract TokenDistributor is
-    AccessControlUpgradeable,
+    AccessControlExtUpgradeable,
     PausableExtUpgradeable,
     RescuableUpgradeable,
     StoragePlaceholder200,
@@ -63,6 +63,7 @@ contract TokenDistributor is
 
     function __TokenDistributor_init() internal onlyInitializing {
         __AccessControl_init_unchained();
+        __AccessControlExt_init_unchained();
         __Context_init_unchained();
         __ERC165_init_unchained();
         __Pausable_init_unchained();

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.8;
 
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import { AccessControlExtUpgradeable } from "./AccessControlExtUpgradeable.sol";
 
 /**
  * @title BlacklistableUpgradeable base contract
@@ -12,7 +12,7 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
  * This contract is used through inheritance. It makes available the modifier `notBlacklisted`,
  * which can be applied to functions to restrict their usage to not blacklisted accounts only.
  */
-abstract contract BlacklistableUpgradeable is AccessControlUpgradeable {
+abstract contract BlacklistableUpgradeable is AccessControlExtUpgradeable {
     /// @dev The role of the blacklister that is allowed to blacklist and unblacklist accounts.
     bytes32 public constant BLACKLISTER_ROLE = keccak256("BLACKLISTER_ROLE");
 
@@ -59,6 +59,7 @@ abstract contract BlacklistableUpgradeable is AccessControlUpgradeable {
         __Context_init_unchained();
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
+        __AccessControlExt_init_unchained();
 
         __Blacklistable_init_unchained(blacklisterRoleAdmin);
     }

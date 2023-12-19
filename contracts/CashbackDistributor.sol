@@ -5,12 +5,12 @@ pragma solidity 0.8.16;
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { EnumerableSetUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 import { BlacklistableUpgradeable } from "./base/BlacklistableUpgradeable.sol";
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
 import { StoragePlaceholder200 } from "./base/StoragePlaceholder200.sol";
+import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
 
 import { CashbackDistributorStorage } from "./CashbackDistributorStorage.sol";
 import { ICashbackDistributor } from "./interfaces/ICashbackDistributor.sol";
@@ -20,7 +20,7 @@ import { ICashbackDistributor } from "./interfaces/ICashbackDistributor.sol";
  * @dev Wrapper contract for the cashback operations.
  */
 contract CashbackDistributor is
-    AccessControlUpgradeable,
+    AccessControlExtUpgradeable,
     BlacklistableUpgradeable,
     PausableExtUpgradeable,
     RescuableUpgradeable,
@@ -79,6 +79,7 @@ contract CashbackDistributor is
         __Context_init_unchained();
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
+        __AccessControlExt_init_unchained();
         __Blacklistable_init_unchained(OWNER_ROLE);
         __Pausable_init_unchained();
         __PausableExt_init_unchained(OWNER_ROLE);

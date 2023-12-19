@@ -4,7 +4,8 @@ pragma solidity ^0.8.8;
 
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+
+import { AccessControlExtUpgradeable } from "./AccessControlExtUpgradeable.sol";
 
 /**
  * @title RescuableUpgradeable base contract
@@ -14,7 +15,7 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
  * This contract is used through inheritance. It introduces the {RESCUER_ROLE} role that is allowed to
  * rescue tokens locked up in the contract that is inherited from this one.
  */
-abstract contract RescuableUpgradeable is AccessControlUpgradeable {
+abstract contract RescuableUpgradeable is AccessControlExtUpgradeable {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// @dev The role of rescuer that is allowed to rescue tokens locked up in the contract.
@@ -31,6 +32,7 @@ abstract contract RescuableUpgradeable is AccessControlUpgradeable {
         __Context_init_unchained();
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
+        __AccessControlExt_init_unchained();
 
         __Rescuable_init_unchained(rescuerRoleAdmin);
     }
