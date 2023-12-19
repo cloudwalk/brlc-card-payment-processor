@@ -20,11 +20,9 @@ contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable {
      * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
      */
     function initialize() public initializer {
-        __AccessControlExt_init();
-        __AccessControlExt_init_unchained();
-
         _setupRole(OWNER_ROLE, _msgSender());
         _setRoleAdmin(USER_ROLE, OWNER_ROLE);
+        __AccessControlExt_init();
     }
 
     /**
