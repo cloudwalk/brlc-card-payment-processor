@@ -1115,6 +1115,13 @@ contract CardPaymentProcessorV2 is
             );
         }
 
+        // Increase cashback ahead of payer token transfers to avoid conner cases with lack of payer balance
+        if (newPaymentDetails.cashbackAmount > oldPaymentDetails.cashbackAmount) {
+            uint256 amount = newPaymentDetails.cashbackAmount - oldPaymentDetails.cashbackAmount;
+            amount = _increaseCashback(paymentId, amount);
+            newPaymentDetails.cashbackAmount = oldPaymentDetails.cashbackAmount + amount;
+        }
+
         //Payer token transferring
         {
             int256 amount = - (int256(newPaymentDetails.payerReminder) - int256(oldPaymentDetails.payerReminder));
@@ -1129,6 +1136,13 @@ contract CardPaymentProcessorV2 is
             }
         }
 
+        // Cashback processing if the cashback amount decreases
+        if (newPaymentDetails.cashbackAmount < oldPaymentDetails.cashbackAmount) {
+            uint256 amount = oldPaymentDetails.cashbackAmount - newPaymentDetails.cashbackAmount;
+            amount = _revokeCashback(paymentId, amount);
+            newPaymentDetails.cashbackAmount = oldPaymentDetails.cashbackAmount - amount;
+        }
+
         //Sponsor token transferring
         address sponsor = payment.sponsor;
         if (payment.sponsor != address(0)) {
@@ -1139,17 +1153,6 @@ contract CardPaymentProcessorV2 is
                 uint256 amount = oldPaymentDetails.sponsorReminder - newPaymentDetails.sponsorReminder;
                 erc20Token.safeTransfer(sponsor, amount);
             }
-        }
-
-        // Cashback processing
-        if (newPaymentDetails.cashbackAmount > oldPaymentDetails.cashbackAmount) {
-            uint256 amount = newPaymentDetails.cashbackAmount - oldPaymentDetails.cashbackAmount;
-            amount = _increaseCashback(paymentId, amount);
-            newPaymentDetails.cashbackAmount = oldPaymentDetails.cashbackAmount + amount;
-        } else if (newPaymentDetails.cashbackAmount < oldPaymentDetails.cashbackAmount) {
-            uint256 amount = oldPaymentDetails.cashbackAmount - newPaymentDetails.cashbackAmount;
-            amount = _revokeCashback(paymentId, amount);
-            newPaymentDetails.cashbackAmount = oldPaymentDetails.cashbackAmount - amount;
         }
     }
 
