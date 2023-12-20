@@ -17,7 +17,7 @@ const BYTES32_LENGTH: number = 32;
 enum CashbackStatus {
   Nonexistent = 0,
   Success = 1,
-  Blacklisted = 2,
+  Blocklisted = 2,
   OutOfFunds = 3,
   Disabled = 4,
   Revoked = 5,
@@ -28,7 +28,7 @@ enum CashbackStatus {
 enum IncreaseStatus {
   Nonexistent = 0,
   Success = 1,
-  Blacklisted = 2,
+  Blocklisted = 2,
   OutOfFunds = 3,
   Disabled = 4,
   Inapplicable = 5,
@@ -193,7 +193,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   const REVERT_ERROR_IF_EXTERNAL_ID_IS_ZERO = "ZeroExternalId";
 
   const ownerRole: string = ethers.utils.id("OWNER_ROLE");
-  const blacklisterRole: string = ethers.utils.id("BLACKLISTER_ROLE");
+  const blocklisterRole: string = ethers.utils.id("BLOCKLISTER_ROLE");
   const pauserRole: string = ethers.utils.id("PAUSER_ROLE");
   const rescuerRole: string = ethers.utils.id("RESCUER_ROLE");
   const distributorRole: string = ethers.utils.id("DISTRIBUTOR_ROLE");
@@ -234,7 +234,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     const tokenMock1 = await deployTokenMock("1");
     const tokenMock2 = await deployTokenMock("2");
 
-    await proveTx(cashbackDistributor.grantRole(blacklisterRole, deployer.address));
+    await proveTx(cashbackDistributor.grantRole(blocklisterRole, deployer.address));
     await proveTx(cashbackDistributor.grantRole(distributorRole, distributor.address));
     await proveTx(cashbackDistributor.enable());
 
@@ -496,14 +496,14 @@ describe("Contract 'CashbackDistributor'", async () => {
 
       // The admins of roles
       expect(await cashbackDistributor.getRoleAdmin(ownerRole)).to.equal(ownerRole);
-      expect(await cashbackDistributor.getRoleAdmin(blacklisterRole)).to.equal(ownerRole);
+      expect(await cashbackDistributor.getRoleAdmin(blocklisterRole)).to.equal(ownerRole);
       expect(await cashbackDistributor.getRoleAdmin(pauserRole)).to.equal(ownerRole);
       expect(await cashbackDistributor.getRoleAdmin(rescuerRole)).to.equal(ownerRole);
       expect(await cashbackDistributor.getRoleAdmin(distributorRole)).to.equal(ownerRole);
 
       // The deployer should have the owner role, but not the other roles
       expect(await cashbackDistributor.hasRole(ownerRole, deployer.address)).to.equal(true);
-      expect(await cashbackDistributor.hasRole(blacklisterRole, deployer.address)).to.equal(false);
+      expect(await cashbackDistributor.hasRole(blocklisterRole, deployer.address)).to.equal(false);
       expect(await cashbackDistributor.hasRole(pauserRole, deployer.address)).to.equal(false);
       expect(await cashbackDistributor.hasRole(rescuerRole, deployer.address)).to.equal(false);
       expect(await cashbackDistributor.hasRole(distributorRole, deployer.address)).to.equal(false);
@@ -688,11 +688,11 @@ describe("Contract 'CashbackDistributor'", async () => {
           await checkSending(context);
         });
 
-        it("The cashback recipient is blacklisted", async () => {
+        it("The cashback recipient is blocklisted", async () => {
           const context = await beforeSendingCashback();
           const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
-          await proveTx(cashbackDistributor.blacklist(cashback.recipient.address));
-          cashback.status = CashbackStatus.Blacklisted;
+          await proveTx(cashbackDistributor.blocklist(cashback.recipient.address));
+          cashback.status = CashbackStatus.Blocklisted;
           await checkSending(context);
         });
 
@@ -1083,13 +1083,13 @@ describe("Contract 'CashbackDistributor'", async () => {
           await checkIncreasing(IncreaseStatus.OutOfFunds, context);
         });
 
-        it("The cashback recipient is blacklisted", async () => {
+        it("The cashback recipient is blocklisted", async () => {
           const context = await beforeSendingCashback();
           const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
           cashback.increaseRequestedAmount = Math.floor(cashback.requestedAmount * 0.1);
           await prepareIncrease(context);
-          await proveTx(cashbackDistributor.blacklist(cashback.recipient.address));
-          await checkIncreasing(IncreaseStatus.Blacklisted, context);
+          await proveTx(cashbackDistributor.blocklist(cashback.recipient.address));
+          await checkIncreasing(IncreaseStatus.Blocklisted, context);
         });
 
         it("The initial cashback operations failed", async () => {

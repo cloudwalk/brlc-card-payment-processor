@@ -24,7 +24,7 @@ interface ICashbackDistributorTypes {
      * The possible values:
      * - Nonexistent - The cashback operation does not exist (the default value).
      * - Success ----- The operation has been successfully executed (cashback sent fully).
-     * - Blacklisted - The cashback operation has been refused because the target account is blacklisted.
+     * - Blocklisted - The cashback operation has been refused because the target account is blocklisted.
      * - OutOfFunds -- The cashback operation has been refused because the contract has not enough tokens.
      * - Disabled ---- The cashback operation has been refused because cashback operations are disabled.
      * - Revoked ----- Obsolete and not in use anymore.
@@ -34,7 +34,7 @@ interface ICashbackDistributorTypes {
     enum CashbackStatus {
         Nonexistent, // 0
         Success,     // 1
-        Blacklisted, // 2
+        Blocklisted, // 2
         OutOfFunds,  // 3
         Disabled,    // 4
         Revoked,     // 5
@@ -68,7 +68,7 @@ interface ICashbackDistributorTypes {
      * The possible values:
      * - Nonexistent -- The operation does not exist (the default value).
      * - Success ------ The operation has been successfully executed (cashback sent fully).
-     * - Blacklisted -- The operation has been refused because the target account is blacklisted.
+     * - Blocklisted -- The operation has been refused because the target account is blocklisted.
      * - OutOfFunds --- The operation has been refused because the contract has not enough tokens.
      * - Disabled ----- The operation has been refused because cashback operations are disabled.
      * - Inapplicable - The operation has been failed because the cashback has not relevant status.
@@ -78,7 +78,7 @@ interface ICashbackDistributorTypes {
     enum IncreaseStatus {
         Nonexistent,  // 0
         Success,      // 1
-        Blacklisted,  // 2
+        Blocklisted,  // 2
         OutOfFunds,   // 3
         Disabled,     // 4
         Inapplicable, // 5

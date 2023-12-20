@@ -2030,7 +2030,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE = "ERC20: transfer amount exceeds balance";
 
   const REVERT_ERROR_IF_TOKEN_ADDRESS_IZ_ZERO = "ZeroTokenAddress";
-  const REVERT_ERROR_IF_ACCOUNT_IS_BLACKLISTED = "BlacklistedAccount";
+  const REVERT_ERROR_IF_ACCOUNT_IS_BLOCKLISTED = "BlocklistedAccount";
   const REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST = "PaymentNotExist";
   const REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS = "PaymentAlreadyExists";
   const REVERT_ERROR_IF_PAYMENT_IS_ALREADY_CLEARED = "PaymentAlreadyCleared";
@@ -2056,7 +2056,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const REVERT_ERROR_IF_SUBSIDIZED_PAYMENT_WITH_NON_ZERO_REFUND_AMOUNT = "SubsidizedPaymentWithNonZeroRefundAmount";
 
   const ownerRole: string = ethers.utils.id("OWNER_ROLE");
-  const blacklisterRole: string = ethers.utils.id("BLACKLISTER_ROLE");
+  const blocklisterRole: string = ethers.utils.id("BLOCKLISTER_ROLE");
   const pauserRole: string = ethers.utils.id("PAUSER_ROLE");
   const rescuerRole: string = ethers.utils.id("RESCUER_ROLE");
   const executorRole: string = ethers.utils.id("EXECUTOR_ROLE");
@@ -2213,14 +2213,14 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       // The admins of roles
       expect(await cardPaymentProcessor.getRoleAdmin(ownerRole)).to.equal(ownerRole);
-      expect(await cardPaymentProcessor.getRoleAdmin(blacklisterRole)).to.equal(ownerRole);
+      expect(await cardPaymentProcessor.getRoleAdmin(blocklisterRole)).to.equal(ownerRole);
       expect(await cardPaymentProcessor.getRoleAdmin(pauserRole)).to.equal(ownerRole);
       expect(await cardPaymentProcessor.getRoleAdmin(rescuerRole)).to.equal(ownerRole);
       expect(await cardPaymentProcessor.getRoleAdmin(executorRole)).to.equal(ownerRole);
 
       // The deployer should have the owner role, but not the other roles
       expect(await cardPaymentProcessor.hasRole(ownerRole, deployer.address)).to.equal(true);
-      expect(await cardPaymentProcessor.hasRole(blacklisterRole, deployer.address)).to.equal(false);
+      expect(await cardPaymentProcessor.hasRole(blocklisterRole, deployer.address)).to.equal(false);
       expect(await cardPaymentProcessor.hasRole(pauserRole, deployer.address)).to.equal(false);
       expect(await cardPaymentProcessor.hasRole(rescuerRole, deployer.address)).to.equal(false);
       expect(await cardPaymentProcessor.hasRole(executorRole, deployer.address)).to.equal(false);
@@ -2542,12 +2542,12 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
 
-      it("The caller is blacklisted", async () => {
+      it("The caller is blocklisted", async () => {
         const context = await prepareForPayments();
         const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-        await proveTx(cardPaymentProcessorShell.contract.grantRole(blacklisterRole, deployer.address));
-        await proveTx(cardPaymentProcessorShell.contract.blacklist(payment.account.address));
+        await proveTx(cardPaymentProcessorShell.contract.grantRole(blocklisterRole, deployer.address));
+        await proveTx(cardPaymentProcessorShell.contract.blocklist(payment.account.address));
 
         await expect(
           cardPaymentProcessorShell.contract.connect(payment.account).makePayment(
@@ -2556,7 +2556,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.authorizationId,
             payment.correlationId
           )
-        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_ACCOUNT_IS_BLACKLISTED);
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_ACCOUNT_IS_BLOCKLISTED);
       });
     });
   });
