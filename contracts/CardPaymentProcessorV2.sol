@@ -115,7 +115,7 @@ contract CardPaymentProcessorV2 is
     /// @dev The requested refunding amount does not meet the requirements.
     error InappropriateRefundingAmount();
 
-    /// @dev The requested or result sum amount (base + extra) does not meet the requirements.
+    /// @dev The requested or result or updated sum amount (base + extra) does not meet the requirements.
     error InappropriateSumAmount();
 
     /// @dev The array of merged payment Ids is empty.
@@ -753,7 +753,7 @@ contract CardPaymentProcessorV2 is
         _checkActivePaymentStatus(paymentId, payment.status);
 
         if (payment.refundAmount > uint256(newBaseAmount) + uint256(newExtraAmount)) {
-            revert InappropriateRefundingAmount();
+            revert InappropriateSumAmount();
         }
 
         PaymentDetails memory oldPaymentDetails = _definePaymentDetails(payment, PaymentRecalculationKind.None);
