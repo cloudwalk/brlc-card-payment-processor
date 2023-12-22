@@ -818,7 +818,7 @@ contract CardPaymentProcessorV2 is
         uint256 eventFlags = _defineEventFlags(sponsor);
         bytes memory eventData = abi.encodePacked(
             EVENT_DEFAULT_VERSION,
-            eventFlags,
+            uint8(eventFlags),
             uint64(oldPaymentDetails.payerReminder)
         );
         if (eventFlags & EVENT_FLAG_MASK_SPONSORED != 0) {
