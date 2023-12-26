@@ -51,7 +51,7 @@ describe("Contract 'TokenDistributor'", async () => {
 
   it("The initialize function can't be called more than once", async () => {
     await expect(
-      tokenDistributor.initialize()
+      tokenDistributor.callStatic.initialize()
     ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
   });
 
@@ -86,7 +86,7 @@ describe("Contract 'TokenDistributor'", async () => {
       await proveTx(tokenDistributor.grantRole(pauserRole, deployer.address));
       await proveTx(tokenDistributor.pause());
       await expect(
-        tokenDistributor.connect(distributor).distributeTokens(
+        tokenDistributor.connect(distributor).callStatic.distributeTokens(
           tokenMock.address,
           recipientAddresses,
           balances
@@ -96,7 +96,7 @@ describe("Contract 'TokenDistributor'", async () => {
 
     it("Is reverted if the caller does not have the distributor role", async () => {
       await expect(
-        tokenDistributor.connect(deployer).distributeTokens(
+        tokenDistributor.connect(deployer).callStatic.distributeTokens(
           tokenMock.address,
           recipientAddresses,
           balances
@@ -106,7 +106,7 @@ describe("Contract 'TokenDistributor'", async () => {
 
     it("Is reverted if the token address is zero", async () => {
       await expect(
-        tokenDistributor.connect(distributor).distributeTokens(
+        tokenDistributor.connect(distributor).callStatic.distributeTokens(
           ethers.constants.AddressZero,
           recipientAddresses,
           balances
@@ -116,7 +116,7 @@ describe("Contract 'TokenDistributor'", async () => {
 
     it("Is reverted if the array of recipients is empty", async () => {
       await expect(
-        tokenDistributor.connect(distributor).distributeTokens(
+        tokenDistributor.connect(distributor).callStatic.distributeTokens(
           tokenMock.address,
           [],
           balances
@@ -128,7 +128,7 @@ describe("Contract 'TokenDistributor'", async () => {
       let badBalances = [...balances];
       badBalances.pop();
       await expect(
-        tokenDistributor.connect(distributor).distributeTokens(
+        tokenDistributor.connect(distributor).callStatic.distributeTokens(
           tokenMock.address,
           recipientAddresses,
           badBalances
@@ -140,7 +140,7 @@ describe("Contract 'TokenDistributor'", async () => {
       await proveTx(tokenMock.mint(tokenDistributor.address, balanceTotal));
       recipientAddresses[recipientAddresses.length - 1] = ethers.constants.AddressZero;
       await expect(
-        tokenDistributor.connect(distributor).distributeTokens(
+        tokenDistributor.connect(distributor).callStatic.distributeTokens(
           tokenMock.address,
           recipientAddresses,
           balances
@@ -153,7 +153,7 @@ describe("Contract 'TokenDistributor'", async () => {
       let badBalances = [...balances];
       badBalances[badBalances.length - 1] = 0;
       await expect(
-        tokenDistributor.connect(distributor).distributeTokens(
+        tokenDistributor.connect(distributor).callStatic.distributeTokens(
           tokenMock.address,
           recipientAddresses,
           badBalances
@@ -164,7 +164,7 @@ describe("Contract 'TokenDistributor'", async () => {
     it("Is reverted if the contract has not enough tokens to execute all transfers", async () => {
       await proveTx(tokenMock.mint(tokenDistributor.address, balanceTotal - balances[0]));
       await expect(
-        tokenDistributor.connect(distributor).distributeTokens(
+        tokenDistributor.connect(distributor).callStatic.distributeTokens(
           tokenMock.address,
           recipientAddresses,
           balances

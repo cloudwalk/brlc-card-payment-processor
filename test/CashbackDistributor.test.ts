@@ -524,7 +524,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     it("Is reverted if it is called a second time", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
       await expect(
-        cashbackDistributor.initialize()
+        cashbackDistributor.callStatic.initialize()
       ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
     });
   });
@@ -547,7 +547,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
       await expect(
-        cashbackDistributor.connect(user).enable()
+        cashbackDistributor.connect(user).callStatic.enable()
       ).to.be.revertedWith(createRevertMessageDueToMissingRole(user.address, ownerRole));
     });
 
@@ -555,7 +555,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
       await proveTx(cashbackDistributor.enable());
       await expect(
-        cashbackDistributor.enable()
+        cashbackDistributor.callStatic.enable()
       ).to.be.revertedWithCustomError(cashbackDistributor, REVERT_ERROR_IF_CASHBACK_ALREADY_ENABLED);
     });
   });
@@ -580,14 +580,14 @@ describe("Contract 'CashbackDistributor'", async () => {
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
       await expect(
-        cashbackDistributor.connect(user).disable()
+        cashbackDistributor.connect(user).callStatic.disable()
       ).to.be.revertedWith(createRevertMessageDueToMissingRole(user.address, ownerRole));
     });
 
     it("Is reverted if cashback operations are already disabled", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
       await expect(
-        cashbackDistributor.disable()
+        cashbackDistributor.callStatic.disable()
       ).to.be.revertedWithCustomError(cashbackDistributor, REVERT_ERROR_IF_CASHBACK_ALREADY_DISABLED);
     });
   });
@@ -736,7 +736,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
         await pauseContract(cashbackDistributor);
         await expect(
-          cashbackDistributor.connect(cashback.sender).sendCashback(
+          cashbackDistributor.connect(cashback.sender).callStatic.sendCashback(
             cashback.token.address,
             cashback.kind,
             cashback.externalId,
@@ -749,7 +749,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       it("The caller does not have the distributor role", async () => {
         const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
         await expect(
-          cashbackDistributor.sendCashback(
+          cashbackDistributor.callStatic.sendCashback(
             cashback.token.address,
             cashback.kind,
             cashback.externalId,
@@ -762,7 +762,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       it("The token address is zero", async () => {
         const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
         await expect(
-          cashbackDistributor.connect(cashback.sender).sendCashback(
+          cashbackDistributor.connect(cashback.sender).callStatic.sendCashback(
             ZERO_ADDRESS,
             cashback.kind,
             cashback.externalId,
@@ -775,7 +775,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       it("The recipient address is zero", async () => {
         const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
         await expect(
-          cashbackDistributor.connect(cashback.sender).sendCashback(
+          cashbackDistributor.connect(cashback.sender).callStatic.sendCashback(
             cashback.token.address,
             cashback.kind,
             cashback.externalId,
@@ -789,7 +789,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
         cashback.externalId = ZERO_HASH;
         await expect(
-          cashbackDistributor.connect(cashback.sender).sendCashback(
+          cashbackDistributor.connect(cashback.sender).callStatic.sendCashback(
             cashback.token.address,
             cashback.kind,
             cashback.externalId,
@@ -958,14 +958,14 @@ describe("Contract 'CashbackDistributor'", async () => {
         const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
         await pauseContract(cashbackDistributor);
         await expect(
-          cashbackDistributor.connect(distributor).revokeCashback(cashback.nonce, cashback.revokedAmount)
+          cashbackDistributor.connect(distributor).callStatic.revokeCashback(cashback.nonce, cashback.revokedAmount)
         ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
 
       it("Is reverted if the caller does not have the distributor role", async () => {
         const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
         await expect(
-          cashbackDistributor.revokeCashback(cashback.nonce, cashback.revokedAmount)
+          cashbackDistributor.callStatic.revokeCashback(cashback.nonce, cashback.revokedAmount)
         ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, distributorRole));
       });
     });
@@ -1125,14 +1125,14 @@ describe("Contract 'CashbackDistributor'", async () => {
         const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
         await pauseContract(cashbackDistributor);
         await expect(
-          cashbackDistributor.connect(distributor).increaseCashback(cashback.nonce, cashback.revokedAmount)
+          cashbackDistributor.connect(distributor).callStatic.increaseCashback(cashback.nonce, cashback.revokedAmount)
         ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
 
       it("Is reverted if the caller does not have the distributor role", async () => {
         const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
         await expect(
-          cashbackDistributor.increaseCashback(cashback.nonce, cashback.revokedAmount)
+          cashbackDistributor.callStatic.increaseCashback(cashback.nonce, cashback.revokedAmount)
         ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, distributorRole));
       });
     });
