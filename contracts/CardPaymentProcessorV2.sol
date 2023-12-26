@@ -122,7 +122,7 @@ contract CardPaymentProcessorV2 is
     error MergedPaymentIdArrayEmpty();
 
     /**
-     * @dev The cashback rate of a merged payment does not match the rate of the target payment.
+     * @dev The cashback rate of a merged payment is greater the rate of the target payment.
      * @param mergedPaymentId The ID of the merged payment with a mismatched payer.
      * @param mergedPaymentCashbackRate The cashback rate of the merged payment.
      * @param targetPaymentCashbackRate The cashback rate of the target payment.
@@ -491,7 +491,7 @@ contract CardPaymentProcessorV2 is
      * - The target payment and the merged ones must be active.
      * - The target payment and the merged ones must have the same payer address.
      * - The target payment and the merged ones must not be subsidized.
-     * - The target payment and the merged ones must have the same cashback rate.
+     * - The cashback rate of the target payment must not be less than the cashback rate of merged payments.
      */
     function mergePayments(
         bytes32 targetPaymentId,
@@ -995,7 +995,7 @@ contract CardPaymentProcessorV2 is
             if (mergedPayment.sponsor != address(0)) {
                 revert PaymentSubsidized(mergedPaymentId);
             }
-            if (mergedPayment.cashbackRate != storedTargetPayment.cashbackRate) {
+            if (mergedPayment.cashbackRate > storedTargetPayment.cashbackRate) {
                 revert MergedPaymentCashbackRateMismatch(
                     mergedPaymentId,
                     mergedPayment.cashbackRate,
