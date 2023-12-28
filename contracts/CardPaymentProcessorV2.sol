@@ -118,9 +118,6 @@ contract CardPaymentProcessorV2 is
     /// @dev The requested or result or updated sum amount (base + extra) does not meet the requirements.
     error InappropriateSumAmount();
 
-    /// @dev The array of merged payment Ids is empty.
-    error MergedPaymentIdArrayEmpty();
-
     /**
      * @dev The cashback rate of a merged payment is greater the rate of the target payment.
      * @param mergedPaymentId The ID of the merged payment with a mismatched payer.
@@ -132,6 +129,12 @@ contract CardPaymentProcessorV2 is
         uint16 mergedPaymentCashbackRate,
         uint16 targetPaymentCashbackRate
     );
+
+    /// @dev The merged payment ID equals the target payment ID.
+    error MergedPaymentIdAndTargetPaymentIdEquality();
+
+    /// @dev The array of merged payment Ids is empty.
+    error MergedPaymentIdArrayEmpty();
 
     /**
      * @dev The payer of a merged payment does not match the payer of the target payment.
@@ -488,6 +491,7 @@ contract CardPaymentProcessorV2 is
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
      * - The target payment ID and the merged payment ones must not be zero.
+     * - The target payment ID and the merged payment ones must not be equal.
      * - The target payment and the merged ones must be active.
      * - The target payment and the merged ones must have the same payer address.
      * - The target payment and the merged ones must not be subsidized.
@@ -983,6 +987,9 @@ contract CardPaymentProcessorV2 is
             bytes32 mergedPaymentId = mergedPaymentIds[i];
             if (mergedPaymentId == 0) {
                 revert PaymentZeroId();
+            }
+            if (mergedPaymentId == targetPaymentId) {
+                revert MergedPaymentIdAndTargetPaymentIdEquality();
             }
 
             Payment storage mergedPayment = _payments[mergedPaymentId];
