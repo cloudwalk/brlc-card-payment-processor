@@ -148,6 +148,9 @@ contract CardPaymentProcessorV2 is
         address targetPaymentPayer
     );
 
+    /// @dev The requested or result or updated sum amount (base + extra) is greater than the allowed maximum to store.
+    error OverflowOfSumAmount();
+
     /// @dev The zero payer address has been passed as a function argument.
     error PayerZeroAddress();
 
@@ -866,7 +869,7 @@ contract CardPaymentProcessorV2 is
         uint256 reminder = uint256(payment.baseAmount) + uint256(payment.extraAmount) - uint256(payment.refundAmount);
         uint256 oldConfirmedAmount = payment.confirmedAmount;
         uint256 newConfirmedAmount = oldConfirmedAmount + confirmationAmount;
-        if (newConfirmedAmount > reminder || newConfirmedAmount > type(uint64).max) {
+        if (newConfirmedAmount > reminder) {
             revert InappropriateConfirmationAmount();
         }
 
@@ -896,10 +899,7 @@ contract CardPaymentProcessorV2 is
         _checkActivePaymentStatus(paymentId, payment.status);
 
         uint256 newRefundAmount = uint256(payment.refundAmount) + uint256(refundingAmount);
-        if (
-            newRefundAmount > uint256(payment.baseAmount) + uint256(payment.extraAmount) ||
-            newRefundAmount > type(uint64).max
-        ) {
+        if (newRefundAmount > uint256(payment.baseAmount) + uint256(payment.extraAmount)) {
             revert InappropriateRefundingAmount();
         }
 
@@ -1018,7 +1018,7 @@ contract CardPaymentProcessorV2 is
                 sumAmount = newBaseAmount + newExtraAmount;
             }
             if (sumAmount > type(uint64).max) {
-                revert InappropriateSumAmount();
+                revert OverflowOfSumAmount();
             }
             uint256 cashbackAmount = mergedPayment.cashbackAmount;
             if (cashbackAmount > 0) {
@@ -1076,7 +1076,7 @@ contract CardPaymentProcessorV2 is
     function _processPaymentMaking(MakingOperation memory operation) internal {
         uint256 sumAmount = operation.baseAmount + operation.extraAmount;
         if (sumAmount > type(uint64).max) {
-            revert InappropriateSumAmount();
+            revert OverflowOfSumAmount();
         }
         if (operation.sponsor == address(0)) {
             operation.subsidyLimit = 0;
@@ -1323,7 +1323,7 @@ contract CardPaymentProcessorV2 is
     ) internal pure returns (PaymentDetails memory) {
         uint256 sumAmount = uint256(payment.baseAmount) + uint256(payment.extraAmount);
         if (kind != PaymentRecalculationKind.None && sumAmount > type(uint64).max) {
-            revert InappropriateSumAmount();
+            revert OverflowOfSumAmount();
         }
         uint256 payerBaseAmount = _definePayerBaseAmount(payment.baseAmount, payment.subsidyLimit);
         (uint256 payerSumAmount, uint256 sponsorSumAmount) = _defineSumAmountParts(sumAmount, payment.subsidyLimit);
