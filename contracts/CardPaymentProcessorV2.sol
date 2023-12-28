@@ -1014,8 +1014,12 @@ contract CardPaymentProcessorV2 is
                 revert InappropriateSumAmount();
             }
             uint256 cashbackAmount = mergedPayment.cashbackAmount;
-            cashbackAmount = _revokeCashback(mergedPaymentId, cashbackAmount);
-            cashbackAmount = _increaseCashback(targetPaymentId, cashbackAmount);
+            if (cashbackAmount > 0) {
+                cashbackAmount = _revokeCashback(mergedPaymentId, cashbackAmount);
+            }
+            if (cashbackAmount > 0) {
+                cashbackAmount = _increaseCashback(targetPaymentId, cashbackAmount);
+            }
             unchecked {
                 operation.newBaseAmount = newBaseAmount;
                 operation.newExtraAmount = newExtraAmount;
