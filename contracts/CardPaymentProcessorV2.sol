@@ -62,6 +62,21 @@ contract CardPaymentProcessorV2 is
     /// @dev Default version of the event data.
     uint8 internal constant EVENT_DEFAULT_VERSION = 1;
 
+    /**
+     * @dev The kind of a cashback merging failure during a payment merging.
+     *
+     * The following values are possible:
+     *
+     * - NotEnoughBalance = 0 -- not enough balance of this contract to make a cashback merge.
+     * - RevocationError = 1 --- an error occurred during revocation of merged payment cashback.
+     * - IncreaseError = 2 ----- an error occurred during increasing the target payment cashback.
+     */
+    enum CashbackMergingFailureKind {
+        NotEnoughBalance,
+        RevocationError,
+        IncreaseError
+    }
+
     // -------------------- Events -----------------------------------
 
     /// @dev Emitted when the cash-out account is changed.
@@ -89,6 +104,13 @@ contract CardPaymentProcessorV2 is
 
     /// @dev The zero cashback distributor address has been passed as a function argument.
     error CashbackDistributorZeroAddress();
+
+    /**
+     * @dev There is a cashback merging failure during a payment merging.
+     * @param mergedPaymentId The ID of the merged payment.
+     * @param kind The kind of failure:
+     */
+    error CashbackMergingFailure(bytes32 mergedPaymentId, CashbackMergingFailureKind kind);
 
     /// @dev The provided cashback rate exceeds the allowed maximum.
     error CashbackRateExcess();
@@ -1022,10 +1044,7 @@ contract CardPaymentProcessorV2 is
             }
             uint256 cashbackAmount = mergedPayment.cashbackAmount;
             if (cashbackAmount > 0) {
-                cashbackAmount = _revokeCashback(mergedPaymentId, cashbackAmount);
-            }
-            if (cashbackAmount > 0) {
-                cashbackAmount = _increaseCashback(targetPaymentId, cashbackAmount);
+                _mergeCashback(targetPaymentId, mergedPaymentId, cashbackAmount, payer);
             }
             unchecked {
                 operation.newBaseAmount = newBaseAmount;
@@ -1256,6 +1275,28 @@ contract CardPaymentProcessorV2 is
             }
         }
         return increaseAmount;
+    }
+
+    function _mergeCashback(
+        bytes32 targetPaymentId,
+        bytes32 mergedPaymentId,
+        uint256 cashbackAmount,
+        address payer
+    ) internal {
+        uint256 balance = IERC20Upgradeable(_token).balanceOf(address(this));
+        if (balance < cashbackAmount) {
+            revert CashbackMergingFailure(mergedPaymentId, CashbackMergingFailureKind.NotEnoughBalance);
+        }
+        cashbackAmount = _revokeCashback(mergedPaymentId, cashbackAmount);
+        if (cashbackAmount > 0) {
+            uint256 increaseCashbackAmount = _increaseCashback(targetPaymentId, cashbackAmount);
+            if (increaseCashbackAmount != cashbackAmount) {
+                revert CashbackMergingFailure(mergedPaymentId, CashbackMergingFailureKind.IncreaseError);
+            }
+            IERC20Upgradeable(_token).safeTransferFrom(payer, address(this), cashbackAmount);
+        } else {
+            revert CashbackMergingFailure(mergedPaymentId, CashbackMergingFailureKind.RevocationError);
+        }
     }
 
     /// @dev Stores the data of a newly created payment.
