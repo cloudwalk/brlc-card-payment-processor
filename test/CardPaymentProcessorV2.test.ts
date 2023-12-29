@@ -10,7 +10,7 @@ import { checkEventField, checkEventFieldNotEqual, EventFieldCheckingOptions } f
 
 const MAX_UINT256 = ethers.constants.MaxUint256;
 const MAX_INT256 = ethers.constants.MaxInt256;
-const MAX_UINT_32 = 0xFFFFFFFF;
+const MAX_UINT_64 = BigNumber.from("0xffffffffffffffff");
 const ZERO_ADDRESS = ethers.constants.AddressZero;
 const ZERO_PAYER_ADDRESS = ethers.constants.AddressZero;
 const ZERO_SPONSOR_ADDRESS = ethers.constants.AddressZero;
@@ -47,6 +47,7 @@ const EVENT_NAME_PAYMENT_REFUNDED = "PaymentRefunded";
 const EVENT_NAME_PAYMENT_REVERSED = "PaymentReversed";
 const EVENT_NAME_PAYMENT_REVOKED = "PaymentRevoked";
 const EVENT_NAME_PAYMENT_UPDATED = "PaymentUpdated";
+const EVENT_NAME_PAYMENTS_MERGED = "PaymentsMerged";
 const EVENT_NAME_REVOKE_CASHBACK_FAILURE = "RevokeCashbackFailure";
 const EVENT_NAME_REVOKE_CASHBACK_MOCK = "RevokeCashbackMock";
 const EVENT_NAME_REVOKE_CASHBACK_SUCCESS = "RevokeCashbackSuccess";
@@ -113,7 +114,8 @@ enum CashbackOperationKind {
   Sending = 2,
   Increase = 3,
   Revocation = 4,
-  Merge = 5
+  SingleMerge = 5,
+  AggregatedMerge = 6
 }
 
 enum OperationKind {
@@ -125,7 +127,8 @@ enum OperationKind {
   Confirming = 5,
   Refunding = 6,
   MergePreparation = 7,
-  Merging = 8,
+  SingleMerging = 8,
+  AggregatedMerging = 9
 }
 
 enum UpdatingOperationKind {
@@ -163,18 +166,19 @@ interface PaymentOperation {
   cashbackActualChange: number; // From the user point of view, if "+" then the user earns cashback
   cashbackRate: number;
   cashbackNonce: number;
-  senderBalanceChange: number;
-  cardPaymentProcessorBalanceChange: number;
-  payerBalanceChange: number;
   sponsor?: SignerWithAddress;
   subsidyLimit: number;
-  sponsorBalanceChange: number;
   oldSponsorSumAmount: number;
   newSponsorSumAmount: number;
   oldSponsorRefundAmount: number;
   newSponsorRefundAmount: number;
   oldSponsorReminder: number;
   newSponsorReminder: number;
+  senderBalanceChange: number;
+  cardPaymentProcessorBalanceChange: number;
+  cashOutAccountBalanceChange: number;
+  payerBalanceChange: number;
+  sponsorBalanceChange: number;
   updatingOperationKind: UpdatingOperationKind;
   mergedPaymentIds: string[];
 }
@@ -235,6 +239,11 @@ class CashbackDistributorMockShell {
   async setSendCashbackAmountResult(newSendCashbackAmountResult: number) {
     await proveTx(this.contract.setSendCashbackAmountResult(newSendCashbackAmountResult));
     this.config.sendCashbackAmountResult = newSendCashbackAmountResult;
+  }
+
+  async increaseSendCashbackNonceResult() {
+    await proveTx(this.contract.setSendCashbackNonceResult(this.config.sendCashbackNonceResult + 1));
+    this.config.sendCashbackNonceResult += 1;
   }
 
   async setRevokeCashbackSuccessResult(newRevokeCashbackSuccessResult: boolean) {
@@ -349,6 +358,7 @@ class CardPaymentProcessorModel {
     const payment: PaymentModel = this.getPaymentById(paymentId);
     const operation: PaymentOperation = this.#createPaymentOperation(payment, OperationKind.Confirming);
     operation.cardPaymentProcessorBalanceChange = -confirmationAmount;
+    operation.cashOutAccountBalanceChange = confirmationAmount;
     operation.newConfirmationAmount = operation.oldConfirmationAmount + confirmationAmount;
     this.#checkPaymentConfirming(operation);
     return this.#registerPaymentOperation(operation, payment);
@@ -366,39 +376,52 @@ class CardPaymentProcessorModel {
     return this.#registerPaymentOperation(operation, payment);
   }
 
-  preparePaymentMerge(
-    mergedPaymentId: string
-  ): number {
-    const mergedPayment: PaymentModel = this.getPaymentById(mergedPaymentId);
-    const operation: PaymentOperation = this.#createPaymentOperation(mergedPayment, OperationKind.MergePreparation);
-    operation.newBaseAmount = 0;
-    operation.newExtraAmount = 0;
-    operation.newConfirmationAmount = 0;
-    operation.newRefundAmount = 0;
-    this.#checkPaymentCanceling(operation);
-    this.#definePaymentOperation(operation);
-    this.#updateModelDueToPaymentCancelingOperation(operation);
-    mergedPayment.mergedCashbackAmount = -operation.cashbackActualChange;
-    return this.#registerPaymentCancelingOperation(operation, mergedPayment, PaymentStatus.MergePrepared);
-  }
-
   mergePayments(
     targetPaymentId: string,
-    mergedPaymentId: string,
-  ): number {
-    const targetPayment: PaymentModel = this.getPaymentById(targetPaymentId);
-    const mergedPayment: PaymentModel = this.getPaymentById(mergedPaymentId);
-    const operation: PaymentOperation = this.#createPaymentOperation(targetPayment, OperationKind.Merging);
-    this.#checkPaymentMerging(operation, mergedPayment);
-    operation.newBaseAmount += mergedPayment.baseAmount;
-    operation.newExtraAmount += mergedPayment.extraAmount;
-    operation.newRefundAmount += mergedPayment.refundAmount;
-    operation.newConfirmationAmount += mergedPayment.confirmedAmount;
-    operation.cashbackOperationKind = CashbackOperationKind.Merge;
-    operation.cashbackRequestedChange = mergedPayment.mergedCashbackAmount;
-    this.#definePaymentOperation(operation);
-    mergedPayment.status = PaymentStatus.Merged;
-    return this.#registerPaymentOperation(operation, targetPayment);
+    mergedPaymentIds: string[]
+  ): number[] {
+    const operationIndexes: number[] = [];
+    for (const mergedPaymentId of mergedPaymentIds) {
+      operationIndexes.push(this.#preparePaymentMerge(mergedPaymentId));
+      operationIndexes.push(this.#mergeTwoPayments(targetPaymentId, mergedPaymentId));
+    }
+    const firstMergingOperation: PaymentOperation = this.getPaymentOperation(operationIndexes[1]);
+    const lastMergingOperation: PaymentOperation =
+      this.getPaymentOperation(operationIndexes[operationIndexes.length - 1]);
+
+    if (firstMergingOperation.payer.address !== lastMergingOperation.payer.address) {
+      throw new Error("The payer address does not match in the first and last merging operations");
+    }
+
+    const aggregatedMergeOperation: PaymentOperation = { ...firstMergingOperation };
+    aggregatedMergeOperation.kind = OperationKind.AggregatedMerging;
+    aggregatedMergeOperation.newBaseAmount = lastMergingOperation.newBaseAmount;
+    aggregatedMergeOperation.newExtraAmount = lastMergingOperation.newExtraAmount;
+    aggregatedMergeOperation.newConfirmationAmount = lastMergingOperation.newConfirmationAmount;
+    aggregatedMergeOperation.newRefundAmount = lastMergingOperation.newRefundAmount;
+    aggregatedMergeOperation.newReminder = lastMergingOperation.newReminder;
+    aggregatedMergeOperation.newPayerSumAmount = lastMergingOperation.newPayerSumAmount;
+    aggregatedMergeOperation.newPayerRefundAmount = lastMergingOperation.newPayerRefundAmount;
+    aggregatedMergeOperation.newPayerReminder = lastMergingOperation.newPayerReminder;
+    aggregatedMergeOperation.cashbackOperationKind = CashbackOperationKind.AggregatedMerge;
+    aggregatedMergeOperation.cashbackOperationSucceeded = true;
+    aggregatedMergeOperation.cashbackRequestedChange =
+      lastMergingOperation.oldCashbackAmount +
+      lastMergingOperation.cashbackActualChange -
+      firstMergingOperation.oldCashbackAmount;
+    aggregatedMergeOperation.cashbackActualChange = aggregatedMergeOperation.cashbackRequestedChange;
+    aggregatedMergeOperation.newSponsorSumAmount = lastMergingOperation.newSponsorSumAmount;
+    aggregatedMergeOperation.newSponsorRefundAmount = lastMergingOperation.newSponsorRefundAmount;
+    aggregatedMergeOperation.newSponsorReminder = lastMergingOperation.newSponsorReminder;
+    aggregatedMergeOperation.senderBalanceChange = 0; // It will be defined by single operations
+    aggregatedMergeOperation.cardPaymentProcessorBalanceChange = 0; // It will be defined by single operations
+    aggregatedMergeOperation.cashOutAccountBalanceChange = 0; // It will be defined by single operations
+    aggregatedMergeOperation.payerBalanceChange = 0; // It will be defined by single operations
+    aggregatedMergeOperation.sponsorBalanceChange = 0; // It will be defined by single operations
+    aggregatedMergeOperation.mergedPaymentIds = mergedPaymentIds;
+    const aggregatedMergeOperationIndex = this.#paymentOperations.push(aggregatedMergeOperation) - 1;
+    operationIndexes.push(aggregatedMergeOperationIndex);
+    return operationIndexes;
   }
 
   enableCashback() {
@@ -516,18 +539,19 @@ class CardPaymentProcessorModel {
       cashbackActualChange: 0,
       cashbackRate: payment.cashbackRate,
       cashbackNonce: cashback?.lastCashbackNonce ?? 0,
-      senderBalanceChange: 0,
-      cardPaymentProcessorBalanceChange: 0,
-      payerBalanceChange: 0,
       sponsor: payment.sponsor,
       subsidyLimit: payment.subsidyLimit,
-      sponsorBalanceChange: 0,
       oldSponsorSumAmount: amountParts.sponsorSumAmount,
       newSponsorSumAmount: amountParts.sponsorSumAmount,
       oldSponsorRefundAmount: refundParts.sponsorRefundAmount,
       newSponsorRefundAmount: refundParts.sponsorRefundAmount,
       oldSponsorReminder: sponsorReminder,
       newSponsorReminder: sponsorReminder,
+      senderBalanceChange: 0,
+      cardPaymentProcessorBalanceChange: 0,
+      cashOutAccountBalanceChange: 0,
+      payerBalanceChange: 0,
+      sponsorBalanceChange: 0,
       updatingOperationKind: UpdatingOperationKind.Full,
       mergedPaymentIds: []
     };
@@ -553,10 +577,18 @@ class CardPaymentProcessorModel {
     operation.newSponsorRefundAmount = newRefundParts.sponsorRefundAmount;
     operation.newPayerReminder = newPayerReminder;
     operation.newSponsorReminder = newSponsorReminder;
-    operation.payerBalanceChange = oldPayerReminder - newPayerReminder;
-    operation.sponsorBalanceChange = operation.oldSponsorReminder - newSponsorReminder;
-    operation.cardPaymentProcessorBalanceChange -= (operation.payerBalanceChange + operation.sponsorBalanceChange);
-    operation.cardPaymentProcessorBalanceChange -= (operation.newConfirmationAmount - operation.oldConfirmationAmount);
+    if (
+      operation.kind !== OperationKind.MergePreparation &&
+      operation.kind !== OperationKind.SingleMerging &&
+      operation.kind !== OperationKind.AggregatedMerging
+    ) {
+      operation.payerBalanceChange = oldPayerReminder - newPayerReminder;
+      operation.sponsorBalanceChange = operation.oldSponsorReminder - newSponsorReminder;
+      operation.cardPaymentProcessorBalanceChange -= (operation.payerBalanceChange + operation.sponsorBalanceChange);
+      operation.cardPaymentProcessorBalanceChange -=
+        (operation.newConfirmationAmount - operation.oldConfirmationAmount);
+      operation.cashOutAccountBalanceChange = operation.newConfirmationAmount - operation.oldConfirmationAmount;
+    }
 
     this.#defineCashbackOperation(operation);
 
@@ -591,7 +623,8 @@ class CardPaymentProcessorModel {
     }
     if (
       operation.cashbackOperationKind !== CashbackOperationKind.None &&
-      operation.cashbackOperationKind !== CashbackOperationKind.Merge
+      operation.cashbackOperationKind !== CashbackOperationKind.SingleMerge &&
+      operation.cashbackOperationKind !== CashbackOperationKind.AggregatedMerge
     ) {
       const newAmountParts: AmountParts =
         this.#defineAmountParts(operation.newBaseAmount, operation.newExtraAmount, operation.subsidyLimit);
@@ -621,13 +654,16 @@ class CardPaymentProcessorModel {
       operation.cashbackNonce = this.#cashbackDistributorMockConfig.sendCashbackNonceResult;
       const cashbackModel: CashbackModel = { lastCashbackNonce: operation.cashbackNonce };
       this.#cashbackPerPaymentId.set(operation.paymentId, cashbackModel);
-    } else if (operation.cashbackOperationKind == CashbackOperationKind.Merge) {
+    } else if (operation.cashbackOperationKind == CashbackOperationKind.SingleMerge) {
       if (operation.cashbackRequestedChange < 0) {
         throw new Error("The cashback amount change is negative during the cashback merge operation");
+      } else if (operation.cashbackRequestedChange > 0) {
+        operation.cashbackOperationKind = CashbackOperationKind.Increase;
+        const cashbackModel = this.getCashbackByPaymentId(operation.paymentId);
+        operation.cashbackNonce = cashbackModel?.lastCashbackNonce ?? 0;
+      } else {
+        operation.cashbackOperationKind = CashbackOperationKind.None;
       }
-      operation.cashbackOperationKind = CashbackOperationKind.Increase;
-      const cashbackModel = this.getCashbackByPaymentId(operation.paymentId);
-      operation.cashbackNonce = cashbackModel?.lastCashbackNonce ?? 0;
     }
     operation.cashbackActualChange = 0;
     operation.cashbackOperationSucceeded = false;
@@ -666,7 +702,7 @@ class CardPaymentProcessorModel {
     payment.confirmedAmount = operation.newConfirmationAmount;
     payment.cashbackAmount += operation.cashbackActualChange;
     this.#totalBalance += operation.cardPaymentProcessorBalanceChange;
-    this.#totalConfirmedAmount += (operation.newConfirmationAmount - operation.oldConfirmationAmount);
+    this.#totalConfirmedAmount += operation.cashOutAccountBalanceChange;
     return this.#paymentOperations.push(operation) - 1;
   }
 
@@ -739,7 +775,7 @@ class CardPaymentProcessorModel {
 
   #updateModelDueToPaymentCancelingOperation(operation: PaymentOperation) {
     this.#totalBalance += operation.cardPaymentProcessorBalanceChange;
-    this.#totalConfirmedAmount += operation.newConfirmationAmount - operation.oldConfirmationAmount;
+    this.#totalConfirmedAmount += operation.cashOutAccountBalanceChange;
   }
 
   #registerPaymentCancelingOperation(operation: PaymentOperation, payment: PaymentModel, targetStatus: PaymentStatus) {
@@ -826,6 +862,42 @@ class CardPaymentProcessorModel {
     };
   }
 
+
+  #preparePaymentMerge(
+    mergedPaymentId: string
+  ): number {
+    const mergedPayment: PaymentModel = this.getPaymentById(mergedPaymentId);
+    const operation: PaymentOperation = this.#createPaymentOperation(mergedPayment, OperationKind.MergePreparation);
+    operation.newBaseAmount = 0;
+    operation.newExtraAmount = 0;
+    operation.newConfirmationAmount = 0;
+    operation.newRefundAmount = 0;
+    this.#checkPaymentCanceling(operation);
+    this.#definePaymentOperation(operation);
+    this.#updateModelDueToPaymentCancelingOperation(operation);
+    mergedPayment.mergedCashbackAmount = -operation.cashbackActualChange;
+    return this.#registerPaymentCancelingOperation(operation, mergedPayment, PaymentStatus.MergePrepared);
+  }
+
+  #mergeTwoPayments(
+    targetPaymentId: string,
+    mergedPaymentId: string,
+  ): number {
+    const targetPayment: PaymentModel = this.getPaymentById(targetPaymentId);
+    const mergedPayment: PaymentModel = this.getPaymentById(mergedPaymentId);
+    const operation: PaymentOperation = this.#createPaymentOperation(targetPayment, OperationKind.SingleMerging);
+    this.#checkPaymentMerging(operation, mergedPayment);
+    operation.newBaseAmount += mergedPayment.baseAmount;
+    operation.newExtraAmount += mergedPayment.extraAmount;
+    operation.newRefundAmount += mergedPayment.refundAmount;
+    operation.newConfirmationAmount += mergedPayment.confirmedAmount;
+    operation.cashbackOperationKind = CashbackOperationKind.SingleMerge;
+    operation.cashbackRequestedChange = mergedPayment.mergedCashbackAmount;
+    this.#definePaymentOperation(operation);
+    mergedPayment.status = PaymentStatus.Merged;
+    return this.#registerPaymentOperation(operation, targetPayment);
+  }
+
   #checkPaymentMerging(operation: PaymentOperation, mergedPayment: PaymentModel) {
     if (operation.paymentStatus !== PaymentStatus.Active) {
       throw new Error(
@@ -870,8 +942,6 @@ interface OperationConditions {
   cashbackSendingRequestedInAnyOperation: boolean;
   cashbackIncreaseRequestedInAnyOperation: boolean;
   cashbackRevocationRequestedInAnyOperation: boolean;
-  mergePreparationOperationFound: boolean,
-  mergingOperationFound: boolean
 }
 
 class CardPaymentProcessorShell {
@@ -1151,9 +1221,7 @@ class TestContext {
       cashbackIncreaseRequestedInAnyOperation: false,
       cashbackRevocationRequestedInAnyOperation: false,
       cashbackSendingRequestedInAnyOperation: false,
-      confirmationAmountChangedInAnyOperation: false,
-      mergePreparationOperationFound: false,
-      mergingOperationFound: false
+      confirmationAmountChangedInAnyOperation: false
     };
     operations.forEach(operation => {
       if (operation.cashbackOperationKind == CashbackOperationKind.Sending) {
@@ -1166,19 +1234,8 @@ class TestContext {
       if (operation.newConfirmationAmount != operation.oldConfirmationAmount) {
         result.confirmationAmountChangedInAnyOperation = true;
       }
-      if (operation.kind === OperationKind.MergePreparation) {
-        result.mergePreparationOperationFound = true;
-      }
-      if (operation.kind === OperationKind.Merging) {
-        result.mergingOperationFound = true;
-      }
     });
 
-    if (result.mergingOperationFound || result.mergePreparationOperationFound) {
-      if (!result.mergePreparationOperationFound || !result.mergingOperationFound) {
-        throw new Error("The merge preparation and merging operations should be found together");
-      }
-    }
     return result;
   }
 
@@ -1210,8 +1267,11 @@ class TestContext {
       case OperationKind.MergePreparation:
         // Do nothing. We should check only cashback events here.
         break;
-      case OperationKind.Merging:
+      case OperationKind.SingleMerging:
         // Do nothing. We should check cashback events here and the main event in another function
+        break;
+      case OperationKind.AggregatedMerging:
+        await this.checkMergingEvent(tx, operation);
         break;
       default:
         throw new Error(
@@ -1225,6 +1285,10 @@ class TestContext {
     operation: PaymentOperation,
     operationConditions: OperationConditions
   ) {
+    if (operation.kind === OperationKind.SingleMerging || operation.kind === OperationKind.MergePreparation) {
+      // Individual confirmation events of payments merging do not exist, only the aggregated one does.
+      return;
+    }
     const expectedDataField: string = defineEventDataField(
       EVENT_DATA_FIELD_VERSION_DEFAULT_VALUE,
       !operation.sponsor ? EVENT_DATA_FIELD_FLAGS_NON_SUBSIDIZED : EVENT_DATA_FIELD_FLAGS_SUBSIDIZED,
@@ -1432,15 +1496,41 @@ class TestContext {
     }
   }
 
+  async checkMergingEvent(tx: Promise<TransactionResponse>, operation: PaymentOperation) {
+    const expectedDataField: string = defineEventDataField(
+      EVENT_DATA_FIELD_VERSION_DEFAULT_VALUE,
+      !operation.sponsor ? EVENT_DATA_FIELD_FLAGS_NON_SUBSIDIZED : EVENT_DATA_FIELD_FLAGS_SUBSIDIZED,
+      encodeEventDataFieldForAmount(operation.oldBaseAmount),
+      encodeEventDataFieldForAmount(operation.newBaseAmount),
+      encodeEventDataFieldForAmount(operation.oldExtraAmount),
+      encodeEventDataFieldForAmount(operation.newExtraAmount),
+      encodeEventDataFieldForAmount(operation.oldCashbackAmount),
+      encodeEventDataFieldForAmount(operation.oldCashbackAmount + operation.cashbackActualChange),
+      encodeEventDataFieldForAmount(operation.oldRefundAmount),
+      encodeEventDataFieldForAmount(operation.newRefundAmount),
+    );
+
+    await expect(tx).to.emit(
+      this.cardPaymentProcessorShell.contract,
+      EVENT_NAME_PAYMENTS_MERGED
+    ).withArgs(
+      checkEventField("paymentId", operation.paymentId),
+      checkEventField("payer", operation.payer.address),
+      checkEventField("mergedPaymentIds", operation.mergedPaymentIds, { convertToJson: true }),
+      checkEventField("data", expectedDataField, eventDataFieldCheckingOptions)
+    );
+  }
+
   private async checkBalanceChanges(tx: Promise<TransactionResponse>, operations: PaymentOperation[]) {
     const cardPaymentProcessorBalanceChange = operations
       .map(operation => operation.cardPaymentProcessorBalanceChange)
       .reduce((sum: number, currentValue: number) => sum + currentValue);
     const cashbackDistributorBalanceChange = operations
+      .filter(operation => operation.kind != OperationKind.AggregatedMerging)
       .map(operation => -operation.cashbackActualChange)
       .reduce((sum: number, currentValue: number) => sum + currentValue);
     const cashOutAccountBalanceChange = operations
-      .map(operation => operation.newConfirmationAmount - operation.oldConfirmationAmount)
+      .map(operation => operation.cashOutAccountBalanceChange)
       .reduce((sum: number, currentValue: number) => sum + currentValue);
     const balanceChangePerAccount: Map<SignerWithAddress, number> = this.#getBalanceChangePerAccount(operations);
     const accounts: SignerWithAddress[] = Array.from(balanceChangePerAccount.keys());
@@ -1632,7 +1722,7 @@ class TestContext {
     );
     expect(actualOnChainPayment.cashbackAmount).to.equal(
       expectedPayment.cashbackAmount,
-      `payment[${paymentIndex}].extraAmount is wrong`
+      `payment[${paymentIndex}].cashbackAmount is wrong`
     );
     expect(actualOnChainPayment.refundAmount).to.equal(
       expectedPayment.refundAmount,
@@ -1710,7 +1800,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
   const CASHBACK_RATE_MAX = 250; // 25%
   const CASHBACK_RATE_DEFAULT = 100; // 10%
   const CASHBACK_RATE_ZERO = 0;
-  const CASHBACK_NONCE = 111222333;
+  const CASHBACK_NONCE_DEFAULT = 111222333;
 
   const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
@@ -1804,7 +1894,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
     const cashbackDistributorMockConfig: CashbackDistributorMockConfig = {
       sendCashbackSuccessResult: true,
       sendCashbackAmountResult: -1,
-      sendCashbackNonceResult: CASHBACK_NONCE,
+      sendCashbackNonceResult: CASHBACK_NONCE_DEFAULT,
       revokeCashbackSuccessResult: true,
       increaseCashbackSuccessResult: true,
       increaseCashbackAmountResult: -1,
@@ -1864,7 +1954,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         id: createBytesString(123 + i * 123, BYTES32_LENGTH),
         payer: (i % 2 > 0) ? user1 : user2,
         baseAmount: Math.floor(123.456789 * DIGITS_COEF + i * 123.456789 * DIGITS_COEF),
-        extraAmount: Math.floor(123.456789 * DIGITS_COEF + i * 123.456789 * DIGITS_COEF),
+        extraAmount: Math.floor(132.456789 * DIGITS_COEF + i * 132.456789 * DIGITS_COEF),
       };
       expect(payment.baseAmount).greaterThan(10 * DIGITS_COEF);
       expect(payment.extraAmount).greaterThan(10 * DIGITS_COEF);
@@ -4162,9 +4252,11 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const { cardPaymentProcessorShell, payments } = context;
       const { cashbackCondition, targetPaymentRefundAmount, targetPaymentConfirmationAmount } = props;
       const targetPayment = payments[0];
-      const paymentsToMerge = payments.slice(1);
-      paymentsToMerge.forEach(payment => {
+      const mergedPayments = payments.slice(1);
+      const mergedPaymentIds: string[] = [];
+      mergedPayments.forEach(payment => {
         payment.payer = targetPayment.payer;
+        mergedPaymentIds.push(payment.id);
       });
 
       if (cashbackCondition !== CashbackConditionType.CashbackDisabledBeforePaymentMaking) {
@@ -4178,24 +4270,28 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       if (targetPaymentRefundAmount) {
         await cardPaymentProcessorShell.refundPayment(targetPayment, targetPaymentRefundAmount);
       }
-
-      await cardPaymentProcessorShell.makePaymentFor(paymentsToMerge[0]);
+      await context.cashbackDistributorMockShell.increaseSendCashbackNonceResult();
+      await cardPaymentProcessorShell.makePaymentFor(mergedPayments[0]);
 
       if (payments.length > 2) {
-        const confirmationAmount = Math.floor(paymentsToMerge[1].baseAmount * 0.2);
-        const refundAmount = Math.floor(paymentsToMerge[1].baseAmount * 0.1);
+        const confirmationAmount = Math.floor(mergedPayments[1].baseAmount * 0.2);
+        const refundAmount = Math.floor(mergedPayments[1].baseAmount * 0.1);
+        await context.cashbackDistributorMockShell.increaseSendCashbackNonceResult();
         await cardPaymentProcessorShell.makePaymentFor(
-          paymentsToMerge[1],
+          mergedPayments[1],
           { confirmationAmount }
         );
-        await cardPaymentProcessorShell.refundPayment(paymentsToMerge[1], refundAmount);
+        await cardPaymentProcessorShell.refundPayment(mergedPayments[1], refundAmount);
 
         await cardPaymentProcessorShell.makePaymentFor(
-          paymentsToMerge[2], { cashbackRate: ZERO_CASHBACK_RATE }
+          mergedPayments[2], { cashbackRate: ZERO_CASHBACK_RATE }
         );
 
-        if (payments.length > 4) {
-          await cardPaymentProcessorShell.makeCommonPayments(paymentsToMerge.slice(3));
+        if (mergedPaymentIds.length > 3) {
+          for (let i = 3; i < mergedPaymentIds.length; ++i) {
+            await context.cashbackDistributorMockShell.increaseSendCashbackNonceResult();
+            await cardPaymentProcessorShell.makePaymentFor(mergedPayments[i]);
+          }
         }
       }
 
@@ -4216,14 +4312,11 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
 
       await context.checkCardPaymentProcessorState();
 
-      const operationIndexes: number[] = [];
-      for (const paymentToMerge of paymentsToMerge) {
-        operationIndexes.push(cardPaymentProcessorShell.model.preparePaymentMerge(paymentToMerge.id));
-        operationIndexes.push(cardPaymentProcessorShell.model.mergePayments(targetPayment.id, paymentToMerge.id));
-      }
+      const operationIndexes: number[] =
+        cardPaymentProcessorShell.model.mergePayments(targetPayment.id, mergedPaymentIds);
       const tx = cardPaymentProcessorShell.contract.connect(executor).mergePayments(
         targetPayment.id,
-        paymentsToMerge.map(payment => payment.id)
+        mergedPaymentIds
       );
       await context.checkPaymentOperationsForTx(tx, operationIndexes);
       await context.checkCardPaymentProcessorState();
@@ -4235,30 +4328,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         const targetPaymentConfirmationAmount = Math.floor(context.payments[0].baseAmount * 0.2);
         const targetPaymentRefundAmount = Math.floor(context.payments[0].baseAmount * 0.1);
         await checkPaymentMerging(context, { targetPaymentConfirmationAmount, targetPaymentRefundAmount });
-      });
-
-      it("There are two payments to merge and cashback is enabled, but cashback revoking fails", async () => {
-        const context = await beforeMakingPayments({ paymentNumber: 2 });
-        await checkPaymentMerging(
-          context,
-          { cashbackCondition: CashbackConditionType.CashbackEnabledButRevokingFails }
-        );
-      });
-
-      it("There are two payments to merge and cashback is enabled, but cashback increasing fails", async () => {
-        const context = await beforeMakingPayments({ paymentNumber: 2 });
-        await checkPaymentMerging(
-          context,
-          { cashbackCondition: CashbackConditionType.CashbackEnabledButIncreasingFails }
-        );
-      });
-
-      it("There are two payments to merge and cashback is enabled, but cashback increasing is partial", async () => {
-        const context = await beforeMakingPayments({ paymentNumber: 2 });
-        await checkPaymentMerging(
-          context,
-          { cashbackCondition: CashbackConditionType.CashbackEnabledButIncreasingPartial }
-        );
       });
 
       it("There are two payments to merge and cashback is disabled before payment making", async () => {
@@ -4294,7 +4363,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
 
         await expect(
-          cardPaymentProcessorShell.contract.connect(executor).mergePayments(targetPayment.id, [mergedPayment.id])
+          cardPaymentProcessorShell.contract.connect(deployer).mergePayments(targetPayment.id, [mergedPayment.id])
         ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, executorRole));
       });
 
@@ -4311,11 +4380,11 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       });
 
       it("The target payment with the provided ID does not exist", async () => {
-        const context = await prepareForPayments();
+        const context = await prepareForPayments({ paymentNumber: 2 });
         const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
 
         await expect(
-          cardPaymentProcessorShell.contract.connect(executor).mergePayments(targetPayment, [mergedPayment.id])
+          cardPaymentProcessorShell.contract.connect(executor).mergePayments(targetPayment.id, [mergedPayment.id])
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
           REVERT_ERROR_IF_PAYMENT_NON_EXISTENT
@@ -4325,15 +4394,22 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       it("The array of payment IDs to merge is empty", async () => {
         const context = await prepareForPayments();
         const { cardPaymentProcessorShell, payments: [targetPayment] } = context;
+        await context.setUpContractsForPayments();
+        await cardPaymentProcessorShell.makeCommonPayments([targetPayment]);
 
         await expect(
           cardPaymentProcessorShell.contract.connect(executor).mergePayments(targetPayment.id, [])
-        ).to.be.revertedWith(REVERT_ERROR_IF_MERGED_PAYMENT_ID_ARRAY_EMPTY);
+        ).to.be.revertedWithCustomError(
+          cardPaymentProcessorShell.contract,
+          REVERT_ERROR_IF_MERGED_PAYMENT_ID_ARRAY_EMPTY
+        );
       });
 
       it("One of the merged payment IDs is zero", async () => {
         const context = await prepareForPayments({ paymentNumber: 2 });
         const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
+        mergedPayment.payer = targetPayment.payer;
+        await context.setUpContractsForPayments();
         await cardPaymentProcessorShell.makeCommonPayments([targetPayment, mergedPayment]);
 
         await expect(
@@ -4341,7 +4417,10 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
             targetPayment.id,
             [mergedPayment.id, ZERO_PAYMENT_ID]
           )
-        ).to.be.revertedWith(REVERT_ERROR_IF_PAYMENT_ZERO_ID);
+        ).to.be.revertedWithCustomError(
+          cardPaymentProcessorShell.contract,
+          REVERT_ERROR_IF_PAYMENT_ZERO_ID
+        );
       });
 
       it("One of the merged payment does not exist", async () => {
@@ -4420,7 +4499,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
           cardPaymentProcessorShell.contract,
           REVERT_ERROR_IF_MERGED_PAYMENT_CASHBACK_RATE_MISMATCH
         ).withArgs(
-          mergedPayment2.id, CASHBACK_RATE_DEFAULT, CASHBACK_RATE_DEFAULT * 2
+          mergedPayment2.id, CASHBACK_RATE_DEFAULT * 2, CASHBACK_RATE_DEFAULT
         );
       });
 
@@ -4428,19 +4507,30 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         const context = await prepareForPayments({ paymentNumber: 2 });
         const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
         mergedPayment.payer = targetPayment.payer;
-        targetPayment.baseAmount = MAX_UINT_32;
-        targetPayment.extraAmount = MAX_UINT_32;
-        mergedPayment.baseAmount = MAX_UINT_32;
-        mergedPayment.extraAmount = MAX_UINT_32;
+        const targetPaymentBaseAmount: BigNumber = MAX_UINT_64.sub(5);
+        targetPayment.baseAmount = 0;
+        targetPayment.extraAmount = 3;
+        mergedPayment.baseAmount = 2;
+        mergedPayment.extraAmount = 1;
         await context.setUpContractsForPayments();
-        await cardPaymentProcessorShell.makeCommonPayments([targetPayment, mergedPayment]);
+        await proveTx(context.tokenMock.mint(targetPayment.payer.address, targetPaymentBaseAmount));
+        await proveTx(cardPaymentProcessorShell.contract.connect(executor).makeCommonPaymentFor(
+          targetPayment.id,
+          targetPayment.payer.address,
+          targetPaymentBaseAmount,
+          targetPayment.extraAmount
+        ));
+        await proveTx(cardPaymentProcessorShell.contract.connect(executor).makeCommonPaymentFor(
+          mergedPayment.id,
+          mergedPayment.payer.address,
+          mergedPayment.baseAmount,
+          mergedPayment.extraAmount
+        ));
 
-        await expect(
-          cardPaymentProcessorShell.contract.connect(executor).mergePayments(
-            targetPayment.id,
-            [mergedPayment.id]
-          )
-        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_OVERFLOW_OF_SUM_AMOUNT);
+        await expect(cardPaymentProcessorShell.contract.connect(executor).mergePayments(
+          targetPayment.id,
+          [mergedPayment.id]
+        )).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_OVERFLOW_OF_SUM_AMOUNT);
       });
     });
   });
