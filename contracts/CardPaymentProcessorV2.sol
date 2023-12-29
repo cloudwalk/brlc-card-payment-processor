@@ -316,7 +316,7 @@ contract CardPaymentProcessorV2 is
         });
 
         _makePayment(operation);
-        if (confirmationAmount > 0){
+        if (confirmationAmount > 0) {
             uint256 transferAmount = _confirmPayment(paymentId, confirmationAmount);
             IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), transferAmount);
         }
@@ -1080,7 +1080,7 @@ contract CardPaymentProcessorV2 is
         storedTargetPayment.refundAmount = uint64(operation.newRefundAmount);
 
         if (operation.newConfirmedAmount != operation.oldConfirmedAmount) {
-            storedTargetPayment.confirmedAmount = uint64(operation.oldConfirmedAmount);
+            storedTargetPayment.confirmedAmount = uint64(operation.newConfirmedAmount);
             _emitPaymentConfirmedAmountChanged(
                 targetPaymentId,
                 payer,
