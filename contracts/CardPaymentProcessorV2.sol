@@ -993,7 +993,7 @@ contract CardPaymentProcessorV2 is
         // DEV Check if the compiler optimizes the double reading of the stored payment structure
         MergeOperation memory operation = MergeOperation({
             oldBaseAmount: storedTargetPayment.baseAmount,
-            newBaseAmount: storedTargetPayment.extraAmount,
+            newBaseAmount: storedTargetPayment.baseAmount,
             oldExtraAmount: storedTargetPayment.extraAmount,
             newExtraAmount: storedTargetPayment.extraAmount,
             oldCashbackAmount: storedTargetPayment.cashbackAmount,
@@ -1046,9 +1046,9 @@ contract CardPaymentProcessorV2 is
             if (cashbackAmount > 0) {
                 _mergeCashback(targetPaymentId, mergedPaymentId, cashbackAmount, payer);
             }
+            operation.newBaseAmount = newBaseAmount;
+            operation.newExtraAmount = newExtraAmount;
             unchecked {
-                operation.newBaseAmount = newBaseAmount;
-                operation.newExtraAmount = newExtraAmount;
                 operation.newRefundAmount += mergedPayment.refundAmount;
                 operation.newCashbackAmount += cashbackAmount;
                 operation.newConfirmedAmount += mergedPayment.confirmedAmount;
