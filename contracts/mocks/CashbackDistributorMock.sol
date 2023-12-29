@@ -266,6 +266,13 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
+     * @dev Sets a new value for the nonce part of the `sendCashback()` function result.
+     */
+    function setSendCashbackNonceResult(uint256 newSendCashbackNonceResult) external {
+        sendCashbackNonceResult = newSendCashbackNonceResult;
+    }
+
+    /**
      * @dev Sets a new value for the result of the `revokeCashback()` function.
      */
     function setRevokeCashbackSuccessResult(bool newRevokeCashbackSuccessResult) external {
