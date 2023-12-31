@@ -72,6 +72,12 @@ enum CashbackKind {
   CardPayment = 1,
 }
 
+enum CashbackMergingFailureKind {
+  NotEnoughBalance = 0,
+  RevocationError = 1,
+  IncreaseError = 2
+}
+
 interface TestPayment {
   id: string;
   payer: SignerWithAddress;
@@ -848,7 +854,9 @@ class CardPaymentProcessorModel {
 
   #defineRefundParts(paymentRefundAmount: number, paymentBaseAmount: number, subsidyLimit: number): RefundParts {
     let sponsorRefundAmount;
-    if (subsidyLimit >= paymentBaseAmount) {
+    if (subsidyLimit === 0) {
+      sponsorRefundAmount = 0;
+    } else if (subsidyLimit >= paymentBaseAmount) {
       sponsorRefundAmount = paymentRefundAmount;
     } else {
       sponsorRefundAmount = Math.floor(paymentRefundAmount * subsidyLimit / paymentBaseAmount);
@@ -1114,6 +1122,22 @@ class CardPaymentProcessorShell {
       tx,
       txReceipt
     };
+  }
+
+  async mergePayments(
+    targetPayment: TestPayment,
+    mergedPayments: TestPayment[],
+    sender: SignerWithAddress = this.executor
+  ) {
+    const mergedPaymentIds: string[] = mergedPayments.map(payment => payment.id);
+    const operationIndex = this.model.mergePayments(
+      targetPayment.id,
+      mergedPaymentIds
+    );
+    const tx = this.contract.connect(sender).mergePayments(
+      targetPayment.id,
+      mergedPaymentIds
+    );
   }
 }
 
@@ -1536,7 +1560,6 @@ class TestContext {
     const accounts: SignerWithAddress[] = Array.from(balanceChangePerAccount.keys());
     const accountBalanceChanges: number[] = accounts.map(user => balanceChangePerAccount.get(user) ?? 0);
 
-
     await expect(tx).to.changeTokenBalances(
       this.tokenMock,
       [
@@ -1812,6 +1835,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
   const REVERT_ERROR_IF_CASHBACK_DISTRIBUTOR_ALREADY_CONFIGURED = "CashbackDistributorAlreadyConfigured";
   const REVERT_ERROR_IF_CASHBACK_DISTRIBUTOR_NOT_CONFIGURED = "CashbackDistributorNotConfigured";
   const REVERT_ERROR_IF_CASHBACK_DISTRIBUTOR_ZERO_ADDRESS = "CashbackDistributorZeroAddress";
+  const REVERT_ERROR_IF_CASHBACK_MERGING_FAILURE = "CashbackMergingFailure";
   const REVERT_ERROR_IF_CASHBACK_RATE_EXCESS = "CashbackRateExcess";
   const REVERT_ERROR_IF_CASHBACK_RATE_UNCHANGED = "CashbackRateUnchanged";
   const REVERT_ERROR_IF_CASH_OUT_ACCOUNT_NOT_CONFIGURED = "CashOutAccountNotConfigured";
@@ -2291,7 +2315,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         props.cashbackRate ?? CASHBACK_RATE_AS_IN_CONTRACT,
         props.confirmationAmount ?? ZERO_CONFIRMATION_AMOUNT
       );
-      expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
       await context.checkPaymentOperationsForTx(tx);
       await context.checkCardPaymentProcessorState();
     }
@@ -2700,6 +2723,67 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
     });
   });
 
+  describe("Function 'makeCommonPaymentFor()'", async () => {
+    /* Since all payment making functions use the same common internal function to execute,
+     * the complete set of checks are provided in the test section for the 'makePaymentFor()' function.
+     * In this section, only specific checks are provided.
+     */
+    describe("Executes as expected if", async () => {
+      it("Cashback is enabled, and the base and extra payment amounts are both nonzero", async () => {
+        const context = await beforeMakingPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+
+        await cardPaymentProcessorShell.enableCashback();
+
+        cardPaymentProcessorShell.model.makePayment(
+          payment, {
+            sender: executor
+          }
+        );
+        const tx = cardPaymentProcessorShell.contract.connect(executor).makeCommonPaymentFor(
+          payment.id,
+          payment.payer.address,
+          payment.baseAmount,
+          payment.extraAmount,
+        );
+        await context.checkPaymentOperationsForTx(tx);
+        await context.checkCardPaymentProcessorState();
+      });
+    });
+
+    describe("Is reverted if", async () => {
+      it("The contract is paused", async () => {
+        const context = await prepareForPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+
+        await pauseContract(cardPaymentProcessorShell.contract);
+
+        await expect(
+          cardPaymentProcessorShell.contract.connect(executor).makeCommonPaymentFor(
+            payment.id,
+            payment.payer.address,
+            payment.baseAmount,
+            payment.extraAmount
+          )
+        ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      });
+
+      it("The caller does not have the executor role", async () => {
+        const context = await prepareForPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+
+        await expect(
+          cardPaymentProcessorShell.contract.connect(payment.payer).makeCommonPaymentFor(
+            payment.id,
+            payment.payer.address,
+            payment.baseAmount,
+            payment.extraAmount
+          )
+        ).to.be.revertedWith(createRevertMessageDueToMissingRole(payment.payer.address, executorRole));
+      });
+    });
+  });
+
   describe("Function 'updatePayment()'", async () => {
     async function checkUpdating(context: TestContext, props: {
                                    cashbackCondition?: CashbackConditionType,
@@ -2721,7 +2805,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         await cardPaymentProcessorShell.disableCashback();
       }
 
-      if (props.refundAmount) {
+      if (props.refundAmount === 0 || props.refundAmount) {
         await cardPaymentProcessorShell.refundPayment(payment, props.refundAmount ?? 0);
       } else {
         const refundAmount = Math.floor(payment.baseAmount * 0.1);
@@ -2754,7 +2838,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         newExtraAmount
       );
 
-      expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
       await context.checkPaymentOperationsForTx(tx);
       await context.checkCardPaymentProcessorState();
     }
@@ -2962,6 +3045,45 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
               const newBaseAmount = Math.floor(context.payments[0].baseAmount * 0.9);
               const newExtraAmount = 0;
               await checkUpdating(context, { newBaseAmount, newExtraAmount });
+            });
+          });
+        });
+
+        describe("The base amount becomes zero, and", async () => {
+          describe("The extra amount remains the same, and cashback is", async () => {
+            it("Enabled, and cashback operation is executed successfully", async () => {
+              const context = await beforeMakingPayments();
+              const newBaseAmount = 0;
+              await checkUpdating(context, { newBaseAmount });
+            });
+          });
+
+          describe("The extra amount decreases, and cashback is", async () => {
+            it("Enabled, and cashback operation is executed successfully", async () => {
+              const context = await beforeMakingPayments();
+              const { payments: [payment] } = context;
+              const newBaseAmount = 0;
+              const newExtraAmount = Math.floor(payment.extraAmount * 0.5);
+              await checkUpdating(context, { newBaseAmount, newExtraAmount });
+            });
+          });
+
+          describe("The extra amount increases, and cashback is", async () => {
+            it("Enabled, and cashback operation is executed successfully", async () => {
+              const context = await beforeMakingPayments();
+              const { payments: [payment] } = context;
+              const newBaseAmount = 9;
+              const newExtraAmount = Math.floor(payment.extraAmount * 2);
+              await checkUpdating(context, { newBaseAmount, newExtraAmount });
+            });
+          });
+
+          describe("The extra amount becomes zero, and cashback is", async () => {
+            it("Enabled, and cashback operation is executed successfully", async () => {
+              const context = await beforeMakingPayments();
+              const newBaseAmount = 0;
+              const newExtraAmount = 0;
+              await checkUpdating(context, { newBaseAmount, newExtraAmount, refundAmount: 0 });
             });
           });
         });
@@ -3207,7 +3329,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
 
       cardPaymentProcessorShell.model.revokePayment(payment.id);
       const tx = cardPaymentProcessorShell.contract.connect(executor).revokePayment(payment.id);
-      expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
       await context.checkPaymentOperationsForTx(tx);
       await context.checkCardPaymentProcessorState();
@@ -3371,7 +3492,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
 
       cardPaymentProcessorShell.model.reversePayment(payment.id);
       const tx = cardPaymentProcessorShell.contract.connect(executor).reversePayment(payment.id);
-      expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
       await context.checkPaymentOperationsForTx(tx);
       await context.checkCardPaymentProcessorState();
@@ -3575,6 +3695,13 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
           const refundAmount = Math.floor(payment.baseAmount * 0.1);
           const confirmationAmount = Math.floor(payment.baseAmount + payment.extraAmount - refundAmount);
           await checkConfirmation(context, confirmationAmount, refundAmount);
+        });
+
+        it("The confirmation is zero", async () => {
+          const context = await beforeMakingPayments();
+          const { payments: [payment] } = context;
+          const confirmationAmount = 0;
+          await checkConfirmation(context, confirmationAmount);
         });
       });
     });
@@ -3863,7 +3990,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         props.confirmationAmount ?? ZERO_CONFIRMATION_AMOUNT
       );
 
-      expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
       await context.checkPaymentOperationsForTx(tx, [operationIndex1, operationIndex2]);
       await context.checkCardPaymentProcessorState();
     }
@@ -4043,7 +4169,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         props.refundAmount
       );
 
-      expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
       await context.checkPaymentOperationsForTx(tx);
       await context.checkCardPaymentProcessorState();
     }
@@ -4101,6 +4226,16 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
             const context = await beforeMakingPayments();
             const { payments: [payment] } = context;
             const refundAmount = Math.floor(payment.baseAmount + payment.extraAmount);
+            const subsidyLimit = Math.floor(payment.baseAmount * 0.5);
+            await checkRefunding(context, { refundAmount, subsidyLimit });
+          });
+        });
+
+        describe("The refund amount is zero, and cashback is", async () => {
+          it("Enabled, and cashback operation is executed successfully", async () => {
+            const context = await beforeMakingPayments();
+            const { payments: [payment] } = context;
+            const refundAmount = 0;
             const subsidyLimit = Math.floor(payment.baseAmount * 0.5);
             await checkRefunding(context, { refundAmount, subsidyLimit });
           });
@@ -4379,18 +4514,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         );
       });
 
-      it("The target payment with the provided ID does not exist", async () => {
-        const context = await prepareForPayments({ paymentNumber: 2 });
-        const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
-
-        await expect(
-          cardPaymentProcessorShell.contract.connect(executor).mergePayments(targetPayment.id, [mergedPayment.id])
-        ).to.be.revertedWithCustomError(
-          cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_PAYMENT_NON_EXISTENT
-        ).withArgs(targetPayment.id);
-      });
-
       it("The array of payment IDs to merge is empty", async () => {
         const context = await prepareForPayments();
         const { cardPaymentProcessorShell, payments: [targetPayment] } = context;
@@ -4403,6 +4526,33 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
           cardPaymentProcessorShell.contract,
           REVERT_ERROR_IF_MERGED_PAYMENT_ID_ARRAY_EMPTY
         );
+      });
+
+      it("The target payment with the provided ID does not exist", async () => {
+        const context = await prepareForPayments({ paymentNumber: 2 });
+        const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
+
+        await expect(
+          cardPaymentProcessorShell.contract.connect(executor).mergePayments(targetPayment.id, [mergedPayment.id])
+        ).to.be.revertedWithCustomError(
+          cardPaymentProcessorShell.contract,
+          REVERT_ERROR_IF_PAYMENT_NON_EXISTENT
+        ).withArgs(targetPayment.id);
+      });
+
+      it("The target payment with the provided ID is subsidized", async () => {
+        const context = await prepareForPayments({ paymentNumber: 2 });
+        const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
+        await context.setUpContractsForPayments();
+        await cardPaymentProcessorShell.makePaymentFor(targetPayment, { sponsor, subsidyLimit: 1 });
+        await cardPaymentProcessorShell.makePaymentFor(mergedPayment);
+
+        await expect(
+          cardPaymentProcessorShell.contract.connect(executor).mergePayments(targetPayment.id, [mergedPayment.id])
+        ).to.be.revertedWithCustomError(
+          cardPaymentProcessorShell.contract,
+          REVERT_ERROR_IF_PAYMENT_SUBSIDIZED
+        ).withArgs(targetPayment.id);
       });
 
       it("One of the merged payment IDs is zero", async () => {
@@ -4481,6 +4631,28 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         );
       });
 
+      it("One of the merged payment has another payer address", async () => {
+        const context = await prepareForPayments({ paymentNumber: 3 });
+        const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment1, mergedPayment2] } = context;
+        mergedPayment1.payer = targetPayment.payer;
+        mergedPayment2.payer = targetPayment.payer;
+        await context.setUpContractsForPayments();
+        await cardPaymentProcessorShell.makeCommonPayments([targetPayment, mergedPayment1]);
+        await cardPaymentProcessorShell.makePaymentFor(mergedPayment2, { sponsor, subsidyLimit: 1 });
+
+        await expect(
+          cardPaymentProcessorShell.contract.connect(executor).mergePayments(
+            targetPayment.id,
+            [mergedPayment1.id, mergedPayment2.id]
+          )
+        ).to.be.revertedWithCustomError(
+          cardPaymentProcessorShell.contract,
+          REVERT_ERROR_IF_PAYMENT_SUBSIDIZED
+        ).withArgs(
+          mergedPayment2.id
+        );
+      });
+
       it("One of the merged payment has a greater cashback rate than the target payment", async () => {
         const context = await prepareForPayments({ paymentNumber: 3 });
         const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment1, mergedPayment2] } = context;
@@ -4531,6 +4703,81 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
           targetPayment.id,
           [mergedPayment.id]
         )).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_OVERFLOW_OF_SUM_AMOUNT);
+      });
+
+      it("The processor contract has not enough balance to merge the cashback", async () => {
+        const context = await prepareForPayments({ paymentNumber: 2 });
+        const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
+        mergedPayment.payer = targetPayment.payer;
+        await context.setUpContractsForPayments();
+        await cardPaymentProcessorShell.enableCashback();
+        await cardPaymentProcessorShell.makePaymentFor(
+          targetPayment,
+          { confirmationAmount: targetPayment.baseAmount + targetPayment.extraAmount }
+        );
+        await cardPaymentProcessorShell.makePaymentFor(
+          mergedPayment,
+          { confirmationAmount: mergedPayment.baseAmount + mergedPayment.extraAmount }
+        );
+
+        await expect(
+          cardPaymentProcessorShell.contract.connect(executor).mergePayments(
+            targetPayment.id,
+            [mergedPayment.id]
+          )
+        ).to.be.revertedWithCustomError(
+          cardPaymentProcessorShell.contract,
+          REVERT_ERROR_IF_CASHBACK_MERGING_FAILURE
+        ).withArgs(
+          mergedPayment.id,
+          CashbackMergingFailureKind.NotEnoughBalance
+        );
+      });
+
+      it("The cashback revocation fails", async () => {
+        const context = await prepareForPayments({ paymentNumber: 2 });
+        const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
+        mergedPayment.payer = targetPayment.payer;
+        await context.setUpContractsForPayments();
+        await cardPaymentProcessorShell.enableCashback();
+        await cardPaymentProcessorShell.makeCommonPayments([targetPayment, mergedPayment]);
+        await context.cashbackDistributorMockShell.setRevokeCashbackSuccessResult(false);
+
+        await expect(
+          cardPaymentProcessorShell.contract.connect(executor).mergePayments(
+            targetPayment.id,
+            [mergedPayment.id]
+          )
+        ).to.be.revertedWithCustomError(
+          cardPaymentProcessorShell.contract,
+          REVERT_ERROR_IF_CASHBACK_MERGING_FAILURE
+        ).withArgs(
+          mergedPayment.id,
+          CashbackMergingFailureKind.RevocationError
+        );
+      });
+
+      it("The cashback increase is executed partially", async () => {
+        const context = await prepareForPayments({ paymentNumber: 2 });
+        const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
+        mergedPayment.payer = targetPayment.payer;
+        await context.setUpContractsForPayments();
+        await cardPaymentProcessorShell.enableCashback();
+        await cardPaymentProcessorShell.makeCommonPayments([targetPayment, mergedPayment]);
+        await context.cashbackDistributorMockShell.setIncreaseCashbackAmountResult(CASHBACK_ROUNDING_COEF);
+
+        await expect(
+          cardPaymentProcessorShell.contract.connect(executor).mergePayments(
+            targetPayment.id,
+            [mergedPayment.id]
+          )
+        ).to.be.revertedWithCustomError(
+          cardPaymentProcessorShell.contract,
+          REVERT_ERROR_IF_CASHBACK_MERGING_FAILURE
+        ).withArgs(
+          mergedPayment.id,
+          CashbackMergingFailureKind.IncreaseError
+        );
       });
     });
   });
@@ -4621,6 +4868,195 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
           )
         ).to.be.revertedWith(REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
       });
+    });
+  });
+
+  describe("Complex scenarios without cashback", async () => {
+    async function checkRevertingOfAllPaymentProcessingFunctionsExceptMaking(
+      cardPaymentProcessor: Contract,
+      payments: TestPayment[],
+      status: PaymentStatus
+    ) {
+      const paymentIds = payments.map(payment => payment.id);
+
+      await expect(
+        cardPaymentProcessor.connect(executor).revokePayment(paymentIds[0])
+      ).to.be.revertedWithCustomError(
+        cardPaymentProcessor,
+        REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS
+      ).withArgs(
+        paymentIds[0],
+        status
+      );
+
+      await expect(
+        cardPaymentProcessor.connect(executor).reversePayment(paymentIds[0])
+      ).to.be.revertedWithCustomError(
+        cardPaymentProcessor,
+        REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS
+      ).withArgs(
+        paymentIds[0],
+        status
+      );
+
+      await expect(
+        cardPaymentProcessor.connect(executor).confirmPayment(paymentIds[0], ZERO_CONFIRMATION_AMOUNT)
+      ).to.be.revertedWithCustomError(
+        cardPaymentProcessor,
+        REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS
+      ).withArgs(
+        paymentIds[0],
+        status
+      );
+
+      const paymentConfirmations: PaymentConfirmation[] = paymentIds.map(id => {
+        return {
+          paymentId: id,
+          amount: ZERO_CONFIRMATION_AMOUNT
+        };
+      });
+
+      await expect(
+        cardPaymentProcessor.connect(executor).confirmPayments(paymentConfirmations)
+      ).to.be.revertedWithCustomError(
+        cardPaymentProcessor,
+        REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS
+      ).withArgs(
+        paymentIds[0],
+        status
+      );
+
+      await expect(
+        cardPaymentProcessor.connect(executor).updatePayment(
+          paymentIds[0],
+          payments[0].baseAmount,
+          payments[0].extraAmount
+        )
+      ).to.be.revertedWithCustomError(
+        cardPaymentProcessor,
+        REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS
+      ).withArgs(
+        paymentIds[0],
+        status
+      );
+
+      await expect(
+        cardPaymentProcessor.connect(executor).updateLazyAndConfirmPayment(
+          paymentIds[0],
+          payments[0].baseAmount,
+          payments[0].extraAmount,
+          ZERO_CONFIRMATION_AMOUNT
+        )
+      ).to.be.revertedWithCustomError(
+        cardPaymentProcessor,
+        REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS
+      ).withArgs(
+        paymentIds[0],
+        status
+      );
+
+      await expect(
+        cardPaymentProcessor.connect(executor).refundPayment(
+          paymentIds[0],
+          ZERO_REFUND_AMOUNT
+        )
+      ).to.be.revertedWithCustomError(
+        cardPaymentProcessor,
+        REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS
+      ).withArgs(
+        paymentIds[0],
+        status
+      );
+    }
+
+    it("All payment processing functions except making are reverted if a payment was revoked", async () => {
+      const context = await beforeMakingPayments({ paymentNumber: 2 });
+      const { cardPaymentProcessorShell, payments } = context;
+
+      await cardPaymentProcessorShell.makeCommonPayments(payments);
+      await cardPaymentProcessorShell.revokePayment(payments[0]);
+
+      await context.checkCardPaymentProcessorState();
+
+      await checkRevertingOfAllPaymentProcessingFunctionsExceptMaking(
+        cardPaymentProcessorShell.contract,
+        payments,
+        PaymentStatus.Revoked
+      );
+
+      cardPaymentProcessorShell.model.makePayment(payments[0], { sender: executor });
+      const tx = cardPaymentProcessorShell.contract.connect(executor).makePaymentFor(
+        payments[0].id,
+        payments[0].payer.address,
+        payments[0].baseAmount,
+        payments[0].extraAmount,
+        ZERO_SPONSOR_ADDRESS,
+        ZERO_SUBSIDY_LIMIT,
+        CASHBACK_RATE_AS_IN_CONTRACT,
+        ZERO_CONFIRMATION_AMOUNT
+      );
+      await context.checkPaymentOperationsForTx(tx);
+      await context.checkCardPaymentProcessorState();
+    });
+
+    it("All payment processing functions are reverted if a payment was reversed", async () => {
+      const context = await beforeMakingPayments({ paymentNumber: 2 });
+      const { cardPaymentProcessorShell, payments } = context;
+
+      await cardPaymentProcessorShell.makeCommonPayments(payments);
+      await cardPaymentProcessorShell.reversePayment(payments[0]);
+
+      await expect(
+        cardPaymentProcessorShell.contract.connect(executor).makePaymentFor(
+          payments[0].id,
+          payments[0].payer.address,
+          payments[0].baseAmount,
+          payments[0].extraAmount,
+          ZERO_SPONSOR_ADDRESS,
+          ZERO_SUBSIDY_LIMIT,
+          CASHBACK_RATE_AS_IN_CONTRACT,
+          ZERO_CONFIRMATION_AMOUNT
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTENT);
+
+      await checkRevertingOfAllPaymentProcessingFunctionsExceptMaking(
+        cardPaymentProcessorShell.contract,
+        payments,
+        PaymentStatus.Reversed
+      );
+      await context.checkCardPaymentProcessorState();
+    });
+
+    it("All payment processing functions are reverted if a payment was merged", async () => {
+      const context = await prepareForPayments({ paymentNumber: 2 });
+      const { cardPaymentProcessorShell, payments } = context;
+      const targetPayment: TestPayment = payments[1];
+      const mergedPayment: TestPayment = payments[0];
+      targetPayment.payer = mergedPayment.payer;
+      await context.setUpContractsForPayments();
+
+      await cardPaymentProcessorShell.makeCommonPayments(payments);
+      await cardPaymentProcessorShell.mergePayments(targetPayment, [mergedPayment]);
+
+      await expect(
+        cardPaymentProcessorShell.contract.connect(executor).makePaymentFor(
+          payments[0].id,
+          payments[0].payer.address,
+          payments[0].baseAmount,
+          payments[0].extraAmount,
+          ZERO_SPONSOR_ADDRESS,
+          ZERO_SUBSIDY_LIMIT,
+          CASHBACK_RATE_AS_IN_CONTRACT,
+          ZERO_CONFIRMATION_AMOUNT
+        )
+      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTENT);
+
+      await checkRevertingOfAllPaymentProcessingFunctionsExceptMaking(
+        cardPaymentProcessorShell.contract,
+        payments,
+        PaymentStatus.Merged
+      );
+      await context.checkCardPaymentProcessorState();
     });
   });
 });
