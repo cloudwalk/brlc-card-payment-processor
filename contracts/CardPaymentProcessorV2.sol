@@ -1241,6 +1241,8 @@ contract CardPaymentProcessorV2 is
                 emit SendCashbackFailure(distributor, cashbackAmount, cashbackNonce);
                 operation.cashbackRate = 0;
             }
+        } else {
+            operation.cashbackRate = 0;
         }
     }
 
@@ -1249,13 +1251,13 @@ contract CardPaymentProcessorV2 is
         address distributor = _cashbackDistributor;
         uint256 cashbackNonce = _cashbacks[paymentId].lastCashbackNonce;
         uint256 revokedAmount = 0;
-        if (cashbackNonce != 0 && distributor != address(0)) {
-            if (ICashbackDistributor(distributor).revokeCashback(cashbackNonce, amount)) {
-                emit RevokeCashbackSuccess(distributor, amount, cashbackNonce);
-                revokedAmount = amount;
-            } else {
-                emit RevokeCashbackFailure(distributor, amount, cashbackNonce);
-            }
+        // Condition (cashbackNonce != 0 && distributor != address(0)) is guaranteed by the current contract logic.
+        // So it is not checked here.
+        if (ICashbackDistributor(distributor).revokeCashback(cashbackNonce, amount)) {
+            emit RevokeCashbackSuccess(distributor, amount, cashbackNonce);
+            revokedAmount = amount;
+        } else {
+            emit RevokeCashbackFailure(distributor, amount, cashbackNonce);
         }
         return revokedAmount;
     }
@@ -1267,15 +1269,14 @@ contract CardPaymentProcessorV2 is
     ) internal returns (uint256) {
         address distributor = _cashbackDistributor;
         uint256 cashbackNonce = _cashbacks[paymentId].lastCashbackNonce;
-        uint256 increaseAmount = 0;
-        if (cashbackNonce != 0 && distributor != address(0)) {
-            bool success;
-            (success, increaseAmount) = ICashbackDistributor(distributor).increaseCashback(cashbackNonce, amount);
-            if (success) {
-                emit IncreaseCashbackSuccess(distributor, increaseAmount, cashbackNonce);
-            } else {
-                emit IncreaseCashbackFailure(distributor, amount, cashbackNonce);
-            }
+        // Condition (cashbackNonce != 0 && distributor != address(0)) is guaranteed by the current contract logic.
+        // So it is not checked here.
+        (bool success, uint256 increaseAmount) =
+            ICashbackDistributor(distributor).increaseCashback(cashbackNonce, amount);
+        if (success) {
+            emit IncreaseCashbackSuccess(distributor, increaseAmount, cashbackNonce);
+        } else {
+            emit IncreaseCashbackFailure(distributor, amount, cashbackNonce);
         }
         return increaseAmount;
     }
