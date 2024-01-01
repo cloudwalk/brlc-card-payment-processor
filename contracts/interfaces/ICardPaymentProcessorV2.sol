@@ -69,8 +69,8 @@ interface ICardPaymentProcessorV2Types {
 
     /// @dev Structure with data of a single confirmation operation
     struct PaymentConfirmation {
-        bytes32 paymentId;      // The card transaction payment ID from the off-chain card processing backend.
-        uint64 amount;          // The amount to confirm for the payment.
+        bytes32 paymentId; // The card transaction payment ID from the off-chain card processing backend.
+        uint64 amount;     // The amount to confirm for the payment.
     }
 }
 
@@ -227,14 +227,14 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
     );
 
     /**
-     * @dev Emitted when non-subsidized payments are merged.
+     * @dev Emitted when a payment is expanded by merging other payments to it.
      *
      * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
      * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint8(flags) -- the flags that for now define that the payment is not subsidized: always (`0x00`).
      * - uint64(oldBaseAmount) -- the old base amount of the payment.
      * - uint64(newBaseAmount) -- the new base amount of the payment.
      * - uint64(oldExtraAmount) -- the old extra amount of the payment.
@@ -246,23 +246,51 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *
      * Note: all the data of this event is related to the target payment, not to the merged ones.
      *
-     * @param targetPaymentId  The ID of the target payment to merge with.
+     * @param paymentId The ID of the current target payment that is expanded by the merged payments.
      * @param payer The account on that behalf the target payment and the merged ones.
-     * @param mergedPaymentIds The IDs of the merged payments.
+     * @param mergedPaymentIds The IDs of the payments that are merged to the current one.
      * @param data The main data of the event as described above.
      */
-    event PaymentsMerged(
-        bytes32 indexed targetPaymentId,
+    event PaymentExpanded(
+        bytes32 indexed paymentId,
         address indexed payer,
         bytes32[] mergedPaymentIds,
         bytes data
     );
 
-    /// @dev Emitted when an account is refunded.
+    /**
+     * @dev Emitted when a payment is merged to another one.
+     *
+     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments:
+     *
+     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - uint8(flags) -- the flags that for now define that the payment is not subsidized: always (`0x00`).
+     * - uint64(payerReminder) -- the payer reminder part of the payment.
+     *
+     * @param paymentId The ID of the current merged payment from the off-chain card processing backend.
+     * @param payer The account on that behalf the payment is made.
+     * @param targetPaymentId The ID of the payment with which the current payment is merged with.
+     * @param data The main data of the event as described above.
+     */
+    event PaymentMerged(
+        bytes32 indexed paymentId,
+        address indexed payer,
+        bytes32 indexed targetPaymentId,
+        bytes data
+    );
+
+    /**
+     * @dev Emitted when an account is refunded.
+     * @param account The account that is refunded.
+     * @param refundingAmount The amount of tokens to refund.
+     * @param addendum Empty. Reserved for future possible additional information.
+     */
     event AccountRefunded(
         address indexed account,
         uint64 refundingAmount,
-        bytes addendum // Empty. Reserved for future possible additional information.
+        bytes addendum
     );
 
     /**
@@ -435,6 +463,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
     /**
      * @dev Merges several non-subsidized payments into a single one.
      *
+     * Emits a {PaymentExpanded} event for the target payment that is expanded by the merged payments.
      * Emits a {PaymentMerged} event for each merged payment.
      * Emits a {PaymentConfirmedAmountChanged} event for the target payment if its confirmed amount is changed.
      *

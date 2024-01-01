@@ -937,15 +937,15 @@ contract CardPaymentProcessorV2 is
         bytes memory eventData = abi.encodePacked(
             EVENT_DEFAULT_VERSION,
             uint8(eventFlags),
-            uint64(oldPaymentDetails.payerSumAmount - oldPaymentDetails.payerReminder),// oldPayerRefundAmount
-            uint64(newPaymentDetails.payerSumAmount - newPaymentDetails.payerReminder) // newPayerRefundAmount
+            uint64(oldPaymentDetails.payerSumAmount - oldPaymentDetails.payerReminder), // oldPayerRefundAmount
+            uint64(newPaymentDetails.payerSumAmount - newPaymentDetails.payerReminder)  // newPayerRefundAmount
         );
         if (eventFlags & EVENT_FLAG_MASK_SPONSORED != 0) {
             eventData = abi.encodePacked(
                 eventData,
                 sponsor,
-                uint64(oldPaymentDetails.sponsorSumAmount - oldPaymentDetails.sponsorReminder),// oldSponsorRefundAmount
-                uint64(newPaymentDetails.sponsorSumAmount - newPaymentDetails.sponsorReminder) // newSponsorRefundAmount
+                uint64(oldPaymentDetails.sponsorSumAmount - oldPaymentDetails.sponsorReminder), //oldSponsorRefundAmount
+                uint64(newPaymentDetails.sponsorSumAmount - newPaymentDetails.sponsorReminder)  //newSponsorRefundAmount
             );
         }
 
@@ -1054,9 +1054,20 @@ contract CardPaymentProcessorV2 is
                 operation.newConfirmedAmount += mergedPayment.confirmedAmount;
             }
             mergedPayment.status = PaymentStatus.Merged;
+
+            emit PaymentMerged(
+                mergedPaymentId,
+                payer,
+                targetPaymentId,
+                abi.encodePacked(
+                    EVENT_DEFAULT_VERSION,
+                    uint8(0),
+                    uint64(mergedPayment.baseAmount + mergedPayment.extraAmount - mergedPayment.refundAmount)
+                )
+            );
         }
 
-        emit PaymentsMerged(
+        emit PaymentExpanded(
             targetPaymentId,
             payer,
             mergedPaymentIds,
@@ -1157,13 +1168,13 @@ contract CardPaymentProcessorV2 is
 
         //Payer token transferring
         {
-            int256 amount = - (int256(newPaymentDetails.payerReminder) - int256(oldPaymentDetails.payerReminder));
+            int256 amount = -(int256(newPaymentDetails.payerReminder) - int256(oldPaymentDetails.payerReminder));
             int256 cashbackChange = int256(newPaymentDetails.cashbackAmount) - int256(oldPaymentDetails.cashbackAmount);
             if (cashbackChange < 0) {
                 amount += cashbackChange;
             }
             if (amount < 0) {
-                erc20Token.safeTransferFrom(payment.payer, address(this), uint256(- amount));
+                erc20Token.safeTransferFrom(payment.payer, address(this), uint256(-amount));
             } else if (amount > 0) {
                 erc20Token.safeTransfer(payment.payer, uint256(amount));
             }
@@ -1271,8 +1282,10 @@ contract CardPaymentProcessorV2 is
         uint256 cashbackNonce = _cashbacks[paymentId].lastCashbackNonce;
         // Condition (cashbackNonce != 0 && distributor != address(0)) is guaranteed by the current contract logic.
         // So it is not checked here.
-        (bool success, uint256 increaseAmount) =
-            ICashbackDistributor(distributor).increaseCashback(cashbackNonce, amount);
+        (bool success, uint256 increaseAmount) = ICashbackDistributor(distributor).increaseCashback(
+            cashbackNonce,
+            amount
+        );
         if (success) {
             emit IncreaseCashbackSuccess(distributor, increaseAmount, cashbackNonce);
         } else {
@@ -1341,7 +1354,7 @@ contract CardPaymentProcessorV2 is
 
     /// @dev Calculates cashback according to the amount and the rate.
     function _calculateCashback(uint256 amount, uint256 cashbackRate_) internal pure returns (uint256) {
-        uint256 cashback = amount * cashbackRate_ / CASHBACK_FACTOR;
+        uint256 cashback = (amount * cashbackRate_) / CASHBACK_FACTOR;
         return ((cashback + CASHBACK_ROUNDING_COEF / 2) / CASHBACK_ROUNDING_COEF) * CASHBACK_ROUNDING_COEF;
     }
 
@@ -1407,10 +1420,7 @@ contract CardPaymentProcessorV2 is
     function _defineSumAmountParts(
         uint256 paymentSumAmount,
         uint256 subsidyLimit
-    ) internal pure returns (
-        uint256 payerSumAmount,
-        uint256 sponsorSumAmount
-    ) {
+    ) internal pure returns (uint256 payerSumAmount, uint256 sponsorSumAmount) {
         if (subsidyLimit >= paymentSumAmount) {
             sponsorSumAmount = paymentSumAmount;
             payerSumAmount = 0;
@@ -1427,7 +1437,7 @@ contract CardPaymentProcessorV2 is
         uint256 subsidyLimit
     ) internal pure returns (uint256) {
         if (subsidyLimit < baseAmount) {
-            refundAmount = refundAmount * subsidyLimit / baseAmount;
+            refundAmount = (refundAmount * subsidyLimit) / baseAmount;
         }
         if (refundAmount > subsidyLimit) {
             refundAmount = subsidyLimit;
