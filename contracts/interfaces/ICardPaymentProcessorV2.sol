@@ -36,8 +36,8 @@ interface ICardPaymentProcessorV2Types {
      *  The following additional payment parameters can be derived from the structure fields:
      *
      *  - sumAmount = baseAmount + extraAmount.
-     *  - commonReminder = sumAmount - refundAmount.
-     *  - unconfirmedAmount = commonReminder - confirmedAmount.
+     *  - commonRemainder = sumAmount - refundAmount.
+     *  - unconfirmedAmount = commonRemainder - confirmedAmount.
      *  - payerBaseAmount = (baseAmount > subsidyLimit) ? (baseAmount - subsidyLimit) : 0.
      *  - payerSumAmount = (sumAmount > subsidyLimit) ? (sumAmount - subsidyLimit) : 0.
      *  - assumedSponsorRefundAmount = (baseAmount > subsidyLimit)
@@ -46,7 +46,7 @@ interface ICardPaymentProcessorV2Types {
      *  - sponsorRefundAmount = (assumedSponsorRefundAmount < subsidyLimit) ? assumedSponsorRefundAmount : subsidyLimit.
      *  - payerRefundAmount = refundAmount - sponsorRefundAmount.
      *  - payerRemainder = payerSumAmount - payerRefundAmount.
-     *  - sponsorReminder = sumAmount - payerSumAmount - payerRemainder.
+     *  - sponsorRemainder = sumAmount - payerSumAmount - payerRemainder.
      */
     // DEV Type `uint64` allows us execute payments up to 1.8E13 BRLC. I believe, instead of that, we can use `uint56` (up to 72E9 BRLC) or even `uint48` (up to 281M BRLC). It will save more storage.
     struct Payment {
@@ -141,9 +141,9 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
      * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
-     * - uint64(payerReminder) -- the payer reminder part of the payment.
+     * - uint64(payerRemainder) -- the payer remainder part of the payment.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
-     * - uint64(sponsorReminder) -- the sponsor reminder part or skipped if the payment is not subsidized.
+     * - uint64(sponsorRemainder) -- the sponsor remainder part or skipped if the payment is not subsidized.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
@@ -164,9 +164,9 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
      * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
-     * - uint64(payerReminder) -- the payer reminder part of the payment.
+     * - uint64(payerRemainder) -- the payer remainder part of the payment.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
-     * - uint64(sponsorReminder) -- the sponsor reminder part or skipped if the payment is not subsidized.
+     * - uint64(sponsorRemainder) -- the sponsor remainder part or skipped if the payment is not subsidized.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
@@ -267,7 +267,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
      * - uint8(flags) -- the flags that for now define that the payment is not subsidized: always (`0x00`).
-     * - uint64(payerReminder) -- the payer reminder part of the payment.
+     * - uint64(payerRemainder) -- the payer remainder part of the payment.
      *
      * @param paymentId The ID of the current merged payment from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.

@@ -521,6 +521,9 @@ contract CardPaymentProcessorV2 is
      * - The target payment and the merged ones must have the same payer address.
      * - The target payment and the merged ones must not be subsidized.
      * - The cashback rate of the target payment must not be less than the cashback rate of merged payments.
+     * - The contract must have enough token balance to make a cashback merge during the payment merging.
+     * - The cashback revocation of the merged payments must succeed.
+     * - The cashback increase of the target payment must succeed.
      */
     function mergePayments(
         bytes32 targetPaymentId,
@@ -848,13 +851,13 @@ contract CardPaymentProcessorV2 is
         bytes memory eventData = abi.encodePacked(
             EVENT_DEFAULT_VERSION,
             uint8(eventFlags),
-            uint64(oldPaymentDetails.payerReminder)
+            uint64(oldPaymentDetails.payerRemainder)
         );
         if (eventFlags & EVENT_FLAG_MASK_SPONSORED != 0) {
             eventData = abi.encodePacked(
                 eventData,
                 sponsor,
-                uint64(oldPaymentDetails.sponsorReminder)
+                uint64(oldPaymentDetails.sponsorRemainder)
             );
         }
 
@@ -888,10 +891,10 @@ contract CardPaymentProcessorV2 is
             return confirmationAmount;
         }
 
-        uint256 reminder = uint256(payment.baseAmount) + uint256(payment.extraAmount) - uint256(payment.refundAmount);
+        uint256 remainder = uint256(payment.baseAmount) + uint256(payment.extraAmount) - uint256(payment.refundAmount);
         uint256 oldConfirmedAmount = payment.confirmedAmount;
         uint256 newConfirmedAmount = oldConfirmedAmount + confirmationAmount;
-        if (newConfirmedAmount > reminder) {
+        if (newConfirmedAmount > remainder) {
             revert InappropriateConfirmationAmount();
         }
 
@@ -937,15 +940,15 @@ contract CardPaymentProcessorV2 is
         bytes memory eventData = abi.encodePacked(
             EVENT_DEFAULT_VERSION,
             uint8(eventFlags),
-            uint64(oldPaymentDetails.payerSumAmount - oldPaymentDetails.payerReminder), // oldPayerRefundAmount
-            uint64(newPaymentDetails.payerSumAmount - newPaymentDetails.payerReminder)  // newPayerRefundAmount
+            uint64(oldPaymentDetails.payerSumAmount - oldPaymentDetails.payerRemainder), // oldPayerRefundAmount
+            uint64(newPaymentDetails.payerSumAmount - newPaymentDetails.payerRemainder)  // newPayerRefundAmount
         );
         if (eventFlags & EVENT_FLAG_MASK_SPONSORED != 0) {
             eventData = abi.encodePacked(
                 eventData,
                 sponsor,
-                uint64(oldPaymentDetails.sponsorSumAmount - oldPaymentDetails.sponsorReminder), //oldSponsorRefundAmount
-                uint64(newPaymentDetails.sponsorSumAmount - newPaymentDetails.sponsorReminder)  //newSponsorRefundAmount
+                uint64(oldPaymentDetails.sponsorSumAmount - oldPaymentDetails.sponsorRemainder), //oldSponsorRefundAmount
+                uint64(newPaymentDetails.sponsorSumAmount - newPaymentDetails.sponsorRemainder)  //newSponsorRefundAmount
             );
         }
 
@@ -1168,7 +1171,7 @@ contract CardPaymentProcessorV2 is
 
         //Payer token transferring
         {
-            int256 amount = -(int256(newPaymentDetails.payerReminder) - int256(oldPaymentDetails.payerReminder));
+            int256 amount = -(int256(newPaymentDetails.payerRemainder) - int256(oldPaymentDetails.payerRemainder));
             int256 cashbackChange = int256(newPaymentDetails.cashbackAmount) - int256(oldPaymentDetails.cashbackAmount);
             if (cashbackChange < 0) {
                 amount += cashbackChange;
@@ -1190,11 +1193,11 @@ contract CardPaymentProcessorV2 is
         //Sponsor token transferring
         address sponsor = payment.sponsor;
         if (payment.sponsor != address(0)) {
-            if (newPaymentDetails.sponsorReminder > oldPaymentDetails.sponsorReminder) {
-                uint256 amount = newPaymentDetails.sponsorReminder - oldPaymentDetails.sponsorReminder;
+            if (newPaymentDetails.sponsorRemainder > oldPaymentDetails.sponsorRemainder) {
+                uint256 amount = newPaymentDetails.sponsorRemainder - oldPaymentDetails.sponsorRemainder;
                 erc20Token.safeTransferFrom(sponsor, address(this), amount);
-            } else if (newPaymentDetails.sponsorReminder < oldPaymentDetails.sponsorReminder) {
-                uint256 amount = oldPaymentDetails.sponsorReminder - newPaymentDetails.sponsorReminder;
+            } else if (newPaymentDetails.sponsorRemainder < oldPaymentDetails.sponsorRemainder) {
+                uint256 amount = oldPaymentDetails.sponsorRemainder - newPaymentDetails.sponsorRemainder;
                 erc20Token.safeTransfer(sponsor, amount);
             }
         }
@@ -1364,8 +1367,8 @@ contract CardPaymentProcessorV2 is
         uint256 cashbackAmount;
         uint256 payerSumAmount;
         uint256 sponsorSumAmount;
-        uint256 payerReminder;
-        uint256 sponsorReminder;
+        uint256 payerRemainder;
+        uint256 sponsorRemainder;
     }
 
     /// @dev Kind of a payment recalculation operation.
@@ -1401,8 +1404,8 @@ contract CardPaymentProcessorV2 is
             cashbackAmount: cashbackAmount,
             payerSumAmount: payerSumAmount,
             sponsorSumAmount: sponsorSumAmount,
-            payerReminder: payerSumAmount - payerRefund,
-            sponsorReminder: sponsorSumAmount - sponsorRefund
+            payerRemainder: payerSumAmount - payerRefund,
+            sponsorRemainder: sponsorSumAmount - sponsorRefund
         });
         return details;
     }
@@ -1445,13 +1448,13 @@ contract CardPaymentProcessorV2 is
         return refundAmount;
     }
 
-    /// @dev Defines the new confirmed amount of a payment according to the new old confirmed amount and the reminder.
+    /// @dev Defines the new confirmed amount of a payment according to the new old confirmed amount and the remainder.
     function _defineNewConfirmedAmount(
         uint256 oldConfirmedAmount,
-        uint256 commonReminder
+        uint256 commonRemainder
     ) internal pure returns (uint256) {
-        if (oldConfirmedAmount > commonReminder) {
-            return commonReminder;
+        if (oldConfirmedAmount > commonRemainder) {
+            return commonRemainder;
         } else {
             return oldConfirmedAmount;
         }
