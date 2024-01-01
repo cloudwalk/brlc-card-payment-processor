@@ -1093,7 +1093,10 @@ contract CardPaymentProcessorV2 is
 
     /// @dev Executes token transfers related to a new payment.
     function _processPaymentMaking(MakingOperation memory operation) internal {
-        uint256 sumAmount = operation.baseAmount + operation.extraAmount;
+        uint256 sumAmount;
+        unchecked {
+            sumAmount = uint256(operation.baseAmount) + uint256(operation.extraAmount);
+        }
         if (sumAmount > type(uint64).max) {
             revert OverflowOfSumAmount();
         }
@@ -1362,7 +1365,10 @@ contract CardPaymentProcessorV2 is
         Payment memory payment,
         PaymentRecalculationKind kind
     ) internal pure returns (PaymentDetails memory) {
-        uint256 sumAmount = uint256(payment.baseAmount) + uint256(payment.extraAmount);
+        uint256 sumAmount;
+        unchecked {
+            sumAmount = uint256(payment.baseAmount) + uint256(payment.extraAmount);
+        }
         if (kind != PaymentRecalculationKind.None && sumAmount > type(uint64).max) {
             revert OverflowOfSumAmount();
         }
