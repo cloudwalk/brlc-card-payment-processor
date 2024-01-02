@@ -277,6 +277,7 @@ class CardPaymentProcessorModel {
   #paymentPerId: Map<string, PaymentModel> = new Map<string, PaymentModel>();
   #totalBalance: number = 0;
   #totalConfirmedAmount: number = 0;
+  #totalUnconfirmedRemainder: number = 0;
   #cashbackPerPaymentId: Map<string, CashbackModel> = new Map<string, CashbackModel>();
   #paymentMakingOperations: PaymentOperation[] = [];
   #paymentOperations: PaymentOperation[] = [];
@@ -472,6 +473,10 @@ class CardPaymentProcessorModel {
 
   get totalConfirmedAmount(): number {
     return this.#totalConfirmedAmount;
+  }
+
+  get totalUnconfirmedRemainder(): number {
+    return this.#totalUnconfirmedRemainder;
   }
 
   getPaymentOperation(operationIndex: number): PaymentOperation {
@@ -706,6 +711,8 @@ class CardPaymentProcessorModel {
     payment.cashbackAmount += operation.cashbackActualChange;
     this.#totalBalance += operation.cardPaymentProcessorBalanceChange;
     this.#totalConfirmedAmount += operation.cashOutAccountBalanceChange;
+    this.#totalUnconfirmedRemainder += (operation.newRemainder - operation.oldRemainder);
+    this.#totalUnconfirmedRemainder -= (operation.newConfirmationAmount - operation.oldConfirmationAmount);
     return this.#paymentOperations.push(operation) - 1;
   }
 
@@ -779,6 +786,8 @@ class CardPaymentProcessorModel {
   #updateModelDueToPaymentCancelingOperation(operation: PaymentOperation) {
     this.#totalBalance += operation.cardPaymentProcessorBalanceChange;
     this.#totalConfirmedAmount += operation.cashOutAccountBalanceChange;
+    this.#totalUnconfirmedRemainder += (operation.newRemainder - operation.oldRemainder);
+    this.#totalUnconfirmedRemainder -= (operation.newConfirmationAmount - operation.oldConfirmationAmount);
   }
 
   #registerPaymentCancelingOperation(operation: PaymentOperation, payment: PaymentModel, targetStatus: PaymentStatus) {
@@ -1796,7 +1805,14 @@ class TestContext {
       await this.tokenMock.balanceOf(this.cashOutAccount.address)
     ).to.equal(
       this.cardPaymentProcessorShell.model.totalConfirmedAmount,
-      `The confirmed amount token balance is wrong`
+      `The cash-out account token balance is wrong`
+    );
+
+    expect(
+      (await this.cardPaymentProcessorShell.contract.getPaymentStatistics()).totalUnconfirmedRemainder
+    ).to.equal(
+      this.cardPaymentProcessorShell.model.totalUnconfirmedRemainder,
+      `The total unconfirmed remainder is wrong`
     );
   }
 
@@ -4055,7 +4071,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         describe("The refund amount is zero, and cashback is", async () => {
           it("Enabled, and cashback operation is executed successfully", async () => {
             const context = await beforeMakingPayments();
-            const { payments: [payment] } = context;
             const refundAmount = 0;
             await checkRefunding(context, { refundAmount });
           });
@@ -4670,7 +4685,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       });
 
       it("The cash-out account does not configured", async () => {
-        const { cardPaymentProcessorShell, tokenMock } = await prepareForPayments();
+        const { cardPaymentProcessorShell } = await prepareForPayments();
         const tokenAmount = nonZeroTokenAmount;
         await proveTx(cardPaymentProcessorShell.contract.setCashOutAccount(ZERO_ADDRESS));
 
