@@ -254,7 +254,6 @@ contract CardPaymentProcessorV2 is
     }
 
     /// @dev Contains parameters of a payment making operation.
-    // DEV Maybe it is worth to make all the numeric fields uint256 for lower gas consumption. It should be checked after testing.
     struct MakingOperation {
         bytes32 paymentId;
         address payer;
@@ -981,8 +980,6 @@ contract CardPaymentProcessorV2 is
     }
 
     /// @dev Defines the payment merge operation details
-    // DEV Maybe old values are redundant and it is less gas consuming to use stored values instead.
-    // DEV Maybe fields of type uint64 are less gas consuming. The same for other structs.
     struct MergeOperation {
         uint256 oldBaseAmount;
         uint256 newBaseAmount;
@@ -1014,7 +1011,6 @@ contract CardPaymentProcessorV2 is
             revert PaymentSubsidized(targetPaymentId);
         }
 
-        // DEV Check if the compiler optimizes the double reading of the stored payment structure
         MergeOperation memory operation = MergeOperation({
             oldBaseAmount: storedTargetPayment.baseAmount,
             newBaseAmount: storedTargetPayment.baseAmount,
