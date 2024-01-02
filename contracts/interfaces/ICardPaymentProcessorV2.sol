@@ -72,6 +72,12 @@ interface ICardPaymentProcessorV2Types {
         bytes32 paymentId; // The card transaction payment ID from the off-chain card processing backend.
         uint64 amount;     // The amount to confirm for the payment.
     }
+
+    /// @dev Structure with statistics of all payments
+    struct PaymentStatistics {
+        uint128 totalUnconfirmedRemainder; // The total remainder of all payments that are not confirmed yet.
+        uint128 reserve;                   // The reserved filed for future changes.
+    }
 }
 
 /**
@@ -505,4 +511,9 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      */
     function getPayment(bytes32 paymentId) external view returns (Payment memory);
+
+    /**
+     * @dev Returns statistics of all payments.
+     */
+    function getPaymentStatistics() external view returns (PaymentStatistics memory);
 }

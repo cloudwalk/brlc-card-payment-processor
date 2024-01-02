@@ -318,8 +318,7 @@ contract CardPaymentProcessorV2 is
 
         _makePayment(operation);
         if (confirmationAmount > 0) {
-            uint256 transferAmount = _confirmPayment(paymentId, confirmationAmount);
-            IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), transferAmount);
+            _confirmPaymentWithTransfer(paymentId, confirmationAmount);
         }
     }
 
@@ -432,8 +431,7 @@ contract CardPaymentProcessorV2 is
         bytes32 paymentId,
         uint64 confirmationAmount
     ) public whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        uint256 transferAmount = _confirmPayment(paymentId, confirmationAmount);
-        IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), transferAmount);
+        _confirmPaymentWithTransfer(paymentId, confirmationAmount);
     }
 
     /**
@@ -453,15 +451,18 @@ contract CardPaymentProcessorV2 is
             revert PaymentConfirmationArrayEmpty();
         }
 
-        uint256 totalTransferAmount = 0;
+        uint256 totalConfirmedAmount = 0;
         for (uint256 i = 0; i < paymentConfirmations.length; i++) {
-            totalTransferAmount += _confirmPayment(
+            totalConfirmedAmount += _confirmPayment(
                 paymentConfirmations[i].paymentId,
                 paymentConfirmations[i].amount
             );
         }
 
-        IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), totalTransferAmount);
+        _paymentStatistics.totalUnconfirmedRemainder = uint128(
+            uint256(_paymentStatistics.totalUnconfirmedRemainder) - totalConfirmedAmount
+        );
+        IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), totalConfirmedAmount);
     }
 
     /**
@@ -486,10 +487,7 @@ contract CardPaymentProcessorV2 is
             newExtraAmount,
             UpdatingOperationKind.Lazy
         );
-        uint256 transferAmount = _confirmPayment(paymentId, confirmationAmount);
-        if (transferAmount > 0) {
-            IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), transferAmount);
-        }
+        _confirmPaymentWithTransfer(paymentId, confirmationAmount);
     }
 
     /**
@@ -690,6 +688,13 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
+     * @inheritdoc ICardPaymentProcessorV2
+     */
+    function getPaymentStatistics() external view returns (PaymentStatistics memory) {
+        return _paymentStatistics;
+    }
+
+    /**
      * @inheritdoc ICardPaymentCashbackV2
      */
     function cashbackDistributor() external view returns (address) {
@@ -798,6 +803,7 @@ contract CardPaymentProcessorV2 is
 
         _processPaymentChange(paymentId, payment, oldPaymentDetails, newPaymentDetails);
         _storeChangedPayment(storedPayment, payment, newPaymentDetails);
+        _updatePaymentStatistics(oldPaymentDetails, newPaymentDetails);
 
         address sponsor = payment.sponsor;
         uint256 eventFlags = _defineEventFlags(sponsor);
@@ -844,6 +850,7 @@ contract CardPaymentProcessorV2 is
         PaymentDetails memory newPaymentDetails; //all fields are zero
 
         _processPaymentChange(paymentId, payment, oldPaymentDetails, newPaymentDetails);
+        _updatePaymentStatistics(oldPaymentDetails, newPaymentDetails);
 
         storedPayment.status = targetStatus;
 
@@ -880,7 +887,7 @@ contract CardPaymentProcessorV2 is
     /// @dev Confirms a payment internally
     function _confirmPayment(
         bytes32 paymentId,
-        uint64 confirmationAmount
+        uint256 confirmationAmount
     ) internal returns (uint256) {
         if (paymentId == 0) {
             revert PaymentZeroId();
@@ -911,6 +918,18 @@ contract CardPaymentProcessorV2 is
         return confirmationAmount;
     }
 
+    /// @dev Confirms a payment internally with the token transfer to the cash-out account
+    function _confirmPaymentWithTransfer(
+        bytes32 paymentId,
+        uint256 confirmationAmount
+    ) internal {
+        confirmationAmount = _confirmPayment(paymentId, confirmationAmount);
+        _paymentStatistics.totalUnconfirmedRemainder = uint128(
+            _paymentStatistics.totalUnconfirmedRemainder - confirmationAmount
+        );
+        IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), confirmationAmount);
+    }
+
     /// @dev Makes a refund for a payment internally
     function _refundPayment(
         bytes32 paymentId,
@@ -935,6 +954,7 @@ contract CardPaymentProcessorV2 is
 
         _processPaymentChange(paymentId, payment, oldPaymentDetails, newPaymentDetails);
         _storeChangedPayment(storedPayment, payment, newPaymentDetails);
+        _updatePaymentStatistics(oldPaymentDetails, newPaymentDetails);
 
         address sponsor = payment.sponsor;
         uint256 eventFlags = _defineEventFlags(sponsor);
@@ -948,8 +968,8 @@ contract CardPaymentProcessorV2 is
             eventData = abi.encodePacked(
                 eventData,
                 sponsor,
-                uint64(oldPaymentDetails.sponsorSumAmount - oldPaymentDetails.sponsorRemainder), //oldSponsorRefundAmount
-                uint64(newPaymentDetails.sponsorSumAmount - newPaymentDetails.sponsorRemainder)  //newSponsorRefundAmount
+                uint64(oldPaymentDetails.sponsorSumAmount - oldPaymentDetails.sponsorRemainder),//oldSponsorRefundAmount
+                uint64(newPaymentDetails.sponsorSumAmount - newPaymentDetails.sponsorRemainder) //newSponsorRefundAmount
             );
         }
 
@@ -1338,6 +1358,8 @@ contract CardPaymentProcessorV2 is
         storedPayment.extraAmount = operation.extraAmount;
         storedPayment.cashbackAmount = operation.cashbackAmount;
         storedPayment.refundAmount = 0;
+
+        _paymentStatistics.totalUnconfirmedRemainder += uint128(operation.baseAmount + operation.extraAmount);
     }
 
     /// @dev Stores the data of a changed payment.
@@ -1354,6 +1376,24 @@ contract CardPaymentProcessorV2 is
         if (newPaymentDetails.confirmedAmount != changedPayment.confirmedAmount) {
             storedPayment.confirmedAmount = uint64(newPaymentDetails.confirmedAmount);
         }
+    }
+
+    /// @dev Updates statistics of all payments.
+    function _updatePaymentStatistics(
+        PaymentDetails memory oldPaymentDetails,
+        PaymentDetails memory newPaymentDetails
+    ) internal {
+        int256 paymentReminderChange =
+            (int256(newPaymentDetails.payerRemainder) + int256(newPaymentDetails.sponsorRemainder)) -
+            (int256(oldPaymentDetails.payerRemainder) + int256(oldPaymentDetails.sponsorRemainder));
+        int256 paymentConfirmedAmountChange =
+            int256(newPaymentDetails.confirmedAmount) - int256(oldPaymentDetails.confirmedAmount);
+
+        _paymentStatistics.totalUnconfirmedRemainder = uint128(uint256(
+            int256(uint256(_paymentStatistics.totalUnconfirmedRemainder)) +
+            paymentReminderChange -
+            paymentConfirmedAmountChange
+        ));
     }
 
     /// @dev Calculates cashback according to the amount and the rate.

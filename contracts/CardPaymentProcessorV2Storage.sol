@@ -29,6 +29,8 @@ abstract contract CardPaymentProcessorV2StorageV1 is ICardPaymentProcessorV2Type
 
     /// @dev Mapping of a structure with cashback data for a given payment ID.
     mapping(bytes32 => Cashback) internal _cashbacks;
+
+    PaymentStatistics internal _paymentStatistics;
 }
 
 /**
