@@ -6,7 +6,7 @@ import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC
 import { EnumerableSetUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import { BlacklistableUpgradeable } from "./base/BlacklistableUpgradeable.sol";
+import { BlocklistableUpgradeable } from "./base/BlocklistableUpgradeable.sol";
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
 import { StoragePlaceholder200 } from "./base/StoragePlaceholder200.sol";
@@ -21,7 +21,7 @@ import { ICashbackDistributor } from "./interfaces/ICashbackDistributor.sol";
  */
 contract CashbackDistributor is
     AccessControlExtUpgradeable,
-    BlacklistableUpgradeable,
+    BlocklistableUpgradeable,
     PausableExtUpgradeable,
     RescuableUpgradeable,
     StoragePlaceholder200,
@@ -80,7 +80,7 @@ contract CashbackDistributor is
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
-        __Blacklistable_init_unchained(OWNER_ROLE);
+        __Blocklistable_init_unchained(OWNER_ROLE);
         __Pausable_init_unchained();
         __PausableExt_init_unchained(OWNER_ROLE);
         __Rescuable_init_unchained(OWNER_ROLE);
@@ -129,8 +129,8 @@ contract CashbackDistributor is
 
         if (!_enabled) {
             status = CashbackStatus.Disabled;
-        } else if (isBlacklisted(recipient)) {
-            status = CashbackStatus.Blacklisted;
+        } else if (isBlocklisted(recipient)) {
+            status = CashbackStatus.Blocklisted;
         } else if (IERC20Upgradeable(token).balanceOf(address(this)) < amount) {
             status = CashbackStatus.OutOfFunds;
         } else {
@@ -266,8 +266,8 @@ contract CashbackDistributor is
             status = IncreaseStatus.Inapplicable;
         } else if (!_enabled) {
             status = IncreaseStatus.Disabled;
-        } else if (isBlacklisted(context.recipient)) {
-            status = IncreaseStatus.Blacklisted;
+        } else if (isBlocklisted(context.recipient)) {
+            status = IncreaseStatus.Blocklisted;
         } else if (IERC20Upgradeable(context.token).balanceOf(address(this)) < amount) {
             status = IncreaseStatus.OutOfFunds;
         } else {

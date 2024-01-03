@@ -6,7 +6,7 @@ import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { EnumerableSetUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
-import { BlacklistableUpgradeable } from "./base/BlacklistableUpgradeable.sol";
+import { BlocklistableUpgradeable } from "./base/BlocklistableUpgradeable.sol";
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
 import { StoragePlaceholder200 } from "./base/StoragePlaceholder200.sol";
@@ -25,7 +25,7 @@ import { IERC20Mintable } from "./interfaces/IERC20Mintable.sol";
  */
 contract PixCashier is
     AccessControlExtUpgradeable,
-    BlacklistableUpgradeable,
+    BlocklistableUpgradeable,
     PausableExtUpgradeable,
     RescuableUpgradeable,
     StoragePlaceholder200,
@@ -114,7 +114,7 @@ contract PixCashier is
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
-        __Blacklistable_init_unchained(OWNER_ROLE);
+        __Blocklistable_init_unchained(OWNER_ROLE);
         __Pausable_init_unchained();
         __PausableExt_init_unchained(OWNER_ROLE);
         __Rescuable_init_unchained(OWNER_ROLE);
@@ -305,7 +305,7 @@ contract PixCashier is
      *
      * - The contract must not be paused.
      * - The caller must have the {CASHIER_ROLE} role.
-     * - The `account` must not be blacklisted.
+     * - The `account` must not be blocklisted.
      * - The `account`, `amount`, and `txId` values must not be zero.
      * - The cash-out operation with the provided `txId` must not be already pending.
      */
@@ -324,7 +324,7 @@ contract PixCashier is
      *
      * - The contract must not be paused.
      * - The caller must have the {CASHIER_ROLE} role.
-     * - Each `account` in the provided array must not be blacklisted.
+     * - Each `account` in the provided array must not be blocklisted.
      * - Each `account`, `amount`, and `txId` values in the provided arrays must not be zero.
      * - Each cash-out operation with the provided `txId` in the array must not be already pending.
      */
@@ -432,8 +432,8 @@ contract PixCashier is
         if (txId == 0) {
             revert ZeroTxId();
         }
-        if (isBlacklisted(account)) {
-            revert BlacklistedAccount(account);
+        if (isBlocklisted(account)) {
+            revert BlocklistedAccount(account);
         }
 
         if (_cashIns[txId].status != CashInStatus.Nonexistent) {
@@ -477,8 +477,8 @@ contract PixCashier is
         if (txId == 0) {
             revert ZeroTxId();
         }
-        if (isBlacklisted(account)) {
-            revert BlacklistedAccount(account);
+        if (isBlocklisted(account)) {
+            revert BlocklistedAccount(account);
         }
 
         CashOut storage operation = _cashOuts[txId];

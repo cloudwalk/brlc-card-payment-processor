@@ -5,7 +5,7 @@ pragma solidity 0.8.16;
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import { BlacklistableUpgradeable } from "./base/BlacklistableUpgradeable.sol";
+import { BlocklistableUpgradeable } from "./base/BlocklistableUpgradeable.sol";
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
 import { StoragePlaceholder200 } from "./base/StoragePlaceholder200.sol";
@@ -22,7 +22,7 @@ import { ICashbackDistributor, ICashbackDistributorTypes } from "./interfaces/IC
  */
 contract CardPaymentProcessor is
     AccessControlExtUpgradeable,
-    BlacklistableUpgradeable,
+    BlocklistableUpgradeable,
     PausableExtUpgradeable,
     RescuableUpgradeable,
     StoragePlaceholder200,
@@ -164,7 +164,7 @@ contract CardPaymentProcessor is
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
-        __Blacklistable_init_unchained(OWNER_ROLE);
+        __Blocklistable_init_unchained(OWNER_ROLE);
         __Pausable_init_unchained();
         __PausableExt_init_unchained(OWNER_ROLE);
         __Rescuable_init_unchained(OWNER_ROLE);
@@ -210,7 +210,7 @@ contract CardPaymentProcessor is
      * Requirements:
      *
      * - The contract must not be paused.
-     * - The caller must must not be blacklisted.
+     * - The caller must must not be blocklisted.
      * - The authorization ID of the payment must not be zero.
      * - The payment linked with the authorization ID must not exist or be revoked.
      * - The payment's revocation counter must be equal to zero or less than the configured revocation limit.
@@ -220,7 +220,7 @@ contract CardPaymentProcessor is
         uint256 extraAmount,
         bytes16 authorizationId,
         bytes16 correlationId
-    ) external whenNotPaused notBlacklisted(_msgSender()) {
+    ) external whenNotPaused notBlocklisted(_msgSender()) {
         address sender = _msgSender();
         MakingOperation memory operation = MakingOperation({
             sender: sender,
