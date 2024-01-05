@@ -2075,7 +2075,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   before(async () => {
     cardPaymentProcessorFactory = await ethers.getContractFactory("CardPaymentProcessor");
     cashbackDistributorMockFactory = await ethers.getContractFactory("CashbackDistributorMock");
-    tokenMockFactory = await ethers.getContractFactory("ERC20UpgradeableMock");
+    tokenMockFactory = await ethers.getContractFactory("ERC20TokenMock");
 
     [deployer, cashOutAccount, executor, sponsor, user1, user2] = await ethers.getSigners();
   });

@@ -207,7 +207,7 @@ describe("Contract 'CashbackDistributor'", async () => {
 
   before(async () => {
     cashbackDistributorFactory = await ethers.getContractFactory("CashbackDistributor");
-    tokenMockFactory = await ethers.getContractFactory("ERC20UpgradeableMock");
+    tokenMockFactory = await ethers.getContractFactory("ERC20TokenMock");
 
     [deployer, distributor, user] = await ethers.getSigners();
   });

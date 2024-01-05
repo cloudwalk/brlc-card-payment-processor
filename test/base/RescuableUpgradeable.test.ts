@@ -33,7 +33,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
 
   before(async () => {
     rescuableMockFactory = await ethers.getContractFactory("RescuableUpgradeableMock");
-    tokenMockFactory = await ethers.getContractFactory("ERC20UpgradeableMock");
+    tokenMockFactory = await ethers.getContractFactory("ERC20TokenMock");
 
     [deployer, rescuer] = await ethers.getSigners();
   });

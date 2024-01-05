@@ -5,10 +5,10 @@ pragma solidity 0.8.16;
 import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 /**
- * @title ERC20UpgradeableMock contract
+ * @title ERC20TokenMock contract
  * @dev An implementation of the {ERC20Upgradeable} contract for test purposes.
  */
-contract ERC20UpgradeableMock is ERC20Upgradeable {
+contract ERC20TokenMock is ERC20Upgradeable {
     bool public mintResult;
 
     /**
