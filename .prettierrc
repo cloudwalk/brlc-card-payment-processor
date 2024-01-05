@@ -3,12 +3,26 @@
     {
       "files": "*.sol",
       "options": {
-        "printWidth": 120,
+        "printWidth": 100,
         "tabWidth": 4,
+        "semi": true,
+        "useTabs": false,
+        "singleQuote": false,
+        "bracketSpacing": true
+      }
+    },
+    {
+      "files": "*.ts",
+      "options": {
+        "printWidth": 120,
+        "tabWidth": 2,
+        "semi": true,
         "useTabs": false,
         "singleQuote": false,
         "bracketSpacing": true,
-        "explicitTypes": "always"
+        "trailingComma": "none",
+        "arrowParens": "avoid",
+        "endOfLine": "lf"
       }
     }
   ]
