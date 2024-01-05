@@ -111,23 +111,3 @@
 |||| <strike>[0x41DbC64712dEad335eAdBf8C097f52DEAE461919](https://explorer.testnet.cloudwalk.io/address/0x41DbC64712dEad335eAdBf8C097f52DEAE461919)</strike> |
 |||| <strike>[0xecD7E30a93ae05221dc3e25c6BDf9EE5F420E8a1](https://explorer.testnet.cloudwalk.io/address/0xecD7E30a93ae05221dc3e25c6BDf9EE5F420E8a1)</strike> |
 |||| <strike>[0x1603f35B40d5364EE00068c0bf0C71fb9336dd75](https://explorer.testnet.cloudwalk.io/address/0x1603f35B40d5364EE00068c0bf0C71fb9336dd75)</strike> |
-
-# TokenDistributor
-
-### CloudWalk (Mainnet)
-| # | Name | Description | Address |
-| --- | --- | --- | --- |
-| 1 | ProxyAdmin | Proxy admin | [0x71Bb3b173De088f34609e33A4B3E39EE8dd57A95](https://explorer.mainnet.cloudwalk.network/address/0x71Bb3b173De088f34609e33A4B3E39EE8dd57A95) |
-| 2 | TransparentUpgradeableProxy | Upgradeable proxy | [0xd754822328fd6E4D2f187278e1782f8ec7759f57](https://explorer.mainnet.cloudwalk.network/address/0xd754822328fd6E4D2f187278e1782f8ec7759f57) |
-| 3 | TokenDistributor | Proxy implementation | [0xc04598ea135F7ab2d07BA48c423AbC9A6538Cec1](https://explorer.mainnet.cloudwalk.network/address/0xc04598ea135F7ab2d07BA48c423AbC9A6538Cec1) |
-|||| <strike>[0x6A84c24c0bA562B06716302Fc2255A9d5Bf26949](https://explorer.mainnet.cloudwalk.network/address/0x6A84c24c0bA562B06716302Fc2255A9d5Bf26949)</strike> |
-|||| <strike>[0x40216397adDb202aF77056e4C9fAC18fD57c97F8](https://explorer.mainnet.cloudwalk.network/address/0x40216397adDb202aF77056e4C9fAC18fD57c97F8)</strike> |
-
-### CloudWalk (Testnet)
-| # | Name | Description | Address |
-| --- | --- | --- | --- |
-| 1 | ProxyAdmin | Proxy admin | [0xDb25bd42B55468B6CeF2097C65cE7AcF4f8aaE8A](https://explorer.testnet.cloudwalk.io/address/0xDb25bd42B55468B6CeF2097C65cE7AcF4f8aaE8A) |
-| 2 | TransparentUpgradeableProxy | Upgradeable proxy | [0xeda44dc9B5Ad4BA808bDf94C51D07c89921aaD80](https://explorer.testnet.cloudwalk.io/address/0xeda44dc9B5Ad4BA808bDf94C51D07c89921aaD80) |
-| 3 | TokenDistributor | Proxy implementation | [0x6a8B96330237Fd2BAb777A71270eBD783E4f9FA8](https://explorer.testnet.cloudwalk.io/address/0x6a8B96330237Fd2BAb777A71270eBD783E4f9FA8) |
-|||| <strike>[0xc7E93FB1971C8A2aF6fFb8ae1C769c48729FFb0C](https://explorer.testnet.cloudwalk.io/address/0xc7E93FB1971C8A2aF6fFb8ae1C769c48729FFb0C)</strike> |
-|||| <strike>[0x5ffF6f498Caa56EFb959bFC1059F7bdbb2fEF8E2](https://explorer.testnet.cloudwalk.io/address/0x5ffF6f498Caa56EFb959bFC1059F7bdbb2fEF8E2)</strike> |
