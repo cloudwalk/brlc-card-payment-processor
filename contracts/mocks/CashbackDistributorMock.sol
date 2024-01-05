@@ -126,7 +126,9 @@ contract CashbackDistributorMock is ICashbackDistributor {
      *
      * Just a stub for testing. Always returns an empty array.
      */
-    function getCashbacks(uint256[] memory nonces) public pure returns (Cashback[] memory cashbacks) {
+    function getCashbacks(
+        uint256[] memory nonces
+    ) public pure returns (Cashback[] memory cashbacks) {
         cashbacks = new Cashback[](0);
         nonces;
     }
@@ -152,7 +154,10 @@ contract CashbackDistributorMock is ICashbackDistributor {
      *
      * Just a stub for testing. Always returns zero.
      */
-    function getTotalCashbackByTokenAndExternalId(address token, bytes32 externalId) public pure returns (uint256) {
+    function getTotalCashbackByTokenAndExternalId(
+        address token,
+        bytes32 externalId
+    ) public pure returns (uint256) {
         token;
         externalId;
         return 0;
@@ -163,7 +168,10 @@ contract CashbackDistributorMock is ICashbackDistributor {
      *
      * Just a stub for testing. Always returns zero.
      */
-    function getTotalCashbackByTokenAndRecipient(address token, address recipient) public pure returns (uint256) {
+    function getTotalCashbackByTokenAndRecipient(
+        address token,
+        address recipient
+    ) public pure returns (uint256) {
         token;
         recipient;
         return 0;
@@ -238,7 +246,10 @@ contract CashbackDistributorMock is ICashbackDistributor {
      * If the returned value is `true` sends the provided amount of tokens
      * from this contract to {lastCashbackRecipient}.
      */
-    function increaseCashback(uint256 nonce, uint256 amount) external returns (bool success, uint256 sentAmount) {
+    function increaseCashback(
+        uint256 nonce,
+        uint256 amount
+    ) external returns (bool success, uint256 sentAmount) {
         success = increaseCashbackSuccessResult;
         emit IncreaseCashbackMock(msg.sender, nonce, amount);
         if (success) {

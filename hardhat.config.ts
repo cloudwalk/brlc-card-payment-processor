@@ -9,15 +9,15 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1000,
-      },
-    },
+        runs: 1000
+      }
+    }
   },
   networks: {
     hardhat: {
       accounts: {
-        mnemonic: "test test test test test test test test test test test junk",
-      },
+        mnemonic: "test test test test test test test test test test test junk"
+      }
     },
     ganache: {
       url: "http://127.0.0.1:7545",

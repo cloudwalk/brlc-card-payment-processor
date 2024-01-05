@@ -12,7 +12,7 @@ This repository contains [BRLC Token](https://github.com/cloudwalk/brlc-token) p
 
 ## Build and test
 
-``` sh
+```sh
 # Install all dependencies
 npm install
 
@@ -24,7 +24,9 @@ npx hardhat test
 ```
 
 ## Networks and deployments
+
 Information about deployed contracts across all the networks can be found [here](./docs/deployed-contracts.md).
 
 ## Licensing
+
 This project is released under the MIT License, see [LICENSE](./LICENSE).

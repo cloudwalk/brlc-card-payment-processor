@@ -65,23 +65,21 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
 
     it("The external initializer is reverted if it is called a second time", async () => {
       const { pausableExtMock } = await setUpFixture(deployPausableExtMock);
-      await expect(
-        pausableExtMock.initialize()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+      await expect(pausableExtMock.initialize()).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
     });
 
     it("The internal initializer is reverted if it is called outside the init process", async () => {
       const { pausableExtMock } = await setUpFixture(deployPausableExtMock);
-      await expect(
-        pausableExtMock.call_parent_initialize()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
+      await expect(pausableExtMock.call_parent_initialize()).to.be.revertedWith(
+        REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING
+      );
     });
 
     it("The internal unchained initializer is reverted if it is called outside the init process", async () => {
       const { pausableExtMock } = await setUpFixture(deployPausableExtMock);
-      await expect(
-        pausableExtMock.call_parent_initialize_unchained()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
+      await expect(pausableExtMock.call_parent_initialize_unchained()).to.be.revertedWith(
+        REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING
+      );
     });
   });
 
@@ -89,21 +87,16 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
     it("Executes successfully and emits the correct event", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
 
-      await expect(
-        pausableExtMock.connect(pauser).pause()
-      ).to.emit(
-        pausableExtMock,
-        "Paused"
-      ).withArgs(pauser.address);
+      await expect(pausableExtMock.connect(pauser).pause()).to.emit(pausableExtMock, "Paused").withArgs(pauser.address);
 
       expect(await pausableExtMock.paused()).to.equal(true);
     });
 
     it("Is reverted if it is called by an account without the pauser role", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
-      await expect(
-        pausableExtMock.pause()
-      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, pauserRole));
+      await expect(pausableExtMock.pause()).to.be.revertedWith(
+        createRevertMessageDueToMissingRole(deployer.address, pauserRole)
+      );
     });
   });
 
@@ -112,21 +105,18 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
       await proveTx(pausableExtMock.connect(pauser).pause());
 
-      await expect(
-        pausableExtMock.connect(pauser).unpause()
-      ).to.emit(
-        pausableExtMock,
-        "Unpaused"
-      ).withArgs(pauser.address);
+      await expect(pausableExtMock.connect(pauser).unpause())
+        .to.emit(pausableExtMock, "Unpaused")
+        .withArgs(pauser.address);
 
       expect(await pausableExtMock.paused()).to.equal(false);
     });
 
     it("Is reverted if it is called by an account without the pauser role", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
-      await expect(
-        pausableExtMock.unpause()
-      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, pauserRole));
+      await expect(pausableExtMock.unpause()).to.be.revertedWith(
+        createRevertMessageDueToMissingRole(deployer.address, pauserRole)
+      );
     });
   });
 });

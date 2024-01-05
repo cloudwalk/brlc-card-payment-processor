@@ -255,7 +255,10 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      * @return success True if the additional cashback has been fully or partially sent.
      * @return sentAmount The amount of the actual cashback increase.
      */
-    function increaseCashback(uint256 nonce, uint256 amount) external returns (bool success, uint256 sentAmount);
+    function increaseCashback(
+        uint256 nonce,
+        uint256 amount
+    ) external returns (bool success, uint256 sentAmount);
 
     /**
      * @dev Enables the cashback operations.
@@ -297,7 +300,9 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      * @dev Returns the data of cashback operations by their nonces.
      * @param nonces The array of nonces of cashback operations to return.
      */
-    function getCashbacks(uint256[] calldata nonces) external view returns (Cashback[] memory cashbacks);
+    function getCashbacks(
+        uint256[] calldata nonces
+    ) external view returns (Cashback[] memory cashbacks);
 
     /**
      * @dev Returns an array of cashback nonces associated with an external identifier.
@@ -316,12 +321,18 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      * @param token The token contract address of the cashback operations to define the returned total amount.
      * @param externalId The external identifier of the cashback operations to define the returned total amount.
      */
-    function getTotalCashbackByTokenAndExternalId(address token, bytes32 externalId) external view returns (uint256);
+    function getTotalCashbackByTokenAndExternalId(
+        address token,
+        bytes32 externalId
+    ) external view returns (uint256);
 
     /**
      * @dev Returns the total amount of all the success cashback operations associated with a token and a recipient.
      * @param token The token contract address of the cashback operations to define the returned total amount.
      * @param recipient The recipient address of the cashback operations to define the returned total amount.
      */
-    function getTotalCashbackByTokenAndRecipient(address token, address recipient) external view returns (uint256);
+    function getTotalCashbackByTokenAndRecipient(
+        address token,
+        address recipient
+    ) external view returns (uint256);
 }

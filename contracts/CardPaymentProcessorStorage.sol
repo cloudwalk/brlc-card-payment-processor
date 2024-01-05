@@ -75,6 +75,5 @@ abstract contract CardPaymentProcessorStorageV3 is ICardPaymentCashbackTypes {
 abstract contract CardPaymentProcessorStorage is
     CardPaymentProcessorStorageV1,
     CardPaymentProcessorStorageV2,
-    CardPaymentProcessorStorageV3 {
-
-}
+    CardPaymentProcessorStorageV3
+{}

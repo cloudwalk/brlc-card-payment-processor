@@ -231,10 +231,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     );
 
     /// @dev Emitted when the cash-out account is changed.
-    event SetCashOutAccount(
-        address oldCashOutAccount,
-        address newCashOutAccount
-    );
+    event SetCashOutAccount(address oldCashOutAccount, address newCashOutAccount);
 
     /**
      * @dev Returns the address of the cash-out account.
@@ -344,7 +341,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         bytes16 correlationId,
         address sponsor,
         uint256 subsidyLimit,
-        int16   cashbackRateInPermil
+        int16 cashbackRateInPermil
     ) external;
 
     /**
@@ -571,9 +568,5 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @param refundAmount The amount of tokens to refund.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
-    function refundAccount(
-        address account,
-        uint256 refundAmount,
-        bytes16 correlationId
-    ) external;
+    function refundAccount(address account, uint256 refundAmount, bytes16 correlationId) external;
 }

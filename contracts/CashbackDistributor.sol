@@ -114,7 +114,12 @@ contract CashbackDistributor is
         bytes32 externalId,
         address recipient,
         uint256 amount
-    ) external whenNotPaused onlyRole(DISTRIBUTOR_ROLE) returns (bool success, uint256 sentAmount, uint256 nonce) {
+    )
+        external
+        whenNotPaused
+        onlyRole(DISTRIBUTOR_ROLE)
+        returns (bool success, uint256 sentAmount, uint256 nonce)
+    {
         if (token == address(0)) {
             revert ZeroTokenAddress();
         }
@@ -157,16 +162,7 @@ contract CashbackDistributor is
 
         _nonceCollectionByExternalId[externalId].push(nonce);
 
-        emit SendCashback(
-            token,
-            kind,
-            status,
-            externalId,
-            recipient,
-            amount,
-            sender,
-            nonce
-        );
+        emit SendCashback(token, kind, status, externalId, recipient, amount, sender, nonce);
 
         if (status == CashbackStatus.Success || status == CashbackStatus.Partial) {
             _totalCashbackByTokenAndRecipient[token][recipient] += amount;
@@ -202,11 +198,16 @@ contract CashbackDistributor is
 
         RevocationStatus revocationStatus = RevocationStatus.Success;
 
-        if (context.cashbackStatus != CashbackStatus.Success && context.cashbackStatus != CashbackStatus.Partial) {
+        if (
+            context.cashbackStatus != CashbackStatus.Success &&
+            context.cashbackStatus != CashbackStatus.Partial
+        ) {
             revocationStatus = RevocationStatus.Inapplicable;
         } else if (amount > IERC20Upgradeable(context.token).balanceOf(context.sender)) {
             revocationStatus = RevocationStatus.OutOfFunds;
-        } else if (amount > IERC20Upgradeable(context.token).allowance(context.sender, address(this))) {
+        } else if (
+            amount > IERC20Upgradeable(context.token).allowance(context.sender, address(this))
+        ) {
             revocationStatus = RevocationStatus.OutOfAllowance;
         } else if (amount > cashback.amount - context.newAmount) {
             revocationStatus = RevocationStatus.OutOfBalance;
@@ -222,7 +223,9 @@ contract CashbackDistributor is
             context.externalId,
             context.recipient,
             amount,
-            revocationStatus == RevocationStatus.Inapplicable ? 0 : cashback.amount - context.newAmount, // totalAmount
+            revocationStatus == RevocationStatus.Inapplicable
+                ? 0
+                : cashback.amount - context.newAmount, // totalAmount
             context.sender,
             context.nonce
         );
@@ -232,7 +235,11 @@ contract CashbackDistributor is
             _reduceOverallCashback(context.token, context.recipient, amount);
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] -= amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] -= amount;
-            IERC20Upgradeable(context.token).safeTransferFrom(context.sender, address(this), amount);
+            IERC20Upgradeable(context.token).safeTransferFrom(
+                context.sender,
+                address(this),
+                amount
+            );
             success = true;
         }
     }
@@ -271,7 +278,11 @@ contract CashbackDistributor is
         } else if (IERC20Upgradeable(context.token).balanceOf(address(this)) < amount) {
             status = IncreaseStatus.OutOfFunds;
         } else {
-            (bool accepted, uint256 acceptedAmount) = _updateCashbackCap(context.token, context.recipient, amount);
+            (bool accepted, uint256 acceptedAmount) = _updateCashbackCap(
+                context.token,
+                context.recipient,
+                amount
+            );
             if (!accepted) {
                 status = IncreaseStatus.Capped;
             } else {
@@ -364,7 +375,9 @@ contract CashbackDistributor is
     /**
      * @dev See {ICashbackDistributor-getCashbacks}.
      */
-    function getCashbacks(uint256[] calldata nonces) external view returns (Cashback[] memory cashbacks) {
+    function getCashbacks(
+        uint256[] calldata nonces
+    ) external view returns (Cashback[] memory cashbacks) {
         uint256 len = nonces.length;
         cashbacks = new Cashback[](len);
         for (uint256 i = 0; i < len; i++) {
@@ -400,22 +413,34 @@ contract CashbackDistributor is
     /**
      * @dev See {ICashbackDistributor-getTotalCashbackByTokenAndExternalId}.
      */
-    function getTotalCashbackByTokenAndExternalId(address token, bytes32 externalId) external view returns (uint256) {
+    function getTotalCashbackByTokenAndExternalId(
+        address token,
+        bytes32 externalId
+    ) external view returns (uint256) {
         return _totalCashbackByTokenAndExternalId[token][externalId];
     }
 
     /**
      * @dev See {ICashbackDistributor-getTotalCashbackByTokenAndRecipient}.
      */
-    function getTotalCashbackByTokenAndRecipient(address token, address recipient) external view returns (uint256) {
+    function getTotalCashbackByTokenAndRecipient(
+        address token,
+        address recipient
+    ) external view returns (uint256) {
         return _totalCashbackByTokenAndRecipient[token][recipient];
     }
 
-    function getCashbackSinceLastReset(address token, address recipient) external view returns (uint256) {
+    function getCashbackSinceLastReset(
+        address token,
+        address recipient
+    ) external view returns (uint256) {
         return _cashbackSinceLastReset[token][recipient];
     }
 
-    function getCashbackLastTimeReset(address token, address recipient) external view returns (uint256) {
+    function getCashbackLastTimeReset(
+        address token,
+        address recipient
+    ) external view returns (uint256) {
         return _cashbackLastTimeReset[token][recipient];
     }
 
@@ -440,11 +465,7 @@ contract CashbackDistributor is
         }
     }
 
-    function _reduceOverallCashback(
-        address token,
-        address recipient,
-        uint256 amount
-    ) internal {
+    function _reduceOverallCashback(address token, address recipient, uint256 amount) internal {
         uint256 overallCashback = _cashbackSinceLastReset[token][recipient];
         if (overallCashback > amount) {
             overallCashback -= amount;

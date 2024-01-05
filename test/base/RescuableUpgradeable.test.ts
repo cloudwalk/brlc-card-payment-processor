@@ -50,7 +50,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
     return { tokenMock };
   }
 
-  async function deployAndConfigureAllContracts(): Promise<{ rescuableMock: Contract, tokenMock: Contract }> {
+  async function deployAndConfigureAllContracts(): Promise<{ rescuableMock: Contract; tokenMock: Contract }> {
     const { rescuableMock } = await deployRescuableMock();
     const { tokenMock } = await deployTokenMock();
 
@@ -82,23 +82,21 @@ describe("Contract 'RescuableUpgradeable'", async () => {
 
     it("The external initializer is reverted if it is called a second time", async () => {
       const { rescuableMock } = await setUpFixture(deployRescuableMock);
-      await expect(
-        rescuableMock.initialize()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+      await expect(rescuableMock.initialize()).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
     });
 
     it("The internal initializer is reverted if it is called outside the init process", async () => {
       const { rescuableMock } = await setUpFixture(deployRescuableMock);
-      await expect(
-        rescuableMock.call_parent_initialize()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
+      await expect(rescuableMock.call_parent_initialize()).to.be.revertedWith(
+        REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING
+      );
     });
 
     it("The internal unchained initializer is reverted if it is called outside the init process", async () => {
       const { rescuableMock } = await setUpFixture(deployRescuableMock);
-      await expect(
-        rescuableMock.call_parent_initialize_unchained()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
+      await expect(rescuableMock.call_parent_initialize_unchained()).to.be.revertedWith(
+        REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING
+      );
     });
   });
 
@@ -106,35 +104,17 @@ describe("Contract 'RescuableUpgradeable'", async () => {
     it("Executes as expected and emits the correct event", async () => {
       const { rescuableMock, tokenMock } = await setUpFixture(deployAndConfigureAllContracts);
 
-      await expect(
-        rescuableMock.connect(rescuer).rescueERC20(
-          tokenMock.address,
-          deployer.address,
-          TOKEN_AMOUNT
-        )
-      ).to.changeTokenBalances(
-        tokenMock,
-        [rescuableMock, deployer, rescuer],
-        [-TOKEN_AMOUNT, +TOKEN_AMOUNT, 0]
-      ).and.to.emit(
-        tokenMock,
-        EVENT_NAME_TRANSFER
-      ).withArgs(
-        rescuableMock.address,
-        deployer.address,
-        TOKEN_AMOUNT
-      );
+      await expect(rescuableMock.connect(rescuer).rescueERC20(tokenMock.address, deployer.address, TOKEN_AMOUNT))
+        .to.changeTokenBalances(tokenMock, [rescuableMock, deployer, rescuer], [-TOKEN_AMOUNT, +TOKEN_AMOUNT, 0])
+        .and.to.emit(tokenMock, EVENT_NAME_TRANSFER)
+        .withArgs(rescuableMock.address, deployer.address, TOKEN_AMOUNT);
     });
 
     it("Is reverted if it is called by an account without the rescuer role", async () => {
       const { rescuableMock, tokenMock } = await setUpFixture(deployAndConfigureAllContracts);
-      await expect(
-        rescuableMock.rescueERC20(
-          tokenMock.address,
-          deployer.address,
-          TOKEN_AMOUNT
-        )
-      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, rescuerRole));
+      await expect(rescuableMock.rescueERC20(tokenMock.address, deployer.address, TOKEN_AMOUNT)).to.be.revertedWith(
+        createRevertMessageDueToMissingRole(deployer.address, rescuerRole)
+      );
     });
   });
 });

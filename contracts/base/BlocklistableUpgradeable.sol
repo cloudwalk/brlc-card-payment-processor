@@ -69,7 +69,9 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
      *
      * See {BlocklistableUpgradeable-__Blocklistable_init}.
      */
-    function __Blocklistable_init_unchained(bytes32 blocklisterRoleAdmin) internal onlyInitializing {
+    function __Blocklistable_init_unchained(
+        bytes32 blocklisterRoleAdmin
+    ) internal onlyInitializing {
         _setRoleAdmin(BLOCKLISTER_ROLE, blocklisterRoleAdmin);
     }
 

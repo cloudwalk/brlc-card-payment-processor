@@ -71,23 +71,23 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
 
     it("The external initializer is reverted if it is called a second time", async () => {
       const { blocklistableMock } = await setUpFixture(deployBlocklistableMock);
-      await expect(
-        blocklistableMock.initialize()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+      await expect(blocklistableMock.initialize()).to.be.revertedWith(
+        REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED
+      );
     });
 
     it("The internal initializer is reverted if it is called outside the init process", async () => {
       const { blocklistableMock } = await setUpFixture(deployBlocklistableMock);
-      await expect(
-        blocklistableMock.call_parent_initialize()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
+      await expect(blocklistableMock.call_parent_initialize()).to.be.revertedWith(
+        REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING
+      );
     });
 
     it("The internal unchained initializer is reverted if it is called outside the init process", async () => {
       const { blocklistableMock } = await setUpFixture(deployBlocklistableMock);
-      await expect(
-        blocklistableMock.call_parent_initialize_unchained()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
+      await expect(blocklistableMock.call_parent_initialize_unchained()).to.be.revertedWith(
+        REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING
+      );
     });
   });
 
@@ -96,26 +96,24 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
       const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(false);
 
-      await expect(
-        blocklistableMock.connect(blocklister).blocklist(user.address)
-      ).to.emit(
-        blocklistableMock,
-        EVENT_NAME_BLOCKLISTED
-      ).withArgs(user.address);
+      await expect(blocklistableMock.connect(blocklister).blocklist(user.address))
+        .to.emit(blocklistableMock, EVENT_NAME_BLOCKLISTED)
+        .withArgs(user.address);
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(true);
 
       // Second call with the same argument should not emit an event
-      await expect(
-        blocklistableMock.connect(blocklister).blocklist(user.address)
-      ).not.to.emit(blocklistableMock, EVENT_NAME_BLOCKLISTED);
+      await expect(blocklistableMock.connect(blocklister).blocklist(user.address)).not.to.emit(
+        blocklistableMock,
+        EVENT_NAME_BLOCKLISTED
+      );
     });
   });
 
   it("Is reverted if it is called by an account without the blocklister role", async () => {
     const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
-    await expect(
-      blocklistableMock.blocklist(user.address)
-    ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, blocklisterRole));
+    await expect(blocklistableMock.blocklist(user.address)).to.be.revertedWith(
+      createRevertMessageDueToMissingRole(deployer.address, blocklisterRole)
+    );
   });
 
   describe("Function 'unBlocklist()'", async () => {
@@ -124,25 +122,23 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
       await proveTx(blocklistableMock.connect(blocklister).blocklist(user.address));
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(true);
 
-      await expect(
-        blocklistableMock.connect(blocklister).unBlocklist(user.address)
-      ).to.emit(
-        blocklistableMock,
-        EVENT_NAME_UNBLOCKLISTED
-      ).withArgs(user.address);
+      await expect(blocklistableMock.connect(blocklister).unBlocklist(user.address))
+        .to.emit(blocklistableMock, EVENT_NAME_UNBLOCKLISTED)
+        .withArgs(user.address);
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(false);
 
       // The second call with the same argument should not emit an event
-      await expect(
-        blocklistableMock.connect(blocklister).unBlocklist(user.address)
-      ).not.to.emit(blocklistableMock, EVENT_NAME_UNBLOCKLISTED);
+      await expect(blocklistableMock.connect(blocklister).unBlocklist(user.address)).not.to.emit(
+        blocklistableMock,
+        EVENT_NAME_UNBLOCKLISTED
+      );
     });
 
     it("Is reverted if it is called by an account without the blocklister role", async () => {
       const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
-      await expect(
-        blocklistableMock.unBlocklist(user.address)
-      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, blocklisterRole));
+      await expect(blocklistableMock.unBlocklist(user.address)).to.be.revertedWith(
+        createRevertMessageDueToMissingRole(deployer.address, blocklisterRole)
+      );
     });
   });
 
@@ -151,25 +147,18 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
       const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(false);
 
-      await expect(
-        blocklistableMock.connect(user).selfBlocklist()
-      ).to.emit(
-        blocklistableMock,
-        EVENT_NAME_BLOCKLISTED
-      ).withArgs(
-        user.address
-      ).and.to.emit(
-        blocklistableMock,
-        EVENT_NAME_SELFBLOCKLISTED
-      ).withArgs(
-        user.address
-      );
+      await expect(blocklistableMock.connect(user).selfBlocklist())
+        .to.emit(blocklistableMock, EVENT_NAME_BLOCKLISTED)
+        .withArgs(user.address)
+        .and.to.emit(blocklistableMock, EVENT_NAME_SELFBLOCKLISTED)
+        .withArgs(user.address);
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(true);
 
       // Second call should not emit an event
-      await expect(
-        blocklistableMock.connect(user).selfBlocklist()
-      ).not.to.emit(blocklistableMock, EVENT_NAME_SELFBLOCKLISTED);
+      await expect(blocklistableMock.connect(user).selfBlocklist()).not.to.emit(
+        blocklistableMock,
+        EVENT_NAME_SELFBLOCKLISTED
+      );
     });
   });
 
@@ -178,16 +167,18 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
       const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
 
       await proveTx(blocklistableMock.connect(blocklister).blocklist(deployer.address));
-      await expect(
-        blocklistableMock.testNotBlocklistedModifier()
-      ).to.be.revertedWithCustomError(blocklistableMock, REVERT_ERROR_IF_ACCOUNT_IS_BLOCKLISTED);
+      await expect(blocklistableMock.testNotBlocklistedModifier()).to.be.revertedWithCustomError(
+        blocklistableMock,
+        REVERT_ERROR_IF_ACCOUNT_IS_BLOCKLISTED
+      );
     });
 
     it("Does not revert the target function if the caller is not blocklisted", async () => {
       const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
-      await expect(
-        blocklistableMock.connect(user).testNotBlocklistedModifier()
-      ).to.emit(blocklistableMock, EVENT_NAME_TEST_NOT_BLOCKLISTED_MODIFIER_SUCCEEDED);
+      await expect(blocklistableMock.connect(user).testNotBlocklistedModifier()).to.emit(
+        blocklistableMock,
+        EVENT_NAME_TEST_NOT_BLOCKLISTED_MODIFIER_SUCCEEDED
+      );
     });
   });
 });
