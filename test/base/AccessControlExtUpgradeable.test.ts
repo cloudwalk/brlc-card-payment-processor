@@ -108,7 +108,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
 
       it("Multiple accounts without the previously granted role", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
-        for (let userAddress: string of userAddresses) {
+        for (const userAddress of userAddresses) {
           expect(await accessControlExtMock.hasRole(userRole, userAddress)).to.equal(false);
         }
 
@@ -169,13 +169,13 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
         it("Multiple accounts with the previously granted role", async () => {
           const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
           await proveTx(accessControlExtMock.grantRoleBatch(userRole, userAddresses));
-          for (let userAddress: string of userAddresses) {
+          for (const userAddress of userAddresses) {
             expect(await accessControlExtMock.hasRole(userRole, userAddress)).to.equal(true);
           }
 
           const tx: Promise<TransactionResponse> = accessControlExtMock.revokeRoleBatch(userRole, userAddresses);
 
-          for (const userAddress: string of userAddresses) {
+          for (const userAddress of userAddresses) {
             await expect(tx)
               .to.emit(accessControlExtMock, EVENT_NAME_ROLE_REVOKED)
               .withArgs(userRole, userAddress, deployer.address);

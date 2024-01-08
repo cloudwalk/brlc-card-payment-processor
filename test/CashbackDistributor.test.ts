@@ -227,7 +227,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       totalCashbackAmount += cashback.requestedAmount;
       cashbackDistributorInitialBalanceByToken.set(cashback.token, totalCashbackAmount);
     });
-    for (let [token, totalCashbackAmount] of cashbackDistributorInitialBalanceByToken.entries()) {
+    for (const [token, totalCashbackAmount] of cashbackDistributorInitialBalanceByToken.entries()) {
       await proveTx(token.mint(cashbackDistributor.address, totalCashbackAmount));
     }
     return { cashbackDistributorInitialBalanceByToken };
@@ -244,7 +244,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     targetStatus: CashbackStatus
   ): Promise<TransactionReceipt[]> {
     const transactionReceipts: TransactionReceipt[] = [];
-    for (let cashback of cashbacks) {
+    for (const cashback of cashbacks) {
       const transactionReceipt = await proveTx(
         cashbackDistributor
           .connect(cashback.sender)
@@ -317,7 +317,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     checkNonexistentCashback(await cashbackDistributor.getCashback(0), 0);
 
     // Check other structures
-    for (let cashback of cashbacks) {
+    for (const cashback of cashbacks) {
       const actualCashback = await cashbackDistributor.getCashback(cashback.nonce);
       checkEquality(actualCashback, cashback);
     }
@@ -341,7 +341,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       expectedMap.set(cashback.externalId, nonces);
     });
 
-    for (let [externalId, expectedNonces] of expectedMap) {
+    for (const [externalId, expectedNonces] of expectedMap) {
       expect(await cashbackDistributor.getCashbackNonces(externalId, 0, 50)).to.deep.equal(
         expectedNonces,
         `Wrong array of nonces for the external ID ${externalId}`
@@ -364,8 +364,8 @@ describe("Contract 'CashbackDistributor'", async () => {
       expectedMap.set(cashback.token, totalCashbackMap);
     });
 
-    for (let [token, expectedTotalCashbackByExternalId] of expectedMap) {
-      for (let [externalId, expectedTotalCashback] of expectedTotalCashbackByExternalId) {
+    for (const [token, expectedTotalCashbackByExternalId] of expectedMap) {
+      for (const [externalId, expectedTotalCashback] of expectedTotalCashbackByExternalId) {
         expect(await cashbackDistributor.getTotalCashbackByTokenAndExternalId(token.address, externalId)).to.equal(
           expectedTotalCashback,
           `Wrong total cashback for the token with symbol ${await token.symbol()} and external ID ${externalId}`
@@ -390,9 +390,9 @@ describe("Contract 'CashbackDistributor'", async () => {
       expectedMap.set(cashback.token, totalCashbackMap);
     });
 
-    for (let [token, expectedTotalCashbackByRecipient] of expectedMap) {
+    for (const [token, expectedTotalCashbackByRecipient] of expectedMap) {
       const tokenSymbol: string = await token.symbol();
-      for (let [recipientAddress, expectedTotalCashback] of expectedTotalCashbackByRecipient) {
+      for (const [recipientAddress, expectedTotalCashback] of expectedTotalCashbackByRecipient) {
         expect(await cashbackDistributor.getTotalCashbackByTokenAndRecipient(token.address, recipientAddress)).to.equal(
           expectedTotalCashback,
           `Wrong total cashback for the token with symbol "${tokenSymbol}" and recipient address ${recipientAddress}`
@@ -416,7 +416,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       expectedMap.set(cashback.token, balance);
     });
 
-    for (let [token, expectedBalance] of expectedMap) {
+    for (const [token, expectedBalance] of expectedMap) {
       const tokenSymbol: string = await token.symbol();
       expect(await token.balanceOf(cashbackDistributor.address)).to.equal(
         expectedBalance,

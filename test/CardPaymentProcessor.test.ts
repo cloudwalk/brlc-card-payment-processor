@@ -519,14 +519,14 @@ class CardPaymentProcessorModel {
     this.#totalBalance += operation.totalAmount;
     this.#paymentPerAuthorizationId.set(payment.authorizationId, payment);
     this.#paymentOperations.push(operation);
-    if (!!operation.sponsor) {
+    if (operation.sponsor) {
       payment.sponsor = operation.sponsor;
       payment.subsidyLimit = operation.subsidyLimit;
     }
     return this.#paymentMakingOperations.push(operation) - 1;
   }
 
-  #calculateCashback(amount: number, cashbackRateInPermil) {
+  #calculateCashback(amount: number, cashbackRateInPermil: any) {
     const cashback = Math.floor((amount * cashbackRateInPermil) / 1000);
     return this.#roundCashback(cashback, CASHBACK_ROUNDING_COEF);
   }
@@ -977,7 +977,7 @@ class CardPaymentProcessorShell {
 
   async makePayments(payments: TestPayment[], sender: SignerWithAddress = this.executor): Promise<OperationResult[]> {
     const operationResults: OperationResult[] = [];
-    for (let payment of payments) {
+    for (const payment of payments) {
       const operationIndex = this.model.makePayment(payment, { sender });
       const tx = this.contract
         .connect(sender)
@@ -1060,7 +1060,7 @@ class CardPaymentProcessorShell {
 
   async clearPayments(payments: TestPayment[], sender: SignerWithAddress = this.executor): Promise<OperationResult[]> {
     const operationResults: OperationResult[] = [];
-    for (let payment of payments) {
+    for (const payment of payments) {
       const operationIndex = this.model.clearPayment(payment.authorizationId);
       const tx = this.contract.connect(sender).clearPayment(payment.authorizationId);
       const txReceipt: TransactionReceipt = await proveTx(tx);
@@ -1078,7 +1078,7 @@ class CardPaymentProcessorShell {
     sender: SignerWithAddress = this.executor
   ): Promise<OperationResult[]> {
     const operationResults: OperationResult[] = [];
-    for (let payment of payments) {
+    for (const payment of payments) {
       const operationIndex = this.model.unclearPayment(payment.authorizationId);
       const tx = this.contract.connect(sender).unclearPayment(payment.authorizationId);
       const txReceipt: TransactionReceipt = await proveTx(tx);
@@ -1130,7 +1130,7 @@ class CardPaymentProcessorShell {
     sender: SignerWithAddress = this.executor
   ): Promise<OperationResult[]> {
     const operationResults: OperationResult[] = [];
-    for (let payment of payments) {
+    for (const payment of payments) {
       const operationIndex = this.model.confirmPayment(payment.authorizationId);
       const tx = this.contract.connect(sender).confirmPayment(payment.authorizationId);
       const txReceipt: TransactionReceipt = await proveTx(tx);
@@ -1217,7 +1217,7 @@ class TestContext {
     const extraAmountChangedInAnyOperations =
       operations.filter(operation => operation.oldExtraAmount !== operation.newExtraAmount).length > 0;
 
-    for (let operation of operations) {
+    for (const operation of operations) {
       switch (operation.kind) {
         case OperationKind.Undefined:
           break;
@@ -1433,7 +1433,7 @@ class TestContext {
 
   async setUpContractsForPayments(payments: TestPayment[] = this.payments) {
     const accounts: Set<SignerWithAddress> = new Set(payments.map(payment => payment.account));
-    for (let account of accounts) {
+    for (const account of accounts) {
       await proveTx(this.tokenMock.mint(account.address, INITIAL_USER_BALANCE));
       const allowance: BigNumber = await this.tokenMock.allowance(
         account.address,
@@ -1459,7 +1459,7 @@ class TestContext {
         checkEventField("sender", operation.sender?.address)
       );
 
-    if (!!operation.sponsor) {
+    if (operation.sponsor) {
       await expect(tx)
         .to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_MAKE_PAYMENT_SUBSIDIZED)
         .withArgs(
@@ -1488,7 +1488,7 @@ class TestContext {
         checkEventField("newBaseAmount", operation.newBaseAmount)
       );
 
-    if (!!operation.sponsor) {
+    if (operation.sponsor) {
       await expect(tx)
         .to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_UPDATE_PAYMENT_SUBSIDIZED)
         .withArgs(
@@ -1522,7 +1522,7 @@ class TestContext {
 
     const wasThereSubsidizedPayment: boolean = operations.some(op => !!op.sponsor);
 
-    if (!!operation.sponsor) {
+    if (operation.sponsor) {
       await expect(tx)
         .to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_CLEAR_PAYMENT_SUBSIDIZED)
         .withArgs(
@@ -1559,7 +1559,7 @@ class TestContext {
 
     const wasThereSubsidizedPayment: boolean = operations.some(op => !!op.sponsor);
 
-    if (!!operation.sponsor) {
+    if (operation.sponsor) {
       await expect(tx)
         .to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_UNCLEAR_PAYMENT_SUBSIDIZED)
         .withArgs(
@@ -1601,7 +1601,7 @@ class TestContext {
 
     const wasThereSubsidizedPayment: boolean = operations.some(op => !!op.sponsor);
 
-    if (!!operation.sponsor) {
+    if (operation.sponsor) {
       await expect(tx)
         .to.emit(this.cardPaymentProcessorShell.contract, subsidizedEventName)
         .withArgs(
@@ -1644,7 +1644,7 @@ class TestContext {
 
     const wasThereSubsidizedPayment: boolean = operations.some(op => !!op.sponsor);
 
-    if (!!operation.sponsor) {
+    if (operation.sponsor) {
       await expect(tx)
         .to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_CONFIRM_PAYMENT_SUBSIDIZED)
         .withArgs(
@@ -1675,7 +1675,7 @@ class TestContext {
         checkEventField("status", operation.paymentStatus)
       );
 
-    if (!!operation.sponsor) {
+    if (operation.sponsor) {
       await expect(tx)
         .to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_REFUND_PAYMENT_SUBSIDIZED)
         .withArgs(
@@ -1835,7 +1835,7 @@ class TestContext {
       result.set(operation.account, balanceChange);
 
       const sponsor = operation.sponsor;
-      if (!!sponsor) {
+      if (sponsor) {
         balanceChange = result.get(sponsor) ?? 0;
         balanceChange += operation.sponsorBalanceChange;
         result.set(sponsor, balanceChange);
@@ -4679,7 +4679,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         newBaseAmount = payment.baseAmount;
       }
       let newExtraAmount;
-      if (newExtraPaymentAmountType == NewExtraPaymentAmountType.More) {
+      if (newExtraPaymentAmountType === NewExtraPaymentAmountType.More) {
         newExtraAmount = payment.extraAmount + 1;
       } else {
         newExtraAmount = payment.extraAmount;

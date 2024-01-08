@@ -6,7 +6,7 @@ import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC2
 
 /**
  * @title ERC20TokenMock contract
- * @dev An implementation of the {ERC20Upgradeable} contract for test purposes.
+ * @dev An implementation of the {ERC20Upgradeable} contract for testing purposes
  */
 contract ERC20TokenMock is ERC20Upgradeable {
     bool public mintResult;
