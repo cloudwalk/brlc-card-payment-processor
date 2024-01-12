@@ -224,11 +224,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     );
 
     /// @dev Emitted when an account is refunded.
-    event RefundAccount(
-        bytes16 indexed correlationId,
-        address indexed account,
-        uint256 refundAmount
-    );
+    event RefundAccount(bytes16 indexed correlationId, address indexed account, uint256 refundAmount);
 
     /// @dev Emitted when the cash-out account is changed.
     event SetCashOutAccount(address oldCashOutAccount, address newCashOutAccount);
@@ -428,11 +424,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param parentTxHash The hash of the transaction where the payment was made.
      */
-    function reversePayment(
-        bytes16 authorizationId,
-        bytes16 correlationId,
-        bytes32 parentTxHash
-    ) external;
+    function reversePayment(bytes16 authorizationId, bytes16 correlationId, bytes32 parentTxHash) external;
 
     /**
      * @dev Performs the revocation of a previously made card payment and increase its revocation counter.
@@ -448,11 +440,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param parentTxHash The hash of the transaction where the payment was made.
      */
-    function revokePayment(
-        bytes16 authorizationId,
-        bytes16 correlationId,
-        bytes32 parentTxHash
-    ) external;
+    function revokePayment(bytes16 authorizationId, bytes16 correlationId, bytes32 parentTxHash) external;
 
     /**
      * @dev Executes the final step of a single card payment processing with token transferring.

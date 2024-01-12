@@ -46,10 +46,7 @@ abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
      *
      * May emit a {RoleGranted} event for each account.
      */
-    function grantRoleBatch(
-        bytes32 role,
-        address[] memory accounts
-    ) public virtual onlyRole(getRoleAdmin(role)) {
+    function grantRoleBatch(bytes32 role, address[] memory accounts) public virtual onlyRole(getRoleAdmin(role)) {
         for (uint i = 0; i < accounts.length; i++) {
             _grantRole(role, accounts[i]);
         }
@@ -66,10 +63,7 @@ abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
      *
      * May emit a {RoleRevoked} event for each account.
      */
-    function revokeRoleBatch(
-        bytes32 role,
-        address[] memory accounts
-    ) public virtual onlyRole(getRoleAdmin(role)) {
+    function revokeRoleBatch(bytes32 role, address[] memory accounts) public virtual onlyRole(getRoleAdmin(role)) {
         for (uint i = 0; i < accounts.length; i++) {
             _revokeRole(role, accounts[i]);
         }

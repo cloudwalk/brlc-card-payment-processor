@@ -69,11 +69,7 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
      * @param amount The actual amount of the cashback increase.
      * @param nonce The nonce of the cashback.
      */
-    event IncreaseCashbackSuccess(
-        address indexed cashbackDistributor,
-        uint256 amount,
-        uint256 nonce
-    );
+    event IncreaseCashbackSuccess(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
 
     /**
      * @dev Emitted when a cashback increase request failed.
@@ -81,11 +77,7 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
      * @param amount The requested amount of cashback to increase.
      * @param nonce The nonce of the cashback.
      */
-    event IncreaseCashbackFailure(
-        address indexed cashbackDistributor,
-        uint256 amount,
-        uint256 nonce
-    );
+    event IncreaseCashbackFailure(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
 
     /// @dev Emitted when cashback operations are enabled.
     event EnableCashback();
