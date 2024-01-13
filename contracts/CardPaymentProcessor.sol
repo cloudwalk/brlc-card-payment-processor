@@ -940,7 +940,7 @@ contract CardPaymentProcessor is
     /// @dev Kind of a payment updating operation
     enum UpdatingOperationKind {
         Full, // 0 The operation is executed fully regardless of the new values of the base amount and extra amount.
-        Lazy // 1 The operation is executed only if the new amounts differ from the current ones of the payment.
+        Lazy  // 1 The operation is executed only if the new amounts differ from the current ones of the payment.
     }
 
     /// @dev Updates the base amount and extra amount of a payment. See {ICardPaymentCashback-updatePaymentAmount}.
@@ -1223,7 +1223,13 @@ contract CardPaymentProcessor is
         uint256 newClearedBalance = _clearedBalances[account] - totalAmount;
         _clearedBalances[account] = newClearedBalance;
 
-        emit ConfirmPayment(authorizationId, account, totalAmount, newClearedBalance, payment.revocationCounter);
+        emit ConfirmPayment(
+            authorizationId,
+            account,
+            totalAmount,
+            newClearedBalance,
+            payment.revocationCounter
+        );
 
         address sponsor = payment.sponsor;
         if (sponsor != address(0)) {
@@ -1439,8 +1445,7 @@ contract CardPaymentProcessor is
             if (sponsor != address(0)) {
                 token.safeTransfer(sponsor, operation.sponsorSentAmount);
             }
-        } else {
-            // status == PaymentStatus.ConfirmPayment
+        } else { // status == PaymentStatus.ConfirmPayment
             address cashOutAccount_ = requireCashOutAccount();
             token.safeTransferFrom(cashOutAccount_, account, operation.accountSentAmount);
             if (sponsor != address(0)) {
@@ -1451,7 +1456,14 @@ contract CardPaymentProcessor is
 
         revokeCashbackInternal(authorizationId, operation.revokedCashbackAmount);
 
-        emit RefundPayment(authorizationId, correlationId, account, refundAmount, operation.totalSentAmount, status);
+        emit RefundPayment(
+            authorizationId,
+            correlationId,
+            account,
+            refundAmount,
+            operation.totalSentAmount,
+            status
+        );
         if (sponsor != address(0)) {
             emit RefundPaymentSubsidized(
                 authorizationId,

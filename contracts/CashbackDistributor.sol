@@ -157,7 +157,16 @@ contract CashbackDistributor is
 
         _nonceCollectionByExternalId[externalId].push(nonce);
 
-        emit SendCashback(token, kind, status, externalId, recipient, amount, sender, nonce);
+        emit SendCashback(
+            token,
+            kind,
+            status,
+            externalId,
+            recipient,
+            amount,
+            sender,
+            nonce
+        );
 
         if (status == CashbackStatus.Success || status == CashbackStatus.Partial) {
             _totalCashbackByTokenAndRecipient[token][recipient] += amount;
@@ -431,7 +440,11 @@ contract CashbackDistributor is
         }
     }
 
-    function _reduceOverallCashback(address token, address recipient, uint256 amount) internal {
+    function _reduceOverallCashback(
+        address token,
+        address recipient,
+        uint256 amount
+    ) internal {
         uint256 overallCashback = _cashbackSinceLastReset[token][recipient];
         if (overallCashback > amount) {
             overallCashback -= amount;
