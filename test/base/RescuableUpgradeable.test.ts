@@ -33,7 +33,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
 
   before(async () => {
     rescuableMockFactory = await ethers.getContractFactory("RescuableUpgradeableMock");
-    tokenMockFactory = await ethers.getContractFactory("ERC20UpgradeableMock");
+    tokenMockFactory = await ethers.getContractFactory("ERC20TokenMock");
 
     [deployer, rescuer] = await ethers.getSigners();
   });
@@ -50,7 +50,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
     return { tokenMock };
   }
 
-  async function deployAndConfigureAllContracts(): Promise<{ rescuableMock: Contract, tokenMock: Contract }> {
+  async function deployAndConfigureAllContracts(): Promise<{ rescuableMock: Contract; tokenMock: Contract }> {
     const { rescuableMock } = await deployRescuableMock();
     const { tokenMock } = await deployTokenMock();
 
@@ -106,34 +106,16 @@ describe("Contract 'RescuableUpgradeable'", async () => {
     it("Executes as expected and emits the correct event", async () => {
       const { rescuableMock, tokenMock } = await setUpFixture(deployAndConfigureAllContracts);
 
-      await expect(
-        rescuableMock.connect(rescuer).rescueERC20(
-          tokenMock.address,
-          deployer.address,
-          TOKEN_AMOUNT
-        )
-      ).to.changeTokenBalances(
-        tokenMock,
-        [rescuableMock, deployer, rescuer],
-        [-TOKEN_AMOUNT, +TOKEN_AMOUNT, 0]
-      ).and.to.emit(
-        tokenMock,
-        EVENT_NAME_TRANSFER
-      ).withArgs(
-        rescuableMock.address,
-        deployer.address,
-        TOKEN_AMOUNT
-      );
+      await expect(rescuableMock.connect(rescuer).rescueERC20(tokenMock.address, deployer.address, TOKEN_AMOUNT))
+        .to.changeTokenBalances(tokenMock, [rescuableMock, deployer, rescuer], [-TOKEN_AMOUNT, +TOKEN_AMOUNT, 0])
+        .and.to.emit(tokenMock, EVENT_NAME_TRANSFER)
+        .withArgs(rescuableMock.address, deployer.address, TOKEN_AMOUNT);
     });
 
     it("Is reverted if it is called by an account without the rescuer role", async () => {
       const { rescuableMock, tokenMock } = await setUpFixture(deployAndConfigureAllContracts);
       await expect(
-        rescuableMock.rescueERC20(
-          tokenMock.address,
-          deployer.address,
-          TOKEN_AMOUNT
-        )
+        rescuableMock.rescueERC20(tokenMock.address, deployer.address, TOKEN_AMOUNT)
       ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, rescuerRole));
     });
   });

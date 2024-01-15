@@ -96,12 +96,9 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
       const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(false);
 
-      await expect(
-        blocklistableMock.connect(blocklister).blocklist(user.address)
-      ).to.emit(
-        blocklistableMock,
-        EVENT_NAME_BLOCKLISTED
-      ).withArgs(user.address);
+      await expect(blocklistableMock.connect(blocklister).blocklist(user.address))
+        .to.emit(blocklistableMock, EVENT_NAME_BLOCKLISTED)
+        .withArgs(user.address);
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(true);
 
       // Second call with the same argument should not emit an event
@@ -124,12 +121,9 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
       await proveTx(blocklistableMock.connect(blocklister).blocklist(user.address));
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(true);
 
-      await expect(
-        blocklistableMock.connect(blocklister).unBlocklist(user.address)
-      ).to.emit(
-        blocklistableMock,
-        EVENT_NAME_UNBLOCKLISTED
-      ).withArgs(user.address);
+      await expect(blocklistableMock.connect(blocklister).unBlocklist(user.address))
+        .to.emit(blocklistableMock, EVENT_NAME_UNBLOCKLISTED)
+        .withArgs(user.address);
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(false);
 
       // The second call with the same argument should not emit an event
@@ -151,19 +145,11 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
       const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(false);
 
-      await expect(
-        blocklistableMock.connect(user).selfBlocklist()
-      ).to.emit(
-        blocklistableMock,
-        EVENT_NAME_BLOCKLISTED
-      ).withArgs(
-        user.address
-      ).and.to.emit(
-        blocklistableMock,
-        EVENT_NAME_SELFBLOCKLISTED
-      ).withArgs(
-        user.address
-      );
+      await expect(blocklistableMock.connect(user).selfBlocklist())
+        .to.emit(blocklistableMock, EVENT_NAME_BLOCKLISTED)
+        .withArgs(user.address)
+        .and.to.emit(blocklistableMock, EVENT_NAME_SELFBLOCKLISTED)
+        .withArgs(user.address);
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(true);
 
       // Second call should not emit an event

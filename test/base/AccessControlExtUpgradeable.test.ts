@@ -35,11 +35,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
     accessControlExtMockFactory = await ethers.getContractFactory("AccessControlExtUpgradeableMock");
     [deployer, attacker, ...users] = await ethers.getSigners();
 
-    userAddresses = [
-      users[0].address,
-      users[1].address,
-      users[2].address
-    ];
+    userAddresses = [users[0].address, users[1].address, users[2].address];
   });
 
   async function deployAccessControlExtMock(): Promise<{ accessControlExtMock: Contract }> {
@@ -92,11 +88,9 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
         expect(await accessControlExtMock.hasRole(userRole, userAddresses[0])).to.equal(false);
 
-        await expect(
-          accessControlExtMock.grantRoleBatch(userRole, [userAddresses[0]])
-        ).to.emit(
-          accessControlExtMock, EVENT_NAME_ROLE_GRANTED
-        ).withArgs(userRole, userAddresses[0], deployer.address);
+        await expect(accessControlExtMock.grantRoleBatch(userRole, [userAddresses[0]]))
+          .to.emit(accessControlExtMock, EVENT_NAME_ROLE_GRANTED)
+          .withArgs(userRole, userAddresses[0], deployer.address);
 
         expect(await accessControlExtMock.hasRole(userRole, userAddresses[0])).to.equal(true);
       });
@@ -113,17 +107,16 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
 
       it("Multiple accounts without the previously granted role", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
-        for (let userAddress: string of userAddresses) {
+        for (const userAddress of userAddresses) {
           expect(await accessControlExtMock.hasRole(userRole, userAddress)).to.equal(false);
         }
 
         const tx: Promise<TransactionResponse> = accessControlExtMock.grantRoleBatch(userRole, userAddresses);
 
         for (const userAddress of userAddresses) {
-          await expect(tx).to.emit(
-            accessControlExtMock,
-            EVENT_NAME_ROLE_GRANTED
-          ).withArgs(userRole, userAddress, deployer.address);
+          await expect(tx)
+            .to.emit(accessControlExtMock, EVENT_NAME_ROLE_GRANTED)
+            .withArgs(userRole, userAddress, deployer.address);
           expect(await accessControlExtMock.hasRole(userRole, userAddress)).to.equal(true);
         }
       });
@@ -154,11 +147,9 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
           await proveTx(accessControlExtMock.grantRoleBatch(userRole, [userAddresses[0]]));
           expect(await accessControlExtMock.hasRole(userRole, userAddresses[0])).to.equal(true);
 
-          await expect(
-            accessControlExtMock.revokeRoleBatch(userRole, [userAddresses[0]])
-          ).to.emit(
-            accessControlExtMock, EVENT_NAME_ROLE_REVOKED
-          ).withArgs(userRole, userAddresses[0], deployer.address);
+          await expect(accessControlExtMock.revokeRoleBatch(userRole, [userAddresses[0]]))
+            .to.emit(accessControlExtMock, EVENT_NAME_ROLE_REVOKED)
+            .withArgs(userRole, userAddresses[0], deployer.address);
 
           expect(await accessControlExtMock.hasRole(userRole, userAddresses[0])).to.equal(false);
         });
@@ -175,17 +166,16 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
         it("Multiple accounts with the previously granted role", async () => {
           const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
           await proveTx(accessControlExtMock.grantRoleBatch(userRole, userAddresses));
-          for (let userAddress: string of userAddresses) {
+          for (const userAddress of userAddresses) {
             expect(await accessControlExtMock.hasRole(userRole, userAddress)).to.equal(true);
           }
 
           const tx: Promise<TransactionResponse> = accessControlExtMock.revokeRoleBatch(userRole, userAddresses);
 
-          for (const userAddress: string of userAddresses) {
-            await expect(tx).to.emit(
-              accessControlExtMock,
-              EVENT_NAME_ROLE_REVOKED
-            ).withArgs(userRole, userAddress, deployer.address);
+          for (const userAddress of userAddresses) {
+            await expect(tx)
+              .to.emit(accessControlExtMock, EVENT_NAME_ROLE_REVOKED)
+              .withArgs(userRole, userAddress, deployer.address);
             expect(await accessControlExtMock.hasRole(userRole, userAddress)).to.equal(false);
           }
         });

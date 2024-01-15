@@ -4,10 +4,7 @@ function countNumberArrayTotal(array: number[]) {
   });
 }
 
-function createBytesString(
-  baseString: string | number | undefined,
-  byteLength: number
-) {
+function createBytesString(baseString: string | number | undefined, byteLength: number) {
   baseString = !baseString ? "" : baseString.toString();
   if (baseString.length > byteLength * 2) {
     throw new Error(
@@ -25,19 +22,11 @@ function createBytesString(
     );
   }
 
-  return (
-    "0x" +
-    "0".repeat(byteLength * 2 - baseString.length) +
-    baseString.toLowerCase()
-  );
+  return "0x" + "0".repeat(byteLength * 2 - baseString.length) + baseString.toLowerCase();
 }
 
 function createRevertMessageDueToMissingRole(address: string, role: string) {
   return `AccessControl: account ${address.toLowerCase()} is missing role ${role.toLowerCase()}`;
 }
 
-export {
-  countNumberArrayTotal,
-  createBytesString,
-  createRevertMessageDueToMissingRole
-};
+export { countNumberArrayTotal, createBytesString, createRevertMessageDueToMissingRole };

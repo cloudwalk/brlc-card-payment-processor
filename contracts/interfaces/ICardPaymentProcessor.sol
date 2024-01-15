@@ -344,7 +344,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         bytes16 correlationId,
         address sponsor,
         uint256 subsidyLimit,
-        int16   cashbackRateInPermil
+        int16 cashbackRateInPermil
     ) external;
 
     /**

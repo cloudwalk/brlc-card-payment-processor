@@ -89,12 +89,9 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
     it("Executes successfully and emits the correct event", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
 
-      await expect(
-        pausableExtMock.connect(pauser).pause()
-      ).to.emit(
-        pausableExtMock,
-        "Paused"
-      ).withArgs(pauser.address);
+      await expect(pausableExtMock.connect(pauser).pause())
+        .to.emit(pausableExtMock, "Paused")
+        .withArgs(pauser.address);
 
       expect(await pausableExtMock.paused()).to.equal(true);
     });
@@ -112,12 +109,9 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
       await proveTx(pausableExtMock.connect(pauser).pause());
 
-      await expect(
-        pausableExtMock.connect(pauser).unpause()
-      ).to.emit(
-        pausableExtMock,
-        "Unpaused"
-      ).withArgs(pauser.address);
+      await expect(pausableExtMock.connect(pauser).unpause())
+        .to.emit(pausableExtMock, "Unpaused")
+        .withArgs(pauser.address);
 
       expect(await pausableExtMock.paused()).to.equal(false);
     });

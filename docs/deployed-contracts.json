@@ -1,25 +1,5 @@
 [
   {
-    "name": "PixCashier_BRLC",
-    "chainId": 2009,
-    "address": "0x1F94A163C329bEc14C73Ca46c66150E3c47dbEDC"
-  },
-  {
-    "name": "PixCashier_BRLC",
-    "chainId": 2008,
-    "address": "0x3181Ab023a4D4788754258BE5A3b8cf3D8276B98"
-  },
-  {
-    "name": "PixCashier_USJIM",
-    "chainId": 2009,
-    "address": "0xB2aEa43F8aEfc78A2eb558118F8A606d6d9073D8"
-  },
-  {
-    "name": "PixCashier_USJIM",
-    "chainId": 2008,
-    "address": "0xd1476a75a3F4e700AEbcB8804d0A74A8bAcc303c"
-  },
-  {
     "name": "CardPaymentProcessor_BRLC",
     "chainId": 2009,
     "address": "0xc10dB4941fB486b2d88839775802FA03BAc6dE31"
@@ -48,15 +28,5 @@
     "name": "CashbackDistributor_BRLC",
     "chainId": 2008,
     "address": "0xFe57a8CE8f8428688Aa6D58B4707ED3586da6E46"
-  },
-  {
-    "name": "TokenDistributor",
-    "chainId": 2009,
-    "address": "0xd754822328fd6E4D2f187278e1782f8ec7759f57"
-  },
-  {
-    "name": "TokenDistributor",
-    "chainId": 2008,
-    "address": "0xeda44dc9B5Ad4BA808bDf94C51D07c89921aaD80"
   }
 ]

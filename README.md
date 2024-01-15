@@ -1,4 +1,4 @@
-# BRLC Token Periphery
+# Card Payment Processor
 
 <p align="center">
   <img src="./docs/media/brlc-cover.png">
@@ -8,11 +8,11 @@
 ![example branch parameter](https://github.com/cloudwalk/brlc-periphery/actions/workflows/build.yml/badge.svg?branch=main)
 ![example branch parameter](https://github.com/cloudwalk/brlc-periphery/actions/workflows/test.yml/badge.svg?branch=main)
 
-This repository contains [BRLC Token](https://github.com/cloudwalk/brlc-token) periphery smart contracts.
+This repository contains Card Payment Processor smart contracts.</br>
 
 ## Build and test
 
-``` sh
+```sh
 # Install all dependencies
 npm install
 
@@ -24,7 +24,9 @@ npx hardhat test
 ```
 
 ## Networks and deployments
-Information about deployed contracts across all the networks can be found [here](./docs/deployed-contracts.md).
+
+Information about deployments across all the networks can be found [here](./docs/deployed-contracts.json).
 
 ## Licensing
+
 This project is released under the MIT License, see [LICENSE](./LICENSE).

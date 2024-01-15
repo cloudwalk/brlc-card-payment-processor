@@ -24,7 +24,4 @@ function checkEventFieldNotEqual(fieldName: string, notExpectedValue: any): (val
   return f;
 }
 
-export {
-  checkEventField,
-  checkEventFieldNotEqual
-};
+export { checkEventField, checkEventFieldNotEqual };
