@@ -800,7 +800,8 @@ describe("Contract 'CashbackDistributor'", async () => {
       ).and.to.emit(
         cashbackDistributor,
         EVENT_NAME_REVOKE_CASHBACK
-      ).withArgs(cashback.token.address,
+      ).withArgs(
+        cashback.token.address,
         cashback.kind,
         cashback.status,
         targetRevocationStatus,

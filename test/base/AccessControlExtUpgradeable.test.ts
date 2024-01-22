@@ -48,7 +48,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
     it("The external initializer configures the contract as expected", async () => {
       const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
 
-      //The roles
+      // The roles
       expect((await accessControlExtMock.OWNER_ROLE()).toLowerCase()).to.equal(ownerRole);
       expect((await accessControlExtMock.USER_ROLE()).toLowerCase()).to.equal(userRole);
 

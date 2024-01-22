@@ -67,7 +67,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
     it("The external initializer configures the contract as expected", async () => {
       const { rescuableMock } = await setUpFixture(deployRescuableMock);
 
-      //The roles
+      // The roles
       expect((await rescuableMock.OWNER_ROLE()).toLowerCase()).to.equal(ownerRole);
       expect((await rescuableMock.RESCUER_ROLE()).toLowerCase()).to.equal(rescuerRole);
 

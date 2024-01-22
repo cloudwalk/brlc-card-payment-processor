@@ -1538,7 +1538,11 @@ class TestContext {
       if (wasThereSubsidizedPayment) {
         await expect(tx)
           .to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_CLEAR_PAYMENT_SUBSIDIZED)
-          .withArgs(checkEventFieldNotEqual("authorizationId", operation.authorizationId), anyValue, anyValue);
+          .withArgs(
+            checkEventFieldNotEqual("authorizationId", operation.authorizationId),
+            anyValue,
+            anyValue
+          );
       } else {
         await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_CLEAR_PAYMENT_SUBSIDIZED);
       }
@@ -1575,7 +1579,11 @@ class TestContext {
       if (wasThereSubsidizedPayment) {
         await expect(tx)
           .to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_UNCLEAR_PAYMENT_SUBSIDIZED)
-          .withArgs(checkEventFieldNotEqual("authorizationId", operation.authorizationId), anyValue, anyValue);
+          .withArgs(
+            checkEventFieldNotEqual("authorizationId", operation.authorizationId),
+            anyValue,
+            anyValue
+          );
       } else {
         await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_UNCLEAR_PAYMENT_SUBSIDIZED);
       }
@@ -1660,7 +1668,11 @@ class TestContext {
       if (wasThereSubsidizedPayment) {
         await expect(tx)
           .to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_CONFIRM_PAYMENT_SUBSIDIZED)
-          .withArgs(checkEventFieldNotEqual("authorizationId", operation.authorizationId), anyValue, anyValue);
+          .withArgs(
+            checkEventFieldNotEqual("authorizationId", operation.authorizationId),
+            anyValue,
+            anyValue
+          );
       } else {
         await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_CONFIRM_PAYMENT_SUBSIDIZED);
       }

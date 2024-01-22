@@ -47,7 +47,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
     it("The external initializer configures the contract as expected", async () => {
       const { pausableExtMock } = await setUpFixture(deployPausableExtMock);
 
-      //The roles
+      // The roles
       expect((await pausableExtMock.OWNER_ROLE()).toLowerCase()).to.equal(ownerRole);
       expect((await pausableExtMock.PAUSER_ROLE()).toLowerCase()).to.equal(pauserRole);
 

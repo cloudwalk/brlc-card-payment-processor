@@ -14,7 +14,7 @@ function createBytesString(baseString: string | number | undefined, byteLength: 
       `The target byte length: '${byteLength}'`
     );
   }
-  if (!/^[0-9a-fA-F]+$/.test(baseString)) {
+  if (!(/^[0-9a-fA-F]+$/).test(baseString)) {
     throw new Error(
       `Creating of bytes16 string failed. ` +
       `The base string content is incorrect. ` +
