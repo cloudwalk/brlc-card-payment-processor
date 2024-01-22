@@ -1,7 +1,7 @@
 import { expect } from "chai";
 
-function checkEventField(fieldName: string, expectedValue: any): (value: any) => boolean {
-  const f = function (value: any): boolean {
+function checkEventField<T>(fieldName: string, expectedValue: T): (value: T) => boolean {
+  const f = function (value: T): boolean {
     expect(value).to.equal(
       expectedValue,
       `The "${fieldName}" field of the event is wrong`
@@ -12,8 +12,8 @@ function checkEventField(fieldName: string, expectedValue: any): (value: any) =>
   return f;
 }
 
-function checkEventFieldNotEqual(fieldName: string, notExpectedValue: any): (value: any) => boolean {
-  const f = function (value: any): boolean {
+function checkEventFieldNotEqual<T>(fieldName: string, notExpectedValue: T): (value: T) => boolean {
+  const f = function (value: T): boolean {
     expect(value).not.to.equal(
       notExpectedValue,
       `The "${fieldName}" field of the event is wrong because it is equal ${notExpectedValue} but should not`

@@ -75,7 +75,10 @@ interface TestContext {
   cashbackDistributorInitialBalanceByToken: Map<Contract, number>;
 }
 
-function checkNonexistentCashback(actualOnChainCashback: any, cashbackNonce: number) {
+function checkNonexistentCashback(
+  actualOnChainCashback: Record<string, unknown>,
+  cashbackNonce: number
+) {
   expect(actualOnChainCashback.token).to.equal(
     ZERO_ADDRESS,
     `cashback[${cashbackNonce}].token is incorrect`
@@ -110,7 +113,10 @@ function checkNonexistentCashback(actualOnChainCashback: any, cashbackNonce: num
   );
 }
 
-function checkEquality(actualOnChainCashback: any, expectedCashback: TestCashback) {
+function checkEquality(
+  actualOnChainCashback: Record<string, unknown>,
+  expectedCashback: TestCashback
+) {
   if (expectedCashback.status == CashbackStatus.Nonexistent) {
     checkNonexistentCashback(actualOnChainCashback, expectedCashback.nonce);
   } else {
@@ -156,7 +162,7 @@ function checkEquality(actualOnChainCashback: any, expectedCashback: TestCashbac
   }
 }
 
-async function setUpFixture(func: any) {
+async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
   if (network.name === "hardhat") {
     return loadFixture(func);
   } else {
@@ -323,7 +329,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         anyValue,
         anyValue,
         anyValue,
-        cashback.sentAmount - cashback.revokedAmount, // totalAmount
+        cashback.sentAmount - (cashback.revokedAmount ?? 0), // totalAmount
         anyValue,
         anyValue
       );
@@ -971,7 +977,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         targetIncreaseStatus != IncreaseStatus.Partial
           ? cashback.increaseRequestedAmount
           : cashback.increaseSentAmount,
-        cashback.sentAmount - cashback.revokedAmount, // totalAmount
+        cashback.sentAmount - (cashback.revokedAmount ?? 0), // totalAmount
         distributor.address,
         cashback.nonce
       );
@@ -1127,7 +1133,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       await sendCashbacks(cashbackDistributor, cashbacks, CashbackStatus.Success);
 
       // Check existing cashbacks
-      let actualCashbacks: any[] = await cashbackDistributor.getCashbacks(cashbackNonces);
+      let actualCashbacks: Record<string, unknown>[] = await cashbackDistributor.getCashbacks(cashbackNonces);
       expect(actualCashbacks.length).to.equal(cashbacks.length);
       cashbacks.forEach(cashback => {
         checkEquality(actualCashbacks[cashback.nonce - 1], cashback);

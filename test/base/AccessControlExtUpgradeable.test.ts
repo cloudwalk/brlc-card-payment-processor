@@ -7,7 +7,7 @@ import { proveTx } from "../../test-utils/eth";
 import { TransactionResponse } from "@ethersproject/abstract-provider";
 import { createRevertMessageDueToMissingRole } from "../../test-utils/misc";
 
-async function setUpFixture(func: any) {
+async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
   if (network.name === "hardhat") {
     return loadFixture(func);
   } else {
