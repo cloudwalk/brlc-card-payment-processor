@@ -7,7 +7,7 @@ import { proveTx } from "../../test-utils/eth";
 import { TransactionResponse } from "@ethersproject/abstract-provider";
 import { createRevertMessageDueToMissingRole } from "../../test-utils/misc";
 
-async function setUpFixture(func: any) {
+async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
   if (network.name === "hardhat") {
     return loadFixture(func);
   } else {
@@ -48,7 +48,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
     it("The external initializer configures the contract as expected", async () => {
       const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
 
-      //The roles
+      // The roles
       expect((await accessControlExtMock.OWNER_ROLE()).toLowerCase()).to.equal(ownerRole);
       expect((await accessControlExtMock.USER_ROLE()).toLowerCase()).to.equal(userRole);
 

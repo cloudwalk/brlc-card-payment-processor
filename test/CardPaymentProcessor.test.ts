@@ -688,7 +688,7 @@ class CardPaymentProcessorModel {
     return this.#paymentOperations.push(operation) - 1;
   }
 
-  #getOperationByIndex(operations: any[], index: number, kind: string): any {
+  #getOperationByIndex(operations: PaymentOperation[], index: number, kind: string): PaymentOperation {
     if (index < 0) {
       index = operations.length + index;
     }
@@ -1538,7 +1538,11 @@ class TestContext {
       if (wasThereSubsidizedPayment) {
         await expect(tx)
           .to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_CLEAR_PAYMENT_SUBSIDIZED)
-          .withArgs(checkEventFieldNotEqual("authorizationId", operation.authorizationId), anyValue, anyValue);
+          .withArgs(
+            checkEventFieldNotEqual("authorizationId", operation.authorizationId),
+            anyValue,
+            anyValue
+          );
       } else {
         await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_CLEAR_PAYMENT_SUBSIDIZED);
       }
@@ -1575,7 +1579,11 @@ class TestContext {
       if (wasThereSubsidizedPayment) {
         await expect(tx)
           .to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_UNCLEAR_PAYMENT_SUBSIDIZED)
-          .withArgs(checkEventFieldNotEqual("authorizationId", operation.authorizationId), anyValue, anyValue);
+          .withArgs(
+            checkEventFieldNotEqual("authorizationId", operation.authorizationId),
+            anyValue,
+            anyValue
+          );
       } else {
         await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_UNCLEAR_PAYMENT_SUBSIDIZED);
       }
@@ -1660,7 +1668,11 @@ class TestContext {
       if (wasThereSubsidizedPayment) {
         await expect(tx)
           .to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_CONFIRM_PAYMENT_SUBSIDIZED)
-          .withArgs(checkEventFieldNotEqual("authorizationId", operation.authorizationId), anyValue, anyValue);
+          .withArgs(
+            checkEventFieldNotEqual("authorizationId", operation.authorizationId),
+            anyValue,
+            anyValue
+          );
       } else {
         await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_CONFIRM_PAYMENT_SUBSIDIZED);
       }
@@ -1720,7 +1732,11 @@ class TestContext {
     }
   }
 
-  #checkPaymentsEquality(actualOnChainPayment: any, expectedPayment: PaymentModel, paymentIndex: number) {
+  #checkPaymentsEquality(
+    actualOnChainPayment: Record<string, unknown>,
+    expectedPayment: PaymentModel,
+    paymentIndex: number
+  ) {
     expect(actualOnChainPayment.account).to.equal(
       expectedPayment.account.address,
       `payment[${paymentIndex}].account is wrong`
@@ -1865,7 +1881,7 @@ function increaseBytesString(bytesString: string, targetLength: number) {
   );
 }
 
-async function setUpFixture(func: any) {
+async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
   if (network.name === "hardhat") {
     return loadFixture(func);
   } else {
@@ -4438,7 +4454,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await cardPaymentProcessorShell.makePaymentFor(payment, sponsor, subsidyLimit);
 
       let newBaseAmount;
-      if (newBasePaymentAmountType == NewExtraPaymentAmountType.More) {
+      if (newBasePaymentAmountType === NewBasePaymentAmountType.More) {
         newBaseAmount = payment.baseAmount + 1;
       } else {
         newBaseAmount = payment.baseAmount;
