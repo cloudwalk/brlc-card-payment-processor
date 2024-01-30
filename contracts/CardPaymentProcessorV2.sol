@@ -6,7 +6,7 @@ import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-import { BlacklistableUpgradeable } from "./base/BlacklistableUpgradeable.sol";
+import { BlocklistableUpgradeable } from "./base/BlocklistableUpgradeable.sol";
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
 import { StoragePlaceholder200 } from "./base/StoragePlaceholder200.sol";
@@ -16,6 +16,7 @@ import { CardPaymentProcessorV2Storage } from "./CardPaymentProcessorV2Storage.s
 import { ICardPaymentProcessorV2 } from "./interfaces/ICardPaymentProcessorV2.sol";
 import { ICardPaymentCashbackV2 } from "./interfaces/ICardPaymentCashbackV2.sol";
 import { ICashbackDistributor, ICashbackDistributorTypes } from "./interfaces/ICashbackDistributor.sol";
+import { BlocklistableUpgradeable } from "./base/BlocklistableUpgradeable.sol";
 
 /**
  * @title CardPaymentProcessorV2 contract
@@ -23,7 +24,7 @@ import { ICashbackDistributor, ICashbackDistributorTypes } from "./interfaces/IC
  */
 contract CardPaymentProcessorV2 is
     AccessControlExtUpgradeable,
-    BlacklistableUpgradeable,
+    BlocklistableUpgradeable,
     PausableExtUpgradeable,
     RescuableUpgradeable,
     StoragePlaceholder200,
@@ -227,7 +228,7 @@ contract CardPaymentProcessorV2 is
         __Context_init_unchained();
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
-        __Blacklistable_init_unchained(OWNER_ROLE);
+        __Blocklistable_init_unchained(OWNER_ROLE);
         __Pausable_init_unchained();
         __PausableExt_init_unchained(OWNER_ROLE);
         __Rescuable_init_unchained(OWNER_ROLE);
