@@ -925,7 +925,7 @@ contract CardPaymentProcessorV2 is
     ) internal {
         confirmationAmount = _confirmPayment(paymentId, confirmationAmount);
         _paymentStatistics.totalUnconfirmedRemainder = uint128(
-            _paymentStatistics.totalUnconfirmedRemainder - confirmationAmount
+            uint256(_paymentStatistics.totalUnconfirmedRemainder) - confirmationAmount
         );
         IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), confirmationAmount);
     }
@@ -1356,7 +1356,9 @@ contract CardPaymentProcessorV2 is
         storedPayment.cashbackAmount = operation.cashbackAmount;
         storedPayment.refundAmount = 0;
 
-        _paymentStatistics.totalUnconfirmedRemainder += uint128(operation.baseAmount + operation.extraAmount);
+        _paymentStatistics.totalUnconfirmedRemainder += uint128(
+            uint256(operation.baseAmount) + uint256(operation.extraAmount)
+        );
     }
 
     /// @dev Stores the data of a changed payment.
@@ -1386,11 +1388,16 @@ contract CardPaymentProcessorV2 is
         int256 paymentConfirmedAmountChange =
             int256(newPaymentDetails.confirmedAmount) - int256(oldPaymentDetails.confirmedAmount);
 
-        _paymentStatistics.totalUnconfirmedRemainder = uint128(uint256(
-            int256(uint256(_paymentStatistics.totalUnconfirmedRemainder)) +
-            paymentReminderChange -
-            paymentConfirmedAmountChange
-        ));
+        int256 unconfirmedReminderChange = paymentReminderChange - paymentConfirmedAmountChange;
+
+        // This is done to protect against possible overflow/underflow of the `totalUnconfirmedRemainder` variable
+        if (unconfirmedReminderChange >= 0) {
+            _paymentStatistics.totalUnconfirmedRemainder += uint128(uint256(unconfirmedReminderChange));
+        } else {
+            _paymentStatistics.totalUnconfirmedRemainder = uint128(
+                uint256(_paymentStatistics.totalUnconfirmedRemainder) - uint256(-unconfirmedReminderChange)
+            );
+        }
     }
 
     /// @dev Calculates cashback according to the amount and the rate.
