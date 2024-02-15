@@ -70,7 +70,7 @@ interface ICardPaymentProcessorV2Types {
     /// @dev Structure with data of a single confirmation operation
     struct PaymentConfirmation {
         bytes32 paymentId; // The card transaction payment ID from the off-chain card processing backend.
-        uint64 amount;     // The amount to confirm for the payment.
+        uint256 amount;    // The amount to confirm for the payment.
     }
 
     /// @dev Structure with statistics of all payments
@@ -295,7 +295,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      */
     event AccountRefunded(
         address indexed account,
-        uint64 refundingAmount,
+        uint256 refundingAmount,
         bytes addendum
     );
 
@@ -326,12 +326,12 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
     function makePaymentFor(
         bytes32 paymentId,
         address payer,
-        uint64 baseAmount,
-        uint64 extraAmount,
+        uint256 baseAmount,
+        uint256 extraAmount,
         address sponsor,
-        uint64 subsidyLimit,
-        int16 cashbackRate,
-        uint64 confirmationAmount
+        uint256 subsidyLimit,
+        int256 cashbackRate,
+        uint256 confirmationAmount
     ) external;
 
     /**
@@ -348,8 +348,8 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
     function makeCommonPaymentFor(
         bytes32 paymentId,
         address payer,
-        uint64 baseAmount,
-        uint64 extraAmount
+        uint256 baseAmount,
+        uint256 extraAmount
     ) external;
 
     /**
@@ -367,8 +367,8 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      */
     function updatePayment(
         bytes32 paymentId,
-        uint64 newBaseAmount,
-        uint64 newExtraAmount
+        uint256 newBaseAmount,
+        uint256 newExtraAmount
     ) external;
 
     /**
@@ -413,7 +413,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      */
     function confirmPayment(
         bytes32 paymentId,
-        uint64 confirmationAmount
+        uint256 confirmationAmount
     ) external;
 
     /**
@@ -447,9 +447,9 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      */
     function updateLazyAndConfirmPayment(
         bytes32 paymentId,
-        uint64 newBaseAmount,
-        uint64 newExtraAmount,
-        uint64 confirmationAmount
+        uint256 newBaseAmount,
+        uint256 newExtraAmount,
+        uint256 confirmationAmount
     ) external;
 
     /**
@@ -463,7 +463,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      */
     function refundPayment(
         bytes32 paymentId,
-        uint64 refundingAmount
+        uint256 refundingAmount
     ) external;
 
     /**
@@ -493,7 +493,7 @@ interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
      */
     function refundAccount(
         address account,
-        uint64 refundingAmount
+        uint256 refundingAmount
     ) external;
 
     /**

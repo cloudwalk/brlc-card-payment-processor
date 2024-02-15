@@ -1877,6 +1877,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
     "MergedPaymentIdAndTargetPaymentIdEquality";
   const REVERT_ERROR_IF_MERGED_PAYMENT_ID_ARRAY_EMPTY = "MergedPaymentIdArrayEmpty";
   const REVERT_ERROR_IF_MERGED_PAYMENT_PAYER_MISMATCH = "MergedPaymentPayerMismatch";
+  const REVERT_ERROR_IF_OVERFLOW_OF_SUBSIDY_LIMIT = "OverflowOfSubsidyLimit";
   const REVERT_ERROR_IF_OVERFLOW_OF_SUM_AMOUNT = "OverflowOfSumAmount";
   const REVERT_ERROR_IF_PAYER_ZERO_ADDRESS = "PayerZeroAddress";
   const REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTENT = "PaymentAlreadyExistent";
@@ -2062,9 +2063,13 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       expect(await cardPaymentProcessor.cashbackEnabled()).to.equal(false);
       expect(await cardPaymentProcessor.cashbackRate()).to.equal(0);
       expect(await cardPaymentProcessor.MAX_CASHBACK_RATE()).to.equal(CASHBACK_RATE_MAX);
+      expect(await cardPaymentProcessor.CASHBACK_FACTOR()).to.equal(CASHBACK_FACTOR);
 
       // The cash-out account
       expect(await cardPaymentProcessor.cashOutAccount()).to.equal(ZERO_ADDRESS);
+
+      // Additional constrains
+      expect(await cardPaymentProcessor.MAX_CASHBACK_RATE()).to.be.lessThanOrEqual(0xFFFF);
     });
 
     it("Is reverted if it is called a second time", async () => {
@@ -2745,6 +2750,25 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
             ZERO_CONFIRMATION_AMOUNT
           )
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_OVERFLOW_OF_SUM_AMOUNT);
+      });
+
+      it("The payment subsidy limit is greater than 64-bit unsigned integer", async () => {
+        const context = await prepareForPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+        const subsidyLimitOverflowed = MAX_UINT64.add(1);
+
+        await expect(
+          cardPaymentProcessorShell.contract.connect(executor).makePaymentFor(
+            payment.id,
+            payment.payer.address,
+            payment.baseAmount,
+            payment.extraAmount,
+            sponsor.address,
+            subsidyLimitOverflowed,
+            CASHBACK_RATE_AS_IN_CONTRACT,
+            ZERO_CONFIRMATION_AMOUNT
+          )
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_OVERFLOW_OF_SUBSIDY_LIMIT);
       });
 
       it("The confirmation amount for the payment is greater than the sum amount", async () => {

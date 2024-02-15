@@ -45,10 +45,10 @@ contract CardPaymentProcessorV2 is
      *
      * The formula to calculate cashback by an amount: cashbackAmount = cashbackRate * amount / CASHBACK_FACTOR
      */
-    uint16 public constant CASHBACK_FACTOR = 1000;
+    uint256 public constant CASHBACK_FACTOR = 1000;
 
     /// @dev The maximum allowable cashback rate in units of `CASHBACK_FACTOR`.
-    uint16 public constant MAX_CASHBACK_RATE = 250;
+    uint256 public constant MAX_CASHBACK_RATE = 250;
 
     /**
      * @dev The coefficient used to round the cashback according to the formula:
@@ -56,7 +56,7 @@ contract CardPaymentProcessorV2 is
      *
      * Currently, it can only be changed by deploying a new implementation of the contract.
      */
-    uint16 public constant CASHBACK_ROUNDING_COEF = 10000;
+    uint256 public constant CASHBACK_ROUNDING_COEF = 10000;
 
     /// @dev Event data flag mask defining whether the payment is sponsored.
     uint256 internal constant EVENT_FLAG_MASK_SPONSORED = 1;
@@ -150,8 +150,8 @@ contract CardPaymentProcessorV2 is
      */
     error MergedPaymentCashbackRateMismatch(
         bytes32 mergedPaymentId,
-        uint16 mergedPaymentCashbackRate,
-        uint16 targetPaymentCashbackRate
+        uint256 mergedPaymentCashbackRate,
+        uint256 targetPaymentCashbackRate
     );
 
     /// @dev The merged payment ID equals the target payment ID.
@@ -171,6 +171,9 @@ contract CardPaymentProcessorV2 is
         address mergedPaymentPayer,
         address targetPaymentPayer
     );
+
+    /// @dev The requested subsidy limit is greater than the allowed maximum to store.
+    error OverflowOfSubsidyLimit();
 
     /// @dev The requested or result or updated sum amount (base + extra) is greater than the allowed maximum to store.
     error OverflowOfSumAmount();
@@ -259,11 +262,11 @@ contract CardPaymentProcessorV2 is
         bytes32 paymentId;
         address payer;
         address sponsor;
-        uint16 cashbackRate;
-        uint64 baseAmount;
-        uint64 extraAmount;
-        uint64 subsidyLimit;
-        uint64 cashbackAmount;
+        uint256 cashbackRate;
+        uint256 baseAmount;
+        uint256 extraAmount;
+        uint256 subsidyLimit;
+        uint256 cashbackAmount;
         uint256 payerSumAmount;
         uint256 sponsorSumAmount;
     }
@@ -279,26 +282,28 @@ contract CardPaymentProcessorV2 is
      * - The payment ID must not be zero.
      * - The payment linked with the provided ID must be revoked or not exist.
      * - The requested cashback rate must not exceed the maximum allowable cashback rate defined in the contract.
+     * - The sum of the provided base and extra amounts must not exceed the max 64-bit unsigned integer.
+     * - The provided subsidy limit must not exceed the max 64-bit unsigned integer.
      * - The provided confirmation amount must not exceed the sum amount of the payment.
      */
     function makePaymentFor(
         bytes32 paymentId,
         address payer,
-        uint64 baseAmount,
-        uint64 extraAmount,
+        uint256 baseAmount,
+        uint256 extraAmount,
         address sponsor,
-        uint64 subsidyLimit,
-        int16 cashbackRate_,
-        uint64 confirmationAmount
+        uint256 subsidyLimit,
+        int256 cashbackRate_,
+        uint256 confirmationAmount
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (payer == address(0)) {
             revert PayerZeroAddress();
         }
-        uint16 cashbackRateActual;
+        uint256 cashbackRateActual;
         if (cashbackRate_ < 0) {
             cashbackRateActual = _cashbackRate;
         } else {
-            cashbackRateActual = uint16(cashbackRate_);
+            cashbackRateActual = uint256(cashbackRate_);
             if (cashbackRateActual > MAX_CASHBACK_RATE) {
                 revert CashbackRateExcess();
             }
@@ -336,8 +341,8 @@ contract CardPaymentProcessorV2 is
     function makeCommonPaymentFor(
         bytes32 paymentId,
         address payer,
-        uint64 baseAmount,
-        uint64 extraAmount
+        uint256 baseAmount,
+        uint256 extraAmount
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (payer == address(0)) {
             revert PayerZeroAddress();
@@ -371,8 +376,8 @@ contract CardPaymentProcessorV2 is
      */
     function updatePayment(
         bytes32 paymentId,
-        uint64 newBaseAmount,
-        uint64 newExtraAmount
+        uint256 newBaseAmount,
+        uint256 newExtraAmount
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         _updatePayment(
             paymentId,
@@ -429,7 +434,7 @@ contract CardPaymentProcessorV2 is
      */
     function confirmPayment(
         bytes32 paymentId,
-        uint64 confirmationAmount
+        uint256 confirmationAmount
     ) public whenNotPaused onlyRole(EXECUTOR_ROLE) {
         _confirmPaymentWithTransfer(paymentId, confirmationAmount);
     }
@@ -477,9 +482,9 @@ contract CardPaymentProcessorV2 is
      */
     function updateLazyAndConfirmPayment(
         bytes32 paymentId,
-        uint64 newBaseAmount,
-        uint64 newExtraAmount,
-        uint64 confirmationAmount
+        uint256 newBaseAmount,
+        uint256 newExtraAmount,
+        uint256 confirmationAmount
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         _updatePayment(
             paymentId,
@@ -502,7 +507,7 @@ contract CardPaymentProcessorV2 is
      */
     function refundPayment(
         bytes32 paymentId,
-        uint64 refundingAmount
+        uint256 refundingAmount
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         _refundPayment(paymentId, refundingAmount);
     }
@@ -542,7 +547,7 @@ contract CardPaymentProcessorV2 is
      */
     function refundAccount(
         address account,
-        uint64 refundingAmount
+        uint256 refundingAmount
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         if (account == address(0)) {
             revert AccountZeroAddress();
@@ -610,10 +615,10 @@ contract CardPaymentProcessorV2 is
      *
      * - The caller must have the {OWNER_ROLE} role.
      * - The new rate must differ from the previously set one.
-     * - The new rate must not exceed the allowable maximum specified in the {MAX_CASHBACK_RATE_IN_PERMIL} constant.
+     * - The new rate must not exceed the allowable maximum specified in the {MAX_CASHBACK_RATE} constant.
      */
-    function setCashbackRate(uint16 newCashbackRate) external onlyRole(OWNER_ROLE) {
-        uint16 oldCashbackRate = _cashbackRate;
+    function setCashbackRate(uint256 newCashbackRate) external onlyRole(OWNER_ROLE) {
+        uint256 oldCashbackRate = _cashbackRate;
         if (newCashbackRate == oldCashbackRate) {
             revert CashbackRateUnchanged();
         }
@@ -621,7 +626,7 @@ contract CardPaymentProcessorV2 is
             revert CashbackRateExcess();
         }
 
-        _cashbackRate = newCashbackRate;
+        _cashbackRate = uint16(newCashbackRate);
 
         emit SetCashbackRate(oldCashbackRate, newCashbackRate);
     }
@@ -771,8 +776,8 @@ contract CardPaymentProcessorV2 is
     /// @dev Updates the base amount and extra amount of a payment internally
     function _updatePayment(
         bytes32 paymentId,
-        uint64 newBaseAmount,
-        uint64 newExtraAmount,
+        uint256 newBaseAmount,
+        uint256 newExtraAmount,
         UpdatingOperationKind kind
     ) internal {
         if (paymentId == 0) {
@@ -789,16 +794,13 @@ contract CardPaymentProcessorV2 is
         }
 
         _checkActivePaymentStatus(paymentId, payment.status);
-
-        if (payment.refundAmount > uint256(newBaseAmount) + uint256(newExtraAmount)) {
-            revert InappropriateSumAmount();
-        }
+        _checkPaymentSumAmount(newBaseAmount + newExtraAmount, payment.refundAmount);
 
         PaymentDetails memory oldPaymentDetails = _definePaymentDetails(payment, PaymentRecalculationKind.None);
-        uint64 oldBaseAmount = payment.baseAmount;
-        uint64 oldExtraAmount = payment.extraAmount;
-        payment.baseAmount = newBaseAmount;
-        payment.extraAmount = newExtraAmount;
+        uint256 oldBaseAmount = payment.baseAmount;
+        uint256 oldExtraAmount = payment.extraAmount;
+        payment.baseAmount = uint64(newBaseAmount);
+        payment.extraAmount = uint64(newExtraAmount);
         PaymentDetails memory newPaymentDetails = _definePaymentDetails(payment, PaymentRecalculationKind.Full);
 
         _processPaymentChange(paymentId, payment, oldPaymentDetails, newPaymentDetails);
@@ -933,7 +935,7 @@ contract CardPaymentProcessorV2 is
     /// @dev Makes a refund for a payment internally
     function _refundPayment(
         bytes32 paymentId,
-        uint64 refundingAmount
+        uint256 refundingAmount
     ) internal {
         if (paymentId == 0) {
             revert PaymentZeroId();
@@ -943,7 +945,7 @@ contract CardPaymentProcessorV2 is
         Payment memory payment = storedPayment;
         _checkActivePaymentStatus(paymentId, payment.status);
 
-        uint256 newRefundAmount = uint256(payment.refundAmount) + uint256(refundingAmount);
+        uint256 newRefundAmount = uint256(payment.refundAmount) + refundingAmount;
         if (newRefundAmount > uint256(payment.baseAmount) + uint256(payment.extraAmount)) {
             revert InappropriateRefundingAmount();
         }
@@ -1125,15 +1127,14 @@ contract CardPaymentProcessorV2 is
 
     /// @dev Executes token transfers related to a new payment.
     function _processPaymentMaking(MakingOperation memory operation) internal {
-        uint256 sumAmount;
-        unchecked {
-            sumAmount = uint256(operation.baseAmount) + uint256(operation.extraAmount);
-        }
+        uint256 sumAmount = operation.baseAmount + operation.extraAmount;
         if (sumAmount > type(uint64).max) {
             revert OverflowOfSumAmount();
         }
         if (operation.sponsor == address(0)) {
             operation.subsidyLimit = 0;
+        } else if (operation.subsidyLimit > type(uint64).max) {
+            revert OverflowOfSubsidyLimit();
         }
         (uint256 payerSumAmount, uint256 sponsorSumAmount) = _defineSumAmountParts(sumAmount, operation.subsidyLimit);
         IERC20Upgradeable erc20Token = IERC20Upgradeable(_token);
@@ -1155,6 +1156,16 @@ contract CardPaymentProcessorV2 is
         }
         if (status != PaymentStatus.Active) {
             revert InappropriatePaymentStatus(paymentId, status);
+        }
+    }
+
+    /// @dev Checks if the payment sum amount and the refund amount meet the requirements.
+    function _checkPaymentSumAmount(uint256 sumAmount, uint256 refundAmount) internal pure {
+        if (refundAmount > sumAmount) {
+            revert InappropriateSumAmount();
+        }
+        if (sumAmount > type(uint64).max) {
+            revert OverflowOfSumAmount();
         }
     }
 
@@ -1268,7 +1279,7 @@ contract CardPaymentProcessorV2 is
             _cashbacks[operation.paymentId].lastCashbackNonce = cashbackNonce;
             if (success) {
                 emit SendCashbackSuccess(distributor, sentAmount, cashbackNonce);
-                operation.cashbackAmount = uint64(sentAmount);
+                operation.cashbackAmount = sentAmount;
             } else {
                 emit SendCashbackFailure(distributor, cashbackAmount, cashbackNonce);
                 operation.cashbackRate = 0;
@@ -1345,20 +1356,18 @@ contract CardPaymentProcessorV2 is
         PaymentStatus oldStatus = storedPayment.status;
         storedPayment.status = PaymentStatus.Active;
         storedPayment.payer = operation.payer;
-        storedPayment.cashbackRate = operation.cashbackRate;
+        storedPayment.cashbackRate = uint16(operation.cashbackRate);
         storedPayment.confirmedAmount = 0;
         if (oldStatus != PaymentStatus.Nonexistent || operation.sponsor != address(0)) {
             storedPayment.sponsor = operation.sponsor;
-            storedPayment.subsidyLimit = operation.subsidyLimit;
+            storedPayment.subsidyLimit = uint64(operation.subsidyLimit);
         }
-        storedPayment.baseAmount = operation.baseAmount;
-        storedPayment.extraAmount = operation.extraAmount;
-        storedPayment.cashbackAmount = operation.cashbackAmount;
+        storedPayment.baseAmount = uint64(operation.baseAmount);
+        storedPayment.extraAmount = uint64(operation.extraAmount);
+        storedPayment.cashbackAmount = uint64(operation.cashbackAmount);
         storedPayment.refundAmount = 0;
 
-        _paymentStatistics.totalUnconfirmedRemainder += uint128(
-            uint256(operation.baseAmount) + uint256(operation.extraAmount)
-        );
+        _paymentStatistics.totalUnconfirmedRemainder += uint128(operation.baseAmount + operation.extraAmount);
     }
 
     /// @dev Stores the data of a changed payment.
@@ -1430,9 +1439,6 @@ contract CardPaymentProcessorV2 is
         uint256 sumAmount;
         unchecked {
             sumAmount = uint256(payment.baseAmount) + uint256(payment.extraAmount);
-        }
-        if (kind != PaymentRecalculationKind.None && sumAmount > type(uint64).max) {
-            revert OverflowOfSumAmount();
         }
         uint256 payerBaseAmount = _definePayerBaseAmount(payment.baseAmount, payment.subsidyLimit);
         (uint256 payerSumAmount, uint256 sponsorSumAmount) = _defineSumAmountParts(sumAmount, payment.subsidyLimit);

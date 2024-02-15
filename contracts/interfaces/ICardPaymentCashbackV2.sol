@@ -29,7 +29,7 @@ interface ICardPaymentCashbackV2 is ICardPaymentCashbackV2Types {
      * @param oldRate The value of the old cashback rate.
      * @param newRate The value of the new cashback rate.
      */
-    event SetCashbackRate(uint16 oldRate, uint16 newRate);
+    event SetCashbackRate(uint256 oldRate, uint256 newRate);
 
     /**
      * @dev Emitted when a cashback send request succeeded.
@@ -122,7 +122,7 @@ interface ICardPaymentCashbackV2 is ICardPaymentCashbackV2Types {
      *
      * @param newCashbackRate The value of the new cashback rate.
      */
-    function setCashbackRate(uint16 newCashbackRate) external;
+    function setCashbackRate(uint256 newCashbackRate) external;
 
     /**
      * @dev Enables the cashback operations.
