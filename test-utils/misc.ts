@@ -16,7 +16,7 @@ function createBytesString(baseString: string | number | undefined, byteLength: 
   }
   if (!(/^[0-9a-fA-F]+$/).test(baseString)) {
     throw new Error(
-      `Creating of bytes16 string failed. ` +
+      `Creating of bytes string failed. ` +
       `The base string content is incorrect. ` +
       `The base string: '${baseString}'`
     );

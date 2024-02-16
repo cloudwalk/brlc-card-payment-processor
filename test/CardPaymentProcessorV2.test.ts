@@ -271,7 +271,7 @@ class CashbackDistributorMockShell {
 
 class CardPaymentProcessorModel {
   #cashbackDistributorMockConfig: CashbackDistributorMockConfig;
-  #cashbackEnabled: boolean = false;
+  #cashbackEnabled: boolean;
   #cashbackRate: number;
   #paymentPerId: Map<string, PaymentModel> = new Map<string, PaymentModel>();
   #totalBalance: number = 0;
@@ -284,9 +284,11 @@ class CardPaymentProcessorModel {
   constructor(props: {
     cashbackDistributorMockConfig: CashbackDistributorMockConfig;
     cashbackRateInPermil: number;
+    cashbackEnabled: boolean;
   }) {
     this.#cashbackDistributorMockConfig = props.cashbackDistributorMockConfig;
     this.#cashbackRate = props.cashbackRateInPermil;
+    this.#cashbackEnabled = props.cashbackEnabled;
   }
 
   makePayment(
@@ -1186,6 +1188,7 @@ class TestContext {
   constructor(props: {
     fixture: Fixture;
     cashbackRateInPermil: number;
+    cashbackEnabled: boolean;
     cashOutAccount: SignerWithAddress;
     cardPaymentProcessorExecutor: SignerWithAddress;
     payments: TestPayment[];
@@ -1200,7 +1203,8 @@ class TestContext {
       cardPaymentProcessorContract: props.fixture.cardPaymentProcessor,
       cardPaymentProcessorModel: new CardPaymentProcessorModel({
         cashbackDistributorMockConfig: this.cashbackDistributorMockConfig,
-        cashbackRateInPermil: props.cashbackRateInPermil
+        cashbackRateInPermil: props.cashbackRateInPermil,
+        cashbackEnabled: props.cashbackEnabled
       }),
       executor: props.cardPaymentProcessorExecutor
     });
@@ -1985,6 +1989,8 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
     await proveTx(tokenMock.mint(sponsor.address, INITIAL_SPONSOR_BALANCE));
     await proveTx(tokenMock.connect(sponsor).approve(cardPaymentProcessor.address, MAX_UINT256));
 
+    await proveTx(cardPaymentProcessor.enableCashback());
+
     return {
       cardPaymentProcessor,
       tokenMock,
@@ -2022,6 +2028,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
     return new TestContext({
       fixture,
       cashbackRateInPermil: CASHBACK_RATE_DEFAULT,
+      cashbackEnabled: true,
       cashOutAccount,
       cardPaymentProcessorExecutor: executor,
       payments
@@ -2325,8 +2332,8 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
     ) {
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      if (props.cashbackEnabled ?? true) {
-        await cardPaymentProcessorShell.enableCashback();
+      if (props.cashbackEnabled === false) {
+        await cardPaymentProcessorShell.disableCashback();
       }
 
       cardPaymentProcessorShell.model.makePayment(
@@ -2805,7 +2812,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       it("Cashback is enabled, and the base and extra payment amounts are both nonzero", async () => {
         const context = await beforeMakingPayments();
         const { cardPaymentProcessorShell, payments: [payment] } = context;
-        await cardPaymentProcessorShell.enableCashback();
         cardPaymentProcessorShell.model.makePayment(payment, { sender: executor });
 
         const tx = cardPaymentProcessorShell.contract.connect(executor).makeCommonPaymentFor(
@@ -2881,8 +2887,8 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const { cardPaymentProcessorShell, payments: [payment] } = context;
       const { cashbackCondition, subsidyLimit, confirmedAmount: confirmedAmount } = props;
 
-      if (cashbackCondition !== CashbackConditionType.CashbackDisabledBeforePaymentMaking) {
-        await cardPaymentProcessorShell.enableCashback();
+      if (cashbackCondition === CashbackConditionType.CashbackDisabledBeforePaymentMaking) {
+        await cardPaymentProcessorShell.disableCashback();
       }
       await cardPaymentProcessorShell.makePaymentFor(
         payment,
@@ -3478,7 +3484,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
           const context = await beforeMakingPayments();
           const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-          await cardPaymentProcessorShell.enableCashback();
           await cardPaymentProcessorShell.makeCommonPayments([payment]);
           await checkRevocation(context);
         });
@@ -3487,9 +3492,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
           const context = await beforeMakingPayments();
           const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-          await cardPaymentProcessorShell.enableCashback();
           await cardPaymentProcessorShell.makeCommonPayments([payment]);
-          await cardPaymentProcessorShell.disableCashback();
           await context.cashbackDistributorMockShell.setRevokeCashbackSuccessResult(false);
 
           await checkRevocation(context);
@@ -3497,6 +3500,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
 
         it("Cashback operations are disabled before sending", async () => {
           const context = await beforeMakingPayments();
+          await context.cardPaymentProcessorShell.disableCashback();
           await context.cardPaymentProcessorShell.makeCommonPayments([context.payments[0]]);
           await checkRevocation(context);
         });
@@ -3505,7 +3509,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
           const context = await beforeMakingPayments();
           const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-          await cardPaymentProcessorShell.enableCashback();
           await cardPaymentProcessorShell.makeCommonPayments([payment]);
           await cardPaymentProcessorShell.disableCashback();
 
@@ -3519,7 +3522,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
             const context = await beforeMakingPayments();
             const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-            await cardPaymentProcessorShell.enableCashback();
             const subsidyLimit = Math.floor(payment.baseAmount / 2);
             await cardPaymentProcessorShell.makePaymentFor(payment, { sponsor, subsidyLimit });
             await checkRevocation(context);
@@ -3529,7 +3531,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
             const context = await beforeMakingPayments();
             const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-            await cardPaymentProcessorShell.enableCashback();
             const subsidyLimit = payment.baseAmount + Math.floor(payment.extraAmount / 2);
             await cardPaymentProcessorShell.makePaymentFor(payment, { sponsor, subsidyLimit });
             await checkRevocation(context);
@@ -3539,7 +3540,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
             const context = await beforeMakingPayments();
             const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-            await cardPaymentProcessorShell.enableCashback();
             const subsidyLimit = Math.floor((payment.baseAmount + payment.extraAmount) * 1.1);
             await cardPaymentProcessorShell.makePaymentFor(payment, { sponsor, subsidyLimit });
             await checkRevocation(context);
@@ -3553,7 +3553,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
             const context = await beforeMakingPayments();
             const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-            await cardPaymentProcessorShell.enableCashback();
             const subsidyLimit = Math.floor(payment.baseAmount / 2);
             const confirmationAmount = Math.floor(payment.baseAmount + payment.extraAmount / 2);
             await cardPaymentProcessorShell.makePaymentFor(payment, { sponsor, subsidyLimit, confirmationAmount });
@@ -3564,7 +3563,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
             const context = await beforeMakingPayments();
             const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-            await cardPaymentProcessorShell.enableCashback();
             const subsidyLimit = Math.floor(payment.baseAmount / 2);
             const confirmationAmount = payment.baseAmount + payment.extraAmount;
             await cardPaymentProcessorShell.makePaymentFor(payment, { sponsor, subsidyLimit, confirmationAmount });
@@ -3629,7 +3627,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(
         payment,
         {
@@ -3674,7 +3671,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
     async function checkConfirmation(context: TestContext, confirmationAmount: number, refundAmount?: number) {
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      await cardPaymentProcessorShell.enableCashback();
       const subsidyLimit = Math.floor(payment.baseAmount * 0.5);
       await cardPaymentProcessorShell.makePaymentFor(payment, { sponsor, subsidyLimit });
       if (refundAmount) {
@@ -3900,7 +3896,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
     ) {
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(payment);
 
       await context.checkCardPaymentProcessorState();
@@ -4017,8 +4012,8 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const { cardPaymentProcessorShell, payments: [payment] } = context;
       const { cashbackCondition, subsidyLimit, confirmedAmount } = props;
 
-      if (cashbackCondition !== CashbackConditionType.CashbackDisabledBeforePaymentMaking) {
-        await cardPaymentProcessorShell.enableCashback();
+      if (cashbackCondition === CashbackConditionType.CashbackDisabledBeforePaymentMaking) {
+        await cardPaymentProcessorShell.disableCashback();
       }
 
       await cardPaymentProcessorShell.makePaymentFor(
@@ -4260,8 +4255,8 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         mergedPaymentIds.push(payment.id);
       });
 
-      if (cashbackCondition !== CashbackConditionType.CashbackDisabledBeforePaymentMaking) {
-        await cardPaymentProcessorShell.enableCashback();
+      if (cashbackCondition === CashbackConditionType.CashbackDisabledBeforePaymentMaking) {
+        await cardPaymentProcessorShell.disableCashback();
       }
 
       await cardPaymentProcessorShell.makePaymentFor(
@@ -4521,7 +4516,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         mergedPayment1.payer = targetPayment.payer;
         mergedPayment2.payer = targetPayment.payer;
         await context.setUpContractsForPayments();
-        await cardPaymentProcessorShell.enableCashback();
         await cardPaymentProcessorShell.makeCommonPayments([targetPayment, mergedPayment1]);
         await cardPaymentProcessorShell.makePaymentFor(mergedPayment2, { cashbackRate: CASHBACK_RATE_DEFAULT * 2 });
 
@@ -4571,7 +4565,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
         mergedPayment.payer = targetPayment.payer;
         await context.setUpContractsForPayments();
-        await cardPaymentProcessorShell.enableCashback();
         await cardPaymentProcessorShell.makePaymentFor(
           targetPayment,
           { confirmationAmount: targetPayment.baseAmount + targetPayment.extraAmount }
@@ -4600,7 +4593,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
         mergedPayment.payer = targetPayment.payer;
         await context.setUpContractsForPayments();
-        await cardPaymentProcessorShell.enableCashback();
         await cardPaymentProcessorShell.makeCommonPayments([targetPayment, mergedPayment]);
         await context.cashbackDistributorMockShell.setRevokeCashbackSuccessResult(false);
 
@@ -4623,7 +4615,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
         mergedPayment.payer = targetPayment.payer;
         await context.setUpContractsForPayments();
-        await cardPaymentProcessorShell.enableCashback();
         await cardPaymentProcessorShell.makeCommonPayments([targetPayment, mergedPayment]);
         await context.cashbackDistributorMockShell.setIncreaseCashbackAmountResult(CASHBACK_ROUNDING_COEF);
 
@@ -4748,7 +4739,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
     });
   });
 
-  describe("Complex scenarios without cashback", async () => {
+  describe("Complex scenarios", async () => {
     async function checkRevertingOfAllPaymentProcessingFunctionsExceptMaking(
       cardPaymentProcessor: Contract,
       payments: TestPayment[],
@@ -4961,14 +4952,11 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       );
       await context.checkCardPaymentProcessorState();
     });
-  });
 
-  describe("Complex scenarios with cashback", async () => {
     it("Several refund and payment updating operations execute as expected if cashback is enabled", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makeCommonPayments([payment]);
 
       await context.checkCardPaymentProcessorState();
@@ -5010,7 +4998,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(
         payment,
         {
@@ -5034,7 +5021,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, cashbackDistributorMockShell, payments: [payment] } = context;
 
-      await cardPaymentProcessorShell.enableCashback();
       await cashbackDistributorMockShell.setSendCashbackAmountResult(CASHBACK_ROUNDING_COEF);
       await cardPaymentProcessorShell.makePaymentFor(payment);
       const refundAmount = Math.floor(payment.baseAmount * 0.1);
@@ -5047,7 +5033,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const { cardPaymentProcessorShell, cashbackDistributorMockShell, payments: [payment] } = context;
       expect(payment).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
-      await cardPaymentProcessorShell.enableCashback();
       await cashbackDistributorMockShell.setSendCashbackAmountResult(CASHBACK_ROUNDING_COEF);
       await cardPaymentProcessorShell.makePaymentFor(payment);
       const newBaseAmount = Math.floor(payment.baseAmount * 0.1);
@@ -5060,7 +5045,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const { cardPaymentProcessorShell, cashbackDistributorMockShell, payments: [payment] } = context;
       expect(payment).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
-      await cardPaymentProcessorShell.enableCashback();
       await cashbackDistributorMockShell.setSendCashbackAmountResult(CASHBACK_ROUNDING_COEF);
       await cardPaymentProcessorShell.makePaymentFor(payment);
       const newBaseAmount = Math.floor(payment.baseAmount * 1.5);
@@ -5073,7 +5057,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const { cardPaymentProcessorShell, cashbackDistributorMockShell, payments: [payment] } = context;
       expect(payment).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
-      await cardPaymentProcessorShell.enableCashback();
       await cashbackDistributorMockShell.setSendCashbackAmountResult(CASHBACK_ROUNDING_COEF);
       await cardPaymentProcessorShell.makePaymentFor(payment);
       const newBaseAmount = Math.floor(payment.baseAmount * 0.1);
@@ -5125,7 +5108,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const subsidyLimit = 800 * DIGITS_COEF;
       const cashbackRate = 200; // 20 %
 
-      await cardPaymentProcessorShell.enableCashback();
       const opResult = cardPaymentProcessorShell.makePaymentFor(payment, { sponsor, subsidyLimit, cashbackRate });
 
       const cashbackChange = 40 * DIGITS_COEF;
@@ -5147,7 +5129,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const subsidyLimit = 2000 * DIGITS_COEF;
       const cashbackRate = 200; // 20 %
 
-      await cardPaymentProcessorShell.enableCashback();
       const opResult = cardPaymentProcessorShell.makePaymentFor(payment, { sponsor, subsidyLimit, cashbackRate });
 
       const cashbackChange = 0;
@@ -5168,7 +5149,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       payment.baseAmount = Math.floor(2.5 * CASHBACK_ROUNDING_COEF / (cashbackRate / 1000));
       payment.extraAmount = 0;
 
-      await cardPaymentProcessorShell.enableCashback();
       const opResult = cardPaymentProcessorShell.makePaymentFor(payment, { cashbackRate });
 
       const cashbackChange = 3 * CASHBACK_ROUNDING_COEF;
@@ -5189,7 +5169,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       payment.baseAmount = Math.floor(2.49999 * CASHBACK_ROUNDING_COEF / (cashbackRate / 1000));
       payment.extraAmount = 0;
 
-      await cardPaymentProcessorShell.enableCashback();
       const opResult = cardPaymentProcessorShell.makePaymentFor(payment, { cashbackRate });
 
       const cashbackChange = 2 * CASHBACK_ROUNDING_COEF;
@@ -5212,7 +5191,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const cashbackRate = 200; // 20 %
       const confirmationAmount = 1100 * DIGITS_COEF;
 
-      await cardPaymentProcessorShell.enableCashback();
       const opResult = cardPaymentProcessorShell.makePaymentFor(
         payment,
         { sponsor, subsidyLimit, cashbackRate, confirmationAmount }
@@ -5240,7 +5218,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const newBaseAmount = 1200 * DIGITS_COEF;
       const newExtraAmount = 600 * DIGITS_COEF;
 
-      await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(payment, { sponsor, subsidyLimit, cashbackRate });
       const opResult = cardPaymentProcessorShell.updatePayment(payment, newBaseAmount, newExtraAmount);
 
@@ -5268,7 +5245,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const newBaseAmount = 400 * DIGITS_COEF;
       const newExtraAmount = 200 * DIGITS_COEF;
 
-      await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(payment, { sponsor, subsidyLimit, cashbackRate });
       const opResult = cardPaymentProcessorShell.updatePayment(payment, newBaseAmount, newExtraAmount);
 
@@ -5296,7 +5272,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const newBaseAmount = 1200 * DIGITS_COEF;
       const newExtraAmount = 600 * DIGITS_COEF;
 
-      await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(payment, { sponsor, subsidyLimit, cashbackRate });
       const opResult = cardPaymentProcessorShell.updatePayment(payment, newBaseAmount, newExtraAmount);
 
@@ -5323,7 +5298,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const cashbackRate = 200; // 20 %
       const refundAmount = 400 * DIGITS_COEF;
 
-      await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(payment, { sponsor, subsidyLimit, cashbackRate });
       const opResult = cardPaymentProcessorShell.refundPayment(payment, refundAmount);
 
@@ -5351,7 +5325,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const refundAmount = 400 * DIGITS_COEF;
       const confirmationAmount = 1500 * DIGITS_COEF;
 
-      await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(
         payment,
         { sponsor, subsidyLimit, cashbackRate, confirmationAmount }
@@ -5382,7 +5355,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const cashbackRate = 200; // 20 %
       const confirmationAmount = 1200 * DIGITS_COEF;
 
-      await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(
         payment,
         { sponsor, subsidyLimit, cashbackRate, confirmationAmount }
@@ -5413,7 +5385,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const cashbackRate = 200; // 20 %
       const confirmationAmount = 1200 * DIGITS_COEF;
 
-      await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(
         payment,
         { sponsor, subsidyLimit, cashbackRate, confirmationAmount }
@@ -5444,7 +5415,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       const cashbackRate = 200; // 20 %
       const confirmationAmount = 1200 * DIGITS_COEF;
 
-      await cardPaymentProcessorShell.enableCashback();
       await cardPaymentProcessorShell.makePaymentFor(payment, { sponsor, subsidyLimit, cashbackRate });
       const opResult = await cardPaymentProcessorShell.confirmPayment(payment, confirmationAmount);
 
