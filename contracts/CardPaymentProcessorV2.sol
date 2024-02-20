@@ -4,7 +4,6 @@ pragma solidity 0.8.16;
 
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 import { BlocklistableUpgradeable } from "./base/BlocklistableUpgradeable.sol";
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
@@ -15,8 +14,6 @@ import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.
 import { CardPaymentProcessorV2Storage } from "./CardPaymentProcessorV2Storage.sol";
 import { ICardPaymentProcessorV2 } from "./interfaces/ICardPaymentProcessorV2.sol";
 import { ICardPaymentCashbackV2 } from "./interfaces/ICardPaymentCashbackV2.sol";
-import { ICashbackDistributor, ICashbackDistributorTypes } from "./interfaces/ICashbackDistributor.sol";
-import { BlocklistableUpgradeable } from "./base/BlocklistableUpgradeable.sol";
 
 /**
  * @title CardPaymentProcessorV2 contract
@@ -58,26 +55,17 @@ contract CardPaymentProcessorV2 is
      */
     uint256 public constant CASHBACK_ROUNDING_COEF = 10000;
 
+    /// @dev The cashback cap reset period.
+    uint256 public constant CASHBACK_CAP_RESET_PERIOD = 30 days;
+
+    /// @dev The maximum cashback for a cap period.
+    uint256 public constant MAX_CASHBACK_FOR_CAP_PERIOD = 300 * 10 ** 6;
+
     /// @dev Event data flag mask defining whether the payment is sponsored.
     uint256 internal constant EVENT_FLAG_MASK_SPONSORED = 1;
 
     /// @dev Default version of the event data.
     uint8 internal constant EVENT_DEFAULT_VERSION = 1;
-
-    /**
-     * @dev The kind of a cashback merging failure during a payment merging.
-     *
-     * The following values are possible:
-     *
-     * - NotEnoughBalance = 0 -- not enough balance of this contract to make a cashback merge.
-     * - RevocationError = 1 --- an error occurred during revocation of merged payment cashback.
-     * - IncreaseError = 2 ----- an error occurred during increasing the target payment cashback.
-     */
-    enum CashbackMergingFailureKind {
-        NotEnoughBalance,
-        RevocationError,
-        IncreaseError
-    }
 
     // -------------------- Events -----------------------------------
 
@@ -98,21 +86,14 @@ contract CardPaymentProcessorV2 is
     /// @dev The cashback operations are already disabled.
     error CashbackAlreadyDisabled();
 
-    /// @dev The cashback distributor contract is already configured.
-    error CashbackDistributorAlreadyConfigured();
+    /// @dev The cashback treasury address is the same as previously set one.
+    error CashbackTreasuryUnchanged();
 
-    /// @dev The cashback distributor contract is not configured.
-    error CashbackDistributorNotConfigured();
+    /// @dev The cashback treasury address is not configured.
+    error CashbackTreasuryNotConfigured();
 
-    /// @dev The zero cashback distributor address has been passed as a function argument.
-    error CashbackDistributorZeroAddress();
-
-    /**
-     * @dev There is a cashback merging failure during a payment merging.
-     * @param mergedPaymentId The ID of the merged payment.
-     * @param kind The kind of failure:
-     */
-    error CashbackMergingFailure(bytes32 mergedPaymentId, CashbackMergingFailureKind kind);
+    /// @dev The zero cashback treasury address has been passed as a function argument.
+    error CashbackTreasuryZeroAddress();
 
     /// @dev The provided cashback rate exceeds the allowed maximum.
     error CashbackRateExcess();
@@ -588,24 +569,22 @@ contract CardPaymentProcessorV2 is
      * @dev Requirements:
      *
      * - The caller must have the {OWNER_ROLE} role.
-     * - The new cashback distributor address must not be zero.
-     * - The new cashback distributor can be set only once.
+     * - The new cashback treasury address must not be zero.
+     * - The new cashback treasury address must not be equal to the current set one.
      */
-    function setCashbackDistributor(address newCashbackDistributor) external onlyRole(OWNER_ROLE) {
-        address oldCashbackDistributor = _cashbackDistributor;
+    function setCashbackTreasury(address newCashbackTreasury) external onlyRole(OWNER_ROLE) {
+        address oldCashbackTreasury = _cashbackTreasury;
 
-        if (newCashbackDistributor == address(0)) {
-            revert CashbackDistributorZeroAddress();
+        if (newCashbackTreasury == address(0)) {
+            revert CashbackTreasuryZeroAddress();
         }
-        if (oldCashbackDistributor != address(0)) {
-            revert CashbackDistributorAlreadyConfigured();
+        if (oldCashbackTreasury == newCashbackTreasury) {
+            revert CashbackTreasuryUnchanged();
         }
 
-        _cashbackDistributor = newCashbackDistributor;
+        _cashbackTreasury = newCashbackTreasury;
 
-        emit SetCashbackDistributor(oldCashbackDistributor, newCashbackDistributor);
-
-        IERC20Upgradeable(_token).approve(newCashbackDistributor, type(uint256).max);
+        emit CashbackTreasuryChanged(oldCashbackTreasury, newCashbackTreasury);
     }
 
     /**
@@ -628,7 +607,7 @@ contract CardPaymentProcessorV2 is
 
         _cashbackRate = uint16(newCashbackRate);
 
-        emit SetCashbackRate(oldCashbackRate, newCashbackRate);
+        emit CashbackRateChanged(oldCashbackRate, newCashbackRate);
     }
 
     /**
@@ -638,19 +617,19 @@ contract CardPaymentProcessorV2 is
      *
      * - The caller must have the {OWNER_ROLE} role.
      * - The cashback operations must not be already enabled.
-     * - The address of the current cashback distributor must not be zero.
+     * - The address of the current cashback treasury must not be zero.
      */
     function enableCashback() external onlyRole(OWNER_ROLE) {
         if (_cashbackEnabled) {
             revert CashbackAlreadyEnabled();
         }
-        if (_cashbackDistributor == address(0)) {
-            revert CashbackDistributorNotConfigured();
+        if (_cashbackTreasury == address(0)) {
+            revert CashbackTreasuryNotConfigured();
         }
 
         _cashbackEnabled = true;
 
-        emit EnableCashback();
+        emit CashbackEnabled();
     }
 
     /**
@@ -668,7 +647,7 @@ contract CardPaymentProcessorV2 is
 
         _cashbackEnabled = false;
 
-        emit DisableCashback();
+        emit CashbackDisabled();
     }
 
     /**
@@ -702,8 +681,8 @@ contract CardPaymentProcessorV2 is
     /**
      * @inheritdoc ICardPaymentCashbackV2
      */
-    function cashbackDistributor() external view returns (address) {
-        return _cashbackDistributor;
+    function cashbackTreasury() external view returns (address) {
+        return _cashbackTreasury;
     }
 
     /**
@@ -723,8 +702,8 @@ contract CardPaymentProcessorV2 is
     /**
      * @inheritdoc ICardPaymentCashbackV2
      */
-    function getCashback(bytes32 paymentId) external view returns (Cashback memory) {
-        return _cashbacks[paymentId];
+    function getAccountCashbackState(address account) external view returns (AccountCashbackState memory) {
+        return _accountCashbackStates[account];
     }
 
     /// @dev Making a payment internally
@@ -1065,15 +1044,11 @@ contract CardPaymentProcessorV2 is
             if (sumAmount > type(uint64).max) {
                 revert OverflowOfSumAmount();
             }
-            uint256 cashbackAmount = mergedPayment.cashbackAmount;
-            if (cashbackAmount > 0) {
-                _mergeCashback(targetPaymentId, mergedPaymentId, cashbackAmount, payer);
-            }
             operation.newBaseAmount = newBaseAmount;
             operation.newExtraAmount = newExtraAmount;
             unchecked {
                 operation.newRefundAmount += mergedPayment.refundAmount;
-                operation.newCashbackAmount += cashbackAmount;
+                operation.newCashbackAmount += mergedPayment.cashbackAmount;
                 operation.newConfirmedAmount += mergedPayment.confirmedAmount;
             }
             mergedPayment.status = PaymentStatus.Merged;
@@ -1194,8 +1169,16 @@ contract CardPaymentProcessorV2 is
         // Increase cashback ahead of payer token transfers to avoid conner cases with lack of payer balance
         if (newPaymentDetails.cashbackAmount > oldPaymentDetails.cashbackAmount) {
             uint256 amount = newPaymentDetails.cashbackAmount - oldPaymentDetails.cashbackAmount;
-            amount = _increaseCashback(paymentId, amount);
+            CashbackOperationStatus status;
+            (status, amount) = _increaseCashback(payment.payer, amount);
             newPaymentDetails.cashbackAmount = oldPaymentDetails.cashbackAmount + amount;
+            emit CashbackIncreased(
+                paymentId,
+                payment.payer,
+                status,
+                oldPaymentDetails.cashbackAmount,
+                newPaymentDetails.cashbackAmount
+            );
         }
 
         //Payer token transferring
@@ -1215,8 +1198,16 @@ contract CardPaymentProcessorV2 is
         // Cashback processing if the cashback amount decreases
         if (newPaymentDetails.cashbackAmount < oldPaymentDetails.cashbackAmount) {
             uint256 amount = oldPaymentDetails.cashbackAmount - newPaymentDetails.cashbackAmount;
-            amount = _revokeCashback(paymentId, amount);
+            CashbackOperationStatus status;
+            (status, amount) = _revokeCashback(payment.payer, amount);
             newPaymentDetails.cashbackAmount = oldPaymentDetails.cashbackAmount - amount;
+            emit CashbackRevoked(
+                paymentId,
+                payment.payer,
+                status,
+                oldPaymentDetails.cashbackAmount,
+                newPaymentDetails.cashbackAmount
+            );
         }
 
         //Sponsor token transferring
@@ -1265,87 +1256,117 @@ contract CardPaymentProcessorV2 is
         if (operation.cashbackRate == 0) {
             return;
         }
-        address distributor = _cashbackDistributor;
-        if (_cashbackEnabled && distributor != address(0)) {
+        address treasury = _cashbackTreasury;
+        if (_cashbackEnabled && treasury != address(0)) {
             uint256 basePaymentAmount = _definePayerBaseAmount(operation.baseAmount, operation.subsidyLimit);
-            uint256 cashbackAmount = _calculateCashback(basePaymentAmount, operation.cashbackRate);
-            (bool success, uint256 sentAmount, uint256 cashbackNonce) = ICashbackDistributor(distributor).sendCashback(
-                _token,
-                ICashbackDistributorTypes.CashbackKind.CardPayment,
+            uint256 amount = _calculateCashback(basePaymentAmount, operation.cashbackRate);
+            CashbackOperationStatus status;
+            (status, amount) = _increaseCashback(operation.payer, amount);
+            emit CashbackSent(
                 operation.paymentId,
                 operation.payer,
-                cashbackAmount
+                status,
+                amount
             );
-            _cashbacks[operation.paymentId].lastCashbackNonce = cashbackNonce;
-            if (success) {
-                emit SendCashbackSuccess(distributor, sentAmount, cashbackNonce);
-                operation.cashbackAmount = sentAmount;
-            } else {
-                emit SendCashbackFailure(distributor, cashbackAmount, cashbackNonce);
-                operation.cashbackRate = 0;
-            }
+            operation.cashbackAmount = amount;
         } else {
             operation.cashbackRate = 0;
         }
     }
 
     /// @dev Revokes partially or fully cashback related to a payment.
-    function _revokeCashback(bytes32 paymentId, uint256 amount) internal returns (uint256) {
-        address distributor = _cashbackDistributor;
-        uint256 cashbackNonce = _cashbacks[paymentId].lastCashbackNonce;
-        uint256 revokedAmount = 0;
-        // Condition (cashbackNonce != 0 && distributor != address(0)) is guaranteed by the current contract logic.
-        // So it is not checked here.
-        if (ICashbackDistributor(distributor).revokeCashback(cashbackNonce, amount)) {
-            emit RevokeCashbackSuccess(distributor, amount, cashbackNonce);
+    function _revokeCashback(
+        address payer,
+        uint256 amount
+    ) internal returns (CashbackOperationStatus status, uint256 revokedAmount) {
+        address treasury = _cashbackTreasury;
+        // Condition (treasury != address(0)) is guaranteed by the current contract logic. So it is not checked here
+        status = CashbackOperationStatus.Success;
+        (bool success, bytes memory returnData) = _token.call(
+            abi.encodeWithSelector(IERC20Upgradeable.transfer.selector, treasury, amount)
+        );
+        if (success && (returnData.length == 0 || abi.decode(returnData, (bool)))) {
+            _reduceTotalCashback(payer, amount);
             revokedAmount = amount;
         } else {
-            emit RevokeCashbackFailure(distributor, amount, cashbackNonce);
+            status = CashbackOperationStatus.Failed;
+            revokedAmount = 0;
         }
-        return revokedAmount;
     }
 
     /// @dev Increases cashback related to a payment.
     function _increaseCashback(
-        bytes32 paymentId,
+        address payer,
         uint256 amount
-    ) internal returns (uint256) {
-        address distributor = _cashbackDistributor;
-        uint256 cashbackNonce = _cashbacks[paymentId].lastCashbackNonce;
-        // Condition (cashbackNonce != 0 && distributor != address(0)) is guaranteed by the current contract logic.
-        // So it is not checked here.
-        (bool success, uint256 increaseAmount) = ICashbackDistributor(distributor).increaseCashback(
-            cashbackNonce,
-            amount
-        );
-        if (success) {
-            emit IncreaseCashbackSuccess(distributor, increaseAmount, cashbackNonce);
-        } else {
-            emit IncreaseCashbackFailure(distributor, amount, cashbackNonce);
+    ) internal returns (CashbackOperationStatus status, uint256 increasedAmount) {
+        address treasury = _cashbackTreasury;
+        // Condition (treasury != address(0)) is guaranteed by the current contract logic. So it is not checked here
+        (status, increasedAmount) = _updateAccountState(payer, amount);
+        bool transferred = (status == CashbackOperationStatus.Success || status == CashbackOperationStatus.Partial);
+        if (transferred) {
+            (bool success, bytes memory returnData) = _token.call(
+                abi.encodeWithSelector(IERC20Upgradeable.transferFrom.selector, treasury, payer, amount)
+            );
+            transferred = success && (returnData.length == 0 || abi.decode(returnData, (bool)));
         }
-        return increaseAmount;
+        if (!transferred) {
+            _reduceTotalCashback(payer, amount);
+            status = CashbackOperationStatus.Failed;
+            increasedAmount = 0;
+        }
     }
 
-    function _mergeCashback(
-        bytes32 targetPaymentId,
-        bytes32 mergedPaymentId,
-        uint256 cashbackAmount,
-        address payer
-    ) internal {
-        uint256 balance = IERC20Upgradeable(_token).balanceOf(address(this));
-        if (balance < cashbackAmount) {
-            revert CashbackMergingFailure(mergedPaymentId, CashbackMergingFailureKind.NotEnoughBalance);
-        }
-        cashbackAmount = _revokeCashback(mergedPaymentId, cashbackAmount);
-        if (cashbackAmount > 0) {
-            uint256 increaseCashbackAmount = _increaseCashback(targetPaymentId, cashbackAmount);
-            if (increaseCashbackAmount != cashbackAmount) {
-                revert CashbackMergingFailure(mergedPaymentId, CashbackMergingFailureKind.IncreaseError);
+    /**
+     * @dev Updates the account cashback state and checks the cashback cap.
+     */
+    function _updateAccountState(
+        address account,
+        uint256 amount
+    ) internal returns (CashbackOperationStatus cashbackStatus, uint256 acceptedAmount) {
+        AccountCashbackState storage state = _accountCashbackStates[account];
+
+        uint256 totalAmount = state.totalAmount;
+        uint256 capPeriodStartTime = state.capPeriodStartTime;
+        uint256 capPeriodStartAmount = state.capPeriodStartAmount;
+        uint256 capPeriodCollectedCashback = 0;
+
+        unchecked {
+            uint256 blockTimeStamp = uint32(block.timestamp); // take only last 32 bits of the block timestamp
+            if (uint32(blockTimeStamp - capPeriodStartTime) > CASHBACK_CAP_RESET_PERIOD) {
+                capPeriodStartTime = blockTimeStamp;
+            } else {
+                capPeriodCollectedCashback = totalAmount - capPeriodStartAmount;
             }
-            IERC20Upgradeable(_token).safeTransferFrom(payer, address(this), cashbackAmount);
-        } else {
-            revert CashbackMergingFailure(mergedPaymentId, CashbackMergingFailureKind.RevocationError);
+
+            if (capPeriodCollectedCashback < MAX_CASHBACK_FOR_CAP_PERIOD) {
+                uint256 leftAmount = MAX_CASHBACK_FOR_CAP_PERIOD - capPeriodCollectedCashback;
+                if (leftAmount >= amount) {
+                    acceptedAmount = amount;
+                    cashbackStatus = CashbackOperationStatus.Success;
+                } else {
+                    acceptedAmount = leftAmount;
+                    cashbackStatus = CashbackOperationStatus.Partial;
+                }
+            } else {
+                cashbackStatus = CashbackOperationStatus.Capped;
+            }
         }
+
+        if (capPeriodCollectedCashback == 0) {
+            capPeriodStartAmount = totalAmount;
+        }
+
+        state.totalAmount = uint72(totalAmount) + uint72(acceptedAmount);
+        state.capPeriodStartAmount = uint72(capPeriodStartAmount);
+        state.capPeriodStartTime = uint32(capPeriodStartTime);
+    }
+
+    /**
+     * @dev Reduces the total cashback amount for an account.
+     */
+    function _reduceTotalCashback(address account, uint256 amount) internal {
+        AccountCashbackState storage state = _accountCashbackStates[account];
+        state.totalAmount = uint72(uint256(state.totalAmount) - amount);
     }
 
     /// @dev Stores the data of a newly created payment.

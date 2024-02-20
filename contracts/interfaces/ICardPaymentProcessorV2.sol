@@ -76,7 +76,8 @@ interface ICardPaymentProcessorV2Types {
     /// @dev Structure with statistics of all payments
     struct PaymentStatistics {
         uint128 totalUnconfirmedRemainder; // The total remainder of all payments that are not confirmed yet.
-        uint128 reserve;                   // The reserved filed for future changes.
+        uint128 reserve1;                  // The reserved filed for future changes.
+        uint256 reserve2;                  // The reserved filed for future changes.
     }
 }
 
