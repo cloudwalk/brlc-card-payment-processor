@@ -2,10 +2,10 @@ import { ethers, network, upgrades } from "hardhat";
 import { expect } from "chai";
 import { BigNumber, Contract, ContractFactory } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { proveTx } from "../test-utils/eth";
 import { createBytesString, createRevertMessageDueToMissingRole } from "../test-utils/misc";
-import { TransactionReceipt, TransactionResponse } from "@ethersproject/abstract-provider";
+import { Block, TransactionReceipt, TransactionResponse } from "@ethersproject/abstract-provider";
 import { checkEventField, checkEventFieldNotEqual, EventFieldCheckingOptions } from "../test-utils/checkers";
 
 const MAX_UINT256 = ethers.constants.MaxUint256;
@@ -220,6 +220,7 @@ class CardPaymentProcessorModel {
   #cashbackSendingStatus: CashbackOperationStatus = CashbackOperationStatus.Success;
   #cashbackSendingAmountResult: number = -1; // As expected by default cashback calculation
   #cashbackTotalPerAccount: Map<string, number> = new Map<string, number>();
+  #capPeriodStartAmount: number = 0;
 
   constructor(props: {
     cashbackRate: number;
@@ -376,6 +377,10 @@ class CardPaymentProcessorModel {
     this.#cashbackEnabled = false;
   }
 
+  set capPeriodStartAmount(startAmount: number) {
+    this.#capPeriodStartAmount = startAmount;
+  }
+
   getPaymentModelsInMakingOrder(): PaymentModel[] {
     const paymentNumber = this.#paymentMakingOperations.length;
     const paymentModels: PaymentModel[] = [];
@@ -408,6 +413,10 @@ class CardPaymentProcessorModel {
 
   get cashbackRate(): number {
     return this.#cashbackRate;
+  }
+
+  get capPeriodStartAmount(): number {
+    return this.#capPeriodStartAmount;
   }
 
   getPaymentOperation(operationIndex: number): PaymentOperation {
@@ -443,6 +452,10 @@ class CardPaymentProcessorModel {
     const amount = baseAmount - refundAmount;
     const cashback = Math.floor(amount * cashbackRate / CASHBACK_FACTOR);
     return this.#roundCashback(cashback, CASHBACK_ROUNDING_COEF);
+  }
+
+  getCashbackTotalForAccount(account: string): number {
+    return this.#cashbackTotalPerAccount.get(account) ?? 0;
   }
 
   #createPayment(payment: TestPayment): PaymentModel {
@@ -667,13 +680,16 @@ class CardPaymentProcessorModel {
       operation.cashbackOperationStatus === CashbackOperationStatus.Success ||
       operation.cashbackOperationStatus === CashbackOperationStatus.Partial
     ) {
-      const totalCashback = this.#cashbackTotalPerAccount.get(operation.payer.address) ?? 0;
-      if (totalCashback >= MAX_CASHBACK_FOR_CAP_PERIOD) {
-        operation.cashbackActualChange = 0;
-        operation.cashbackOperationStatus = CashbackOperationStatus.Capped;
-      } else if (totalCashback + operation.cashbackActualChange > MAX_CASHBACK_FOR_CAP_PERIOD) {
-        operation.cashbackActualChange = MAX_CASHBACK_FOR_CAP_PERIOD - totalCashback;
-        operation.cashbackOperationStatus = CashbackOperationStatus.Partial;
+      const totalCashback =
+        (this.#cashbackTotalPerAccount.get(operation.payer.address) ?? 0) - this.#capPeriodStartAmount;
+      if (totalCashback + operation.cashbackActualChange > MAX_CASHBACK_FOR_CAP_PERIOD) {
+        if (totalCashback >= MAX_CASHBACK_FOR_CAP_PERIOD) {
+          operation.cashbackActualChange = 0;
+          operation.cashbackOperationStatus = CashbackOperationStatus.Capped;
+        } else {
+          operation.cashbackActualChange = MAX_CASHBACK_FOR_CAP_PERIOD - totalCashback;
+          operation.cashbackOperationStatus = CashbackOperationStatus.Partial;
+        }
       }
     }
   }
@@ -756,6 +772,8 @@ class CardPaymentProcessorModel {
     this.#totalConfirmedAmount += operation.cashOutAccountBalanceChange;
     this.#totalUnconfirmedRemainder += (operation.newRemainder - operation.oldRemainder);
     this.#totalUnconfirmedRemainder -= (operation.newConfirmationAmount - operation.oldConfirmationAmount);
+    const totalCashback = this.#cashbackTotalPerAccount.get(operation.payer.address) ?? 0;
+    this.#cashbackTotalPerAccount.set(operation.payer.address, totalCashback + operation.cashbackActualChange);
   }
 
   #registerPaymentCancelingOperation(operation: PaymentOperation, payment: PaymentModel, targetStatus: PaymentStatus) {
@@ -1564,7 +1582,7 @@ class TestContext {
     );
   }
 
-  async presetCashbackForAccount(account: SignerWithAddress, cashbackAmount: number) {
+  async presetCashbackForAccount(account: SignerWithAddress, cashbackAmount: number): Promise<OperationResult> {
     const accountCashbackOld = await this.cardPaymentProcessorShell.contract.getAccountCashbackState(account.address);
     const cashbackAmountDiff = cashbackAmount - accountCashbackOld.totalAmount;
     if (cashbackAmountDiff < 0) {
@@ -1580,9 +1598,11 @@ class TestContext {
       extraAmount: 0
     };
 
-    await this.cardPaymentProcessorShell.makeCommonPayments([payment]);
+    const operationResult = await this.cardPaymentProcessorShell.makePaymentFor(payment);
     const accountCashbackNew = await this.cardPaymentProcessorShell.contract.getAccountCashbackState(account.address);
     expect(accountCashbackNew.totalAmount).to.equal(cashbackAmount);
+
+    return operationResult;
   }
 
   async #checkPaymentStructures() {
@@ -1597,6 +1617,14 @@ class TestContext {
       checkedPaymentIds.add(expectedPayment.paymentId);
       const actualPayment = await this.cardPaymentProcessorShell.contract.getPayment(expectedPayment.paymentId);
       this.#checkPaymentsEquality(actualPayment, expectedPayment, i);
+      const expectedTotalCashback =
+        this.cardPaymentProcessorShell.model.getCashbackTotalForAccount(expectedPayment.payer.address);
+      const actualAccountCashbackState =
+        await this.cardPaymentProcessorShell.contract.getAccountCashbackState(expectedPayment.payer.address);
+      expect(actualAccountCashbackState.totalAmount).to.equal(expectedTotalCashback);
+      expect(actualAccountCashbackState.capPeriodStartAmount).to.equal(
+        this.cardPaymentProcessorShell.model.capPeriodStartAmount
+      );
     }
   }
 
@@ -1832,7 +1860,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
     const testPayments: TestPayment[] = [];
     for (let i = 0; i < numberOfPayments; ++i) {
       const payment: TestPayment = {
-        id: createBytesString(123 + i * 123, BYTES32_LENGTH),
+        id: createBytesString(i + 1, BYTES32_LENGTH),
         payer: (i % 2 > 0) ? user1 : user2,
         baseAmount: Math.floor(123.456789 * DIGITS_COEF + i * 123.456789 * DIGITS_COEF),
         extraAmount: Math.floor(132.456789 * DIGITS_COEF + i * 132.456789 * DIGITS_COEF)
@@ -5266,6 +5294,71 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         cashOutAccount: +1200 * DIGITS_COEF
       };
       await checkBalanceChanges(context, Promise.resolve(opResult), expectedBalanceChanges);
+    });
+  });
+
+  describe("Scenario with cashback periodical cap", async () => {
+    async function checkAccountCashbackState(
+      context: TestContext,
+      operationResult: OperationResult,
+      expectedCapPeriodStartTime: number
+    ) {
+      const { cardPaymentProcessorShell, payments: [payment] } = context;
+      const actualAccountCashbackState =
+        await cardPaymentProcessorShell.contract.getAccountCashbackState(payment.payer.address);
+      const expectedTotalCashback = cardPaymentProcessorShell.model.getCashbackTotalForAccount(payment.payer.address);
+      const expectedCapPeriodStartAmount = cardPaymentProcessorShell.model.capPeriodStartAmount;
+      expect(actualAccountCashbackState.totalAmount).to.equal(expectedTotalCashback);
+      expect(actualAccountCashbackState.capPeriodStartAmount).to.equal(expectedCapPeriodStartAmount);
+      expect(actualAccountCashbackState.capPeriodStartTime).to.equal(expectedCapPeriodStartTime);
+    }
+
+    it("Executes as expected", async () => {
+      const context = await beforeMakingPayments({ paymentNumber: 2 });
+      const { cardPaymentProcessorShell } = context;
+      const payment: TestPayment = { ...context.payments[0] };
+
+      // Check initial cashback state for the account after the first cashback transfer
+      const operationResult1 = await cardPaymentProcessorShell.makePaymentFor(payment);
+      const block1: Block = await ethers.provider.getBlock(operationResult1.txReceipt.blockNumber);
+      const expectedCapPeriodStartTime1 = block1.timestamp;
+      await checkAccountCashbackState(context, operationResult1, expectedCapPeriodStartTime1);
+
+      // Reach the cashback cap first time.
+      const operationResult2 = await context.presetCashbackForAccount(payment.payer, MAX_CASHBACK_FOR_CAP_PERIOD);
+      await checkAccountCashbackState(context, operationResult2, expectedCapPeriodStartTime1);
+
+      // Revoke cashback and check that the cap-related values are changed properly
+      const operationResult3 = await cardPaymentProcessorShell.revokePayment(payment);
+      await checkAccountCashbackState(context, operationResult3, expectedCapPeriodStartTime1);
+
+      // Reach the cashback cap again
+      const operationResult4 = await cardPaymentProcessorShell.makePaymentFor(payment);
+      await checkAccountCashbackState(context, operationResult4, expectedCapPeriodStartTime1);
+
+      // The following part of the test is executed only for Hardhat network because we need to shift block time
+      if (network.name !== "hardhat") {
+        return;
+      }
+
+      // Shift next block time for a period of cap checking
+      await time.increase(CASHBACK_CAP_RESET_PERIOD);
+
+      // Set new start amount for the cashback cap checking in the model
+      cardPaymentProcessorShell.model.capPeriodStartAmount =
+        cardPaymentProcessorShell.model.getCashbackTotalForAccount(payment.payer.address);
+
+      // Check that next cashback sending executes successfully due to the cap period resets
+      payment.id = context.payments[1].id;
+      const operationResult5 = await cardPaymentProcessorShell.makePaymentFor(payment);
+      const block2: Block = await ethers.provider.getBlock(operationResult5.txReceipt.blockNumber);
+      const expectedCapPeriodStartTime2 = block2.timestamp;
+      await checkAccountCashbackState(context, operationResult5, expectedCapPeriodStartTime2);
+
+      // Revoke the very first cashback and check that the cap-related values are changed properly
+      payment.id = context.payments[0].id;
+      const operationResult6 = await cardPaymentProcessorShell.revokePayment(payment);
+      await checkAccountCashbackState(context, operationResult6, expectedCapPeriodStartTime2);
     });
   });
 });
