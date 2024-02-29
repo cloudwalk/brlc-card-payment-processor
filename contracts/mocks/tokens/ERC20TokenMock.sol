@@ -9,7 +9,11 @@ import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC2
  * @dev An implementation of the {ERC20Upgradeable} contract for testing purposes
  */
 contract ERC20TokenMock is ERC20Upgradeable {
-    bool public mintResult;
+    /// @dev A special amount when the transfer functions should return `false`.
+    uint256 public specialAmountToReturnFalse;
+
+    /// @dev A special amount when the transfer functions should revert.
+    uint256 public specialAmountToRevert;
 
     /**
      * @dev The initialize function of the upgradable contract.
@@ -18,7 +22,8 @@ contract ERC20TokenMock is ERC20Upgradeable {
      */
     function initialize(string memory name_, string memory symbol_) public initializer {
         __ERC20_init(name_, symbol_);
-        mintResult = true;
+        specialAmountToReturnFalse = type(uint256).max;
+        specialAmountToRevert = type(uint256).max;
     }
 
     /**
@@ -26,8 +31,47 @@ contract ERC20TokenMock is ERC20Upgradeable {
      * @param account The address of an account to mint for.
      * @param amount The amount of tokens to mint.
      */
-    function mint(address account, uint256 amount) external returns (bool) {
+    function mint(address account, uint256 amount) external {
         _mint(account, amount);
-        return mintResult;
+    }
+
+    /**
+     * @dev The variation of the standard transfer function that returns `false` if the special amount is passed.
+     */
+    function transfer(address to, uint256 amount) public override returns (bool) {
+        if (amount == specialAmountToRevert) {
+            revert("ERC20TokenMock: The special amount has been used inside the 'transfer()' function");
+        } else if (amount == specialAmountToReturnFalse) {
+            return false;
+        } else {
+            return super.transfer(to, amount);
+        }
+    }
+
+    /**
+     * @dev The variation of the standard transfer from function that returns `false` if the special amount is passed.
+     */
+    function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
+        if (amount == specialAmountToRevert) {
+            revert("ERC20TokenMock: The special amount has been used inside the 'transferFrom()' function");
+        } else if (amount == specialAmountToReturnFalse) {
+            return false;
+        } else {
+            return super.transferFrom(from, to, amount);
+        }
+    }
+
+    /**
+     * @dev Configures the special amount when the transfer functions should return `false`.
+     */
+    function setSpecialAmountToReturnFalse(uint256 newSpecialAmount) external {
+        specialAmountToReturnFalse = newSpecialAmount;
+    }
+
+    /**
+     * @dev Configures the special amount when the transfer functions should revert.
+     */
+    function setSpecialAmountToRevert(uint256 newSpecialAmount) external {
+        specialAmountToRevert = newSpecialAmount;
     }
 }

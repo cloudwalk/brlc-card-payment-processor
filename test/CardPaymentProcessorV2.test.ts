@@ -25,6 +25,8 @@ const DIGITS_COEF = 1000000;
 const INITIAL_USER_BALANCE = 1000_000 * DIGITS_COEF;
 const INITIAL_SPONSOR_BALANCE = INITIAL_USER_BALANCE * 2;
 const CASHBACK_FACTOR = 1000;
+const CASHBACK_CAP_RESET_PERIOD = 30 * 24 * 60 * 60;
+const MAX_CASHBACK_FOR_CAP_PERIOD = 300 * 10 ** 6;
 
 const EVENT_DATA_FIELD_VERSION_DEFAULT_VALUE = "01";
 const EVENT_DATA_FIELD_FLAGS_NON_SUBSIDIZED = "00";
@@ -37,11 +39,13 @@ const eventDataFieldCheckingOptions: EventFieldCheckingOptions = {
 };
 
 const EVENT_NAME_ACCOUNT_REFUNDED = "AccountRefunded";
-const EVENT_NAME_ENABLE_CASHBACK = "EnableCashback";
-const EVENT_NAME_DISABLE_CASHBACK = "DisableCashback";
-const EVENT_NAME_INCREASE_CASHBACK_FAILURE = "IncreaseCashbackFailure";
-const EVENT_NAME_INCREASE_CASHBACK_MOCK = "IncreaseCashbackMock";
-const EVENT_NAME_INCREASE_CASHBACK_SUCCESS = "IncreaseCashbackSuccess";
+const EVENT_NAME_CASHBACK_ENABLED = "CashbackEnabled";
+const EVENT_NAME_CASHBACK_DISABLED = "CashbackDisabled";
+const EVENT_NAME_CASHBACK_INCREASED = "CashbackIncreased";
+const EVENT_NAME_CASHBACK_RATE_CHANGED = "CashbackRateChanged";
+const EVENT_NAME_CASHBACK_REVOKED = "CashbackRevoked";
+const EVENT_NAME_CASHBACK_TREASURY_CHANGED = "CashbackTreasuryChanged";
+const EVENT_NAME_CASHBACK_SENT = "CashbackSent";
 const EVENT_NAME_PAYMENT_CONFIRMED_AMOUNT_CHANGED = "PaymentConfirmedAmountChanged";
 const EVENT_NAME_PAYMENT_EXPANDED = "PaymentExpanded";
 const EVENT_NAME_PAYMENT_MADE = "PaymentMade";
@@ -50,15 +54,7 @@ const EVENT_NAME_PAYMENT_REFUNDED = "PaymentRefunded";
 const EVENT_NAME_PAYMENT_REVERSED = "PaymentReversed";
 const EVENT_NAME_PAYMENT_REVOKED = "PaymentRevoked";
 const EVENT_NAME_PAYMENT_UPDATED = "PaymentUpdated";
-const EVENT_NAME_REVOKE_CASHBACK_FAILURE = "RevokeCashbackFailure";
-const EVENT_NAME_REVOKE_CASHBACK_MOCK = "RevokeCashbackMock";
-const EVENT_NAME_REVOKE_CASHBACK_SUCCESS = "RevokeCashbackSuccess";
-const EVENT_NAME_SEND_CASHBACK_FAILURE = "SendCashbackFailure";
-const EVENT_NAME_SEND_CASHBACK_MOCK = "SendCashbackMock";
-const EVENT_NAME_SEND_CASHBACK_SUCCESS = "SendCashbackSuccess";
 const EVENT_NAME_SET_CASH_OUT_ACCOUNT = "SetCashOutAccount";
-const EVENT_NAME_SET_CASHBACK_DISTRIBUTOR = "SetCashbackDistributor";
-const EVENT_NAME_SET_CASHBACK_RATE = "SetCashbackRate";
 
 enum PaymentStatus {
   Nonexistent = 0,
@@ -69,15 +65,12 @@ enum PaymentStatus {
   MergePrepared = 5 // Does not exist in the contract
 }
 
-enum CashbackKind {
-  // Manual = 0,
-  CardPayment = 1
-}
-
-enum CashbackMergingFailureKind {
-  NotEnoughBalance = 0,
-  RevocationError = 1,
-  IncreaseError = 2
+enum CashbackOperationStatus {
+  Undefined = 0,
+  Success = 1,
+  Partial = 2,
+  Capped = 3,
+  Failed = 4
 }
 
 interface PaymentConfirmation {
@@ -106,19 +99,6 @@ interface PaymentModel {
   cashbackAmount: number;
   refundAmount: number;
   mergedCashbackAmount: number; // Does not exist in the contract
-}
-
-interface CashbackDistributorMockConfig {
-  sendCashbackSuccessResult: boolean;
-  sendCashbackAmountResult: number;
-  sendCashbackNonceResult: number;
-  revokeCashbackSuccessResult: boolean;
-  increaseCashbackSuccessResult: boolean;
-  increaseCashbackAmountResult: number;
-}
-
-interface CashbackModel {
-  lastCashbackNonce: number;
 }
 
 enum CashbackOperationKind {
@@ -174,11 +154,10 @@ interface PaymentOperation {
   newPayerRemainder: number;
   cashbackEnabled: boolean;
   cashbackOperationKind: CashbackOperationKind;
-  cashbackOperationSucceeded: boolean;
+  cashbackOperationStatus: CashbackOperationStatus;
   cashbackRequestedChange: number; // From the user point of view, if "+" then the user earns cashback
   cashbackActualChange: number; // From the user point of view, if "+" then the user earns cashback
   cashbackRate: number;
-  cashbackNonce: number;
   sponsor?: SignerWithAddress;
   subsidyLimit: number;
   oldSponsorSumAmount: number;
@@ -199,8 +178,6 @@ interface PaymentOperation {
 interface Fixture {
   cardPaymentProcessor: Contract;
   tokenMock: Contract;
-  cashbackDistributorMock: Contract;
-  cashbackDistributorMockConfig: CashbackDistributorMockConfig;
 }
 
 interface AmountParts {
@@ -222,72 +199,33 @@ enum CashbackConditionType {
   CashbackDisabledBeforePaymentMaking = 1,
   CashbackDisabledAfterPaymentMaking = 2,
   CashbackEnabledButRevokingFails = 3,
-  CashbackEnabledButIncreasingFails = 4,
-  CashbackEnabledButIncreasingPartial = 5
-}
-
-class CashbackDistributorMockShell {
-  readonly contract: Contract;
-  readonly config: CashbackDistributorMockConfig;
-
-  constructor(props: {
-    cashbackDistributorMockConfig: CashbackDistributorMockConfig;
-    cashbackDistributorMockContract: Contract;
-  }) {
-    this.contract = props.cashbackDistributorMockContract;
-    this.config = props.cashbackDistributorMockConfig;
-  }
-
-  async setSendCashbackSuccessResult(newSendCashbackSuccessResult: boolean) {
-    await proveTx(this.contract.setSendCashbackSuccessResult(newSendCashbackSuccessResult));
-    this.config.sendCashbackSuccessResult = newSendCashbackSuccessResult;
-  }
-
-  async setSendCashbackAmountResult(newSendCashbackAmountResult: number) {
-    await proveTx(this.contract.setSendCashbackAmountResult(newSendCashbackAmountResult));
-    this.config.sendCashbackAmountResult = newSendCashbackAmountResult;
-  }
-
-  async increaseSendCashbackNonceResult() {
-    await proveTx(this.contract.setSendCashbackNonceResult(this.config.sendCashbackNonceResult + 1));
-    this.config.sendCashbackNonceResult += 1;
-  }
-
-  async setRevokeCashbackSuccessResult(newRevokeCashbackSuccessResult: boolean) {
-    await proveTx(this.contract.setRevokeCashbackSuccessResult(newRevokeCashbackSuccessResult));
-    this.config.revokeCashbackSuccessResult = newRevokeCashbackSuccessResult;
-  }
-
-  async setIncreaseCashbackSuccessResult(newIncreaseCashbackSuccessResult: boolean) {
-    await proveTx(this.contract.setIncreaseCashbackSuccessResult(newIncreaseCashbackSuccessResult));
-    this.config.increaseCashbackSuccessResult = newIncreaseCashbackSuccessResult;
-  }
-
-  async setIncreaseCashbackAmountResult(newIncreaseCashbackAmountResult: number) {
-    await proveTx(this.contract.setIncreaseCashbackAmountResult(newIncreaseCashbackAmountResult));
-    this.config.increaseCashbackAmountResult = newIncreaseCashbackAmountResult;
-  }
+  CashbackEnabledButRevokingReverts = 4,
+  CashbackEnabledButIncreasingFails = 5,
+  CashbackEnabledButIncreasingReverts = 6,
+  CashbackEnabledButIncreasingPartial = 7
 }
 
 class CardPaymentProcessorModel {
-  #cashbackDistributorMockConfig: CashbackDistributorMockConfig;
   #cashbackEnabled: boolean;
   #cashbackRate: number;
   #paymentPerId: Map<string, PaymentModel> = new Map<string, PaymentModel>();
   #totalBalance: number = 0;
   #totalConfirmedAmount: number = 0;
   #totalUnconfirmedRemainder: number = 0;
-  #cashbackPerPaymentId: Map<string, CashbackModel> = new Map<string, CashbackModel>();
   #paymentMakingOperations: PaymentOperation[] = [];
   #paymentOperations: PaymentOperation[] = [];
+  #cashbackIncreaseStatus: CashbackOperationStatus = CashbackOperationStatus.Success;
+  #cashbackIncreaseAmountResult: number = -1; // As expected by default cashback calculation
+  #cashbackRevocationStatus: CashbackOperationStatus = CashbackOperationStatus.Success;
+  #cashbackSendingStatus: CashbackOperationStatus = CashbackOperationStatus.Success;
+  #cashbackSendingAmountResult: number = -1; // As expected by default cashback calculation
+  #cashbackTotalPerAccount: Map<string, number> = new Map<string, number>();
 
   constructor(props: {
-    cashbackDistributorMockConfig: CashbackDistributorMockConfig;
-    cashbackRateInPermil: number;
+    cashbackRate: number;
     cashbackEnabled: boolean;
   }) {
-    this.#cashbackDistributorMockConfig = props.cashbackDistributorMockConfig;
-    this.#cashbackRate = props.cashbackRateInPermil;
+    this.#cashbackRate = props.cashbackRate;
     this.#cashbackEnabled = props.cashbackEnabled;
   }
 
@@ -414,7 +352,7 @@ class CardPaymentProcessorModel {
     aggregatedMergeOperation.newPayerRefundAmount = lastMergingOperation.newPayerRefundAmount;
     aggregatedMergeOperation.newPayerRemainder = lastMergingOperation.newPayerRemainder;
     aggregatedMergeOperation.cashbackOperationKind = CashbackOperationKind.AggregatedMerge;
-    aggregatedMergeOperation.cashbackOperationSucceeded = true;
+    aggregatedMergeOperation.cashbackOperationStatus = CashbackOperationStatus.Success;
     aggregatedMergeOperation.cashbackRequestedChange =
       lastMergingOperation.oldCashbackAmount +
       lastMergingOperation.cashbackActualChange -
@@ -434,10 +372,6 @@ class CardPaymentProcessorModel {
     return operationIndexes;
   }
 
-  enableCashback() {
-    this.#cashbackEnabled = true;
-  }
-
   disableCashback() {
     this.#cashbackEnabled = false;
   }
@@ -452,20 +386,12 @@ class CardPaymentProcessorModel {
     return paymentModels;
   }
 
-  getPaymentIds(): Set<string> {
-    return new Set(this.#paymentPerId.keys());
-  }
-
   getPaymentById(paymentId: string): PaymentModel {
     const payment = this.#paymentPerId.get(paymentId);
     if (!payment) {
       throw Error(`A payment is not in the model. Payment id = ${paymentId}`);
     }
     return payment;
-  }
-
-  getCashbackByPaymentId(paymentId: string): CashbackModel | undefined {
-    return this.#cashbackPerPaymentId.get(paymentId);
   }
 
   get totalBalance(): number {
@@ -480,8 +406,43 @@ class CardPaymentProcessorModel {
     return this.#totalUnconfirmedRemainder;
   }
 
+  get cashbackRate(): number {
+    return this.#cashbackRate;
+  }
+
   getPaymentOperation(operationIndex: number): PaymentOperation {
     return this.#getOperationByIndex(this.#paymentOperations, operationIndex, "");
+  }
+
+  setCashbackIncreaseStatus(newStatus: CashbackOperationStatus) {
+    this.#cashbackIncreaseStatus = newStatus;
+  }
+
+  setCashbackIncreaseAmountResult(newAmountResult: number) {
+    this.#cashbackIncreaseAmountResult = newAmountResult;
+  }
+
+  setCashbackRevocationStatus(newStatus: CashbackOperationStatus) {
+    this.#cashbackRevocationStatus = newStatus;
+  }
+
+  setCashbackSendingStatus(newStatus: CashbackOperationStatus) {
+    this.#cashbackSendingStatus = newStatus;
+  }
+
+  setCashbackSendingAmountResult(newAmountResult: number) {
+    this.#cashbackSendingAmountResult = newAmountResult;
+  }
+
+  calculateCashback(baseAmount: number, refundAmount?: number, cashbackRate?: number) {
+    refundAmount = refundAmount ?? 0;
+    cashbackRate = cashbackRate ?? this.#cashbackRate;
+    if (baseAmount < refundAmount) {
+      return 0;
+    }
+    const amount = baseAmount - refundAmount;
+    const cashback = Math.floor(amount * cashbackRate / CASHBACK_FACTOR);
+    return this.#roundCashback(cashback, CASHBACK_ROUNDING_COEF);
   }
 
   #createPayment(payment: TestPayment): PaymentModel {
@@ -510,7 +471,6 @@ class CardPaymentProcessorModel {
   }
 
   #createPaymentOperation(payment: PaymentModel, kind: OperationKind): PaymentOperation {
-    const cashback = this.getCashbackByPaymentId(payment.paymentId);
     const remainder = payment.baseAmount + payment.extraAmount - payment.refundAmount;
     const amountParts: AmountParts =
       this.#defineAmountParts(payment.baseAmount, payment.extraAmount, payment.subsidyLimit);
@@ -542,11 +502,10 @@ class CardPaymentProcessorModel {
       cashbackEnabled: payment.cashbackEnabled,
       oldCashbackAmount: payment.cashbackAmount,
       cashbackOperationKind: CashbackOperationKind.Undefined,
-      cashbackOperationSucceeded: false,
+      cashbackOperationStatus: CashbackOperationStatus.Undefined,
       cashbackRequestedChange: 0,
       cashbackActualChange: 0,
       cashbackRate: payment.cashbackRate,
-      cashbackNonce: cashback?.lastCashbackNonce ?? 0,
       sponsor: payment.sponsor,
       subsidyLimit: payment.subsidyLimit,
       oldSponsorSumAmount: amountParts.sponsorSumAmount,
@@ -606,7 +565,8 @@ class CardPaymentProcessorModel {
 
     if (
       operation.cashbackOperationKind == CashbackOperationKind.Increase ||
-      operation.cashbackOperationKind == CashbackOperationKind.Sending
+      operation.cashbackOperationKind == CashbackOperationKind.Sending ||
+      operation.cashbackOperationKind == CashbackOperationKind.SingleMerge
     ) {
       operation.payerBalanceChange += operation.cashbackActualChange;
     }
@@ -625,7 +585,7 @@ class CardPaymentProcessorModel {
     if (!operation.cashbackEnabled) {
       operation.cashbackRate = 0;
       operation.cashbackOperationKind = CashbackOperationKind.None;
-      operation.cashbackOperationSucceeded = false;
+      operation.cashbackOperationStatus = CashbackOperationStatus.Undefined;
       operation.cashbackRequestedChange = 0;
       operation.cashbackActualChange = 0;
       return;
@@ -639,7 +599,7 @@ class CardPaymentProcessorModel {
         this.#defineAmountParts(operation.newBaseAmount, operation.newExtraAmount, operation.subsidyLimit);
       const refundParts: RefundParts =
         this.#defineRefundParts(operation.newRefundAmount, operation.newBaseAmount, operation.subsidyLimit);
-      const newCashbackAmount = this.#calculateCashback(
+      const newCashbackAmount = this.calculateCashback(
         newAmountParts.payerBaseAmount,
         refundParts.payerRefundAmount,
         operation.cashbackRate
@@ -654,52 +614,66 @@ class CardPaymentProcessorModel {
       } else {
         operation.cashbackOperationKind = CashbackOperationKind.None;
       }
-      const cashbackModel = this.getCashbackByPaymentId(operation.paymentId);
-      operation.cashbackNonce = cashbackModel?.lastCashbackNonce ?? 0;
+    }
+    operation.cashbackActualChange = 0;
+    operation.cashbackOperationStatus = CashbackOperationStatus.Undefined;
+    if (operation.cashbackOperationKind == CashbackOperationKind.Increase) {
+      operation.cashbackOperationStatus = this.#cashbackIncreaseStatus;
+      if (
+        operation.cashbackOperationStatus === CashbackOperationStatus.Success ||
+        operation.cashbackOperationStatus === CashbackOperationStatus.Partial
+      ) {
+        if (this.#cashbackIncreaseAmountResult < 0) {
+          operation.cashbackActualChange = operation.cashbackRequestedChange;
+        } else {
+          operation.cashbackActualChange = this.#cashbackIncreaseAmountResult;
+          if (operation.cashbackRequestedChange > operation.cashbackActualChange) {
+            operation.cashbackOperationStatus = CashbackOperationStatus.Partial;
+          }
+        }
+      }
+    } else if (operation.cashbackOperationKind == CashbackOperationKind.Revocation) {
+      operation.cashbackOperationStatus = this.#cashbackRevocationStatus;
+      if (operation.cashbackOperationStatus === CashbackOperationStatus.Success) {
+        operation.cashbackActualChange = operation.cashbackRequestedChange;
+      }
     } else if (operation.cashbackOperationKind == CashbackOperationKind.Sending) {
       if (operation.cashbackRequestedChange < 0) {
         throw new Error("The cashback amount change is negative during the cashback sending operation");
       }
-      operation.cashbackNonce = this.#cashbackDistributorMockConfig.sendCashbackNonceResult;
-      const cashbackModel: CashbackModel = { lastCashbackNonce: operation.cashbackNonce };
-      this.#cashbackPerPaymentId.set(operation.paymentId, cashbackModel);
+      operation.cashbackOperationStatus = this.#cashbackSendingStatus;
+      if (
+        operation.cashbackOperationStatus === CashbackOperationStatus.Success ||
+        operation.cashbackOperationStatus === CashbackOperationStatus.Partial
+      ) {
+        if (this.#cashbackSendingAmountResult < 0) {
+          operation.cashbackActualChange = operation.cashbackRequestedChange;
+        } else {
+          operation.cashbackActualChange = this.#cashbackSendingAmountResult;
+          if (operation.cashbackRequestedChange > operation.cashbackActualChange) {
+            operation.cashbackOperationStatus = CashbackOperationStatus.Partial;
+          }
+        }
+      }
     } else if (operation.cashbackOperationKind == CashbackOperationKind.SingleMerge) {
       if (operation.cashbackRequestedChange < 0) {
         throw new Error("The cashback amount change is negative during the cashback merge operation");
-      } else if (operation.cashbackRequestedChange > 0) {
-        operation.cashbackOperationKind = CashbackOperationKind.Increase;
-        const cashbackModel = this.getCashbackByPaymentId(operation.paymentId);
-        operation.cashbackNonce = cashbackModel?.lastCashbackNonce ?? 0;
-      } else {
-        operation.cashbackOperationKind = CashbackOperationKind.None;
       }
+      operation.cashbackActualChange = operation.cashbackRequestedChange;
     }
-    operation.cashbackActualChange = 0;
-    operation.cashbackOperationSucceeded = false;
-    if (operation.cashbackOperationKind == CashbackOperationKind.Increase) {
-      if (this.#cashbackDistributorMockConfig.increaseCashbackSuccessResult) {
-        operation.cashbackOperationSucceeded = true;
-        if (this.#cashbackDistributorMockConfig.increaseCashbackAmountResult < 0) {
-          operation.cashbackActualChange = operation.cashbackRequestedChange;
-        } else {
-          operation.cashbackActualChange = this.#cashbackDistributorMockConfig.increaseCashbackAmountResult;
-        }
-      }
-    } else if (operation.cashbackOperationKind == CashbackOperationKind.Revocation) {
-      if (this.#cashbackDistributorMockConfig.revokeCashbackSuccessResult) {
-        operation.cashbackOperationSucceeded = true;
-        operation.cashbackActualChange = operation.cashbackRequestedChange;
-      }
-    } else if (operation.cashbackOperationKind == CashbackOperationKind.Sending) {
-      if (this.#cashbackDistributorMockConfig.sendCashbackSuccessResult) {
-        operation.cashbackOperationSucceeded = true;
-        if (this.#cashbackDistributorMockConfig.sendCashbackAmountResult < 0) {
-          operation.cashbackActualChange = operation.cashbackRequestedChange;
-        } else {
-          operation.cashbackActualChange = this.#cashbackDistributorMockConfig.sendCashbackAmountResult;
-        }
-      } else {
-        operation.cashbackRate = 0;
+
+    // Check the periodical cap
+    if (
+      operation.cashbackOperationStatus === CashbackOperationStatus.Success ||
+      operation.cashbackOperationStatus === CashbackOperationStatus.Partial
+    ) {
+      const totalCashback = this.#cashbackTotalPerAccount.get(operation.payer.address) ?? 0;
+      if (totalCashback >= MAX_CASHBACK_FOR_CAP_PERIOD) {
+        operation.cashbackActualChange = 0;
+        operation.cashbackOperationStatus = CashbackOperationStatus.Capped;
+      } else if (totalCashback + operation.cashbackActualChange > MAX_CASHBACK_FOR_CAP_PERIOD) {
+        operation.cashbackActualChange = MAX_CASHBACK_FOR_CAP_PERIOD - totalCashback;
+        operation.cashbackOperationStatus = CashbackOperationStatus.Partial;
       }
     }
   }
@@ -714,6 +688,8 @@ class CardPaymentProcessorModel {
     this.#totalConfirmedAmount += operation.cashOutAccountBalanceChange;
     this.#totalUnconfirmedRemainder += (operation.newRemainder - operation.oldRemainder);
     this.#totalUnconfirmedRemainder -= (operation.newConfirmationAmount - operation.oldConfirmationAmount);
+    const totalCashback = this.#cashbackTotalPerAccount.get(operation.payer.address) ?? 0;
+    this.#cashbackTotalPerAccount.set(operation.payer.address, totalCashback + operation.cashbackActualChange);
     return this.#paymentOperations.push(operation) - 1;
   }
 
@@ -727,15 +703,6 @@ class CardPaymentProcessorModel {
     this.#paymentPerId.set(payment.paymentId, payment);
     this.#paymentMakingOperations.push(operation);
     return this.#registerPaymentOperation(operation, payment);
-  }
-
-  #calculateCashback(baseAmount: number, refundAmount: number, cashbackRate: number) {
-    if (baseAmount < refundAmount) {
-      return 0;
-    }
-    const amount = baseAmount - refundAmount;
-    const cashback = Math.floor(amount * cashbackRate / CASHBACK_FACTOR);
-    return this.#roundCashback(cashback, CASHBACK_ROUNDING_COEF);
   }
 
   #roundCashback(cashback: number, roundingCoefficient: number): number {
@@ -891,6 +858,7 @@ class CardPaymentProcessorModel {
     this.#checkPaymentCanceling(operation);
     this.#definePaymentOperation(operation);
     this.#updateModelDueToPaymentCancelingOperation(operation);
+    operation.cashbackOperationKind = CashbackOperationKind.None;
     mergedPayment.mergedCashbackAmount = -operation.cashbackActualChange;
     return this.#registerPaymentCancelingOperation(operation, mergedPayment, PaymentStatus.MergePrepared);
   }
@@ -973,11 +941,6 @@ class CardPaymentProcessorShell {
     this.contract = props.cardPaymentProcessorContract;
     this.model = props.cardPaymentProcessorModel;
     this.executor = props.executor;
-  }
-
-  async enableCashback() {
-    this.model.enableCashback();
-    await proveTx(this.contract.enableCashback());
   }
 
   async disableCashback() {
@@ -1178,11 +1141,10 @@ function defineEventDataField(...parts: string[]): string {
 }
 
 class TestContext {
-  cashbackDistributorMockConfig: CashbackDistributorMockConfig;
   tokenMock: Contract;
   cardPaymentProcessorShell: CardPaymentProcessorShell;
-  cashbackDistributorMockShell: CashbackDistributorMockShell;
   cashOutAccount: SignerWithAddress;
+  cashbackTreasury: SignerWithAddress;
   payments: TestPayment[];
 
   constructor(props: {
@@ -1190,25 +1152,21 @@ class TestContext {
     cashbackRateInPermil: number;
     cashbackEnabled: boolean;
     cashOutAccount: SignerWithAddress;
+    cashbackTreasury: SignerWithAddress;
     cardPaymentProcessorExecutor: SignerWithAddress;
     payments: TestPayment[];
   }) {
-    this.cashbackDistributorMockConfig = { ...props.fixture.cashbackDistributorMockConfig };
     this.tokenMock = props.fixture.tokenMock;
-    this.cashbackDistributorMockShell = new CashbackDistributorMockShell({
-      cashbackDistributorMockContract: props.fixture.cashbackDistributorMock,
-      cashbackDistributorMockConfig: this.cashbackDistributorMockConfig
-    });
     this.cardPaymentProcessorShell = new CardPaymentProcessorShell({
       cardPaymentProcessorContract: props.fixture.cardPaymentProcessor,
       cardPaymentProcessorModel: new CardPaymentProcessorModel({
-        cashbackDistributorMockConfig: this.cashbackDistributorMockConfig,
-        cashbackRateInPermil: props.cashbackRateInPermil,
+        cashbackRate: props.cashbackRateInPermil,
         cashbackEnabled: props.cashbackEnabled
       }),
       executor: props.cardPaymentProcessorExecutor
     });
     this.cashOutAccount = props.cashOutAccount;
+    this.cashbackTreasury = props.cashbackTreasury;
     this.payments = props.payments;
   }
 
@@ -1364,168 +1322,60 @@ class TestContext {
   ) {
     if (operation.cashbackOperationKind === CashbackOperationKind.Sending) {
       await expect(tx).to.emit(
-        this.cashbackDistributorMockShell.contract,
-        EVENT_NAME_SEND_CASHBACK_MOCK
+        this.cardPaymentProcessorShell.contract,
+        EVENT_NAME_CASHBACK_SENT
       ).withArgs(
-        checkEventField("sender", this.cardPaymentProcessorShell.contract.address),
-        checkEventField("token", this.tokenMock.address),
-        checkEventField("kind", CashbackKind.CardPayment),
-        checkEventField(
-          "externalId",
-          operation.paymentId
-        ),
+        checkEventField("paymentId", operation.paymentId),
         checkEventField("recipient", operation.payer.address),
-        checkEventField("amount", operation.cashbackRequestedChange)
+        checkEventField("status", operation.cashbackOperationStatus),
+        checkEventField("amount", operation.cashbackActualChange)
       );
-      if (operation.cashbackOperationSucceeded) {
-        await expect(tx).to.emit(
-          this.cardPaymentProcessorShell.contract,
-          EVENT_NAME_SEND_CASHBACK_SUCCESS
-        ).withArgs(
-          checkEventField("cashbackDistributor", this.cashbackDistributorMockShell.contract.address),
-          checkEventField("amount", operation.cashbackActualChange),
-          checkEventField("nonce", operation.cashbackNonce)
-        );
-        await expect(tx).not.to.emit(
-          this.cardPaymentProcessorShell.contract,
-          EVENT_NAME_SEND_CASHBACK_FAILURE
-        );
-      } else {
-        await expect(tx).to.emit(
-          this.cardPaymentProcessorShell.contract,
-          EVENT_NAME_SEND_CASHBACK_FAILURE
-        ).withArgs(
-          checkEventField("cashbackDistributor", this.cashbackDistributorMockShell.contract.address),
-          checkEventField("amount", operation.cashbackRequestedChange),
-          checkEventField("nonce", operation.cashbackNonce)
-        );
-        await expect(tx).not.to.emit(
-          this.cardPaymentProcessorShell.contract,
-          EVENT_NAME_SEND_CASHBACK_SUCCESS
-        );
-      }
     }
 
     if (operation.cashbackOperationKind === CashbackOperationKind.Revocation) {
       await expect(tx).to.emit(
-        this.cashbackDistributorMockShell.contract,
-        EVENT_NAME_REVOKE_CASHBACK_MOCK
+        this.cardPaymentProcessorShell.contract,
+        EVENT_NAME_CASHBACK_REVOKED
       ).withArgs(
-        checkEventField("sender", this.cardPaymentProcessorShell.contract.address),
-        checkEventField("nonce", operation.cashbackNonce),
-        checkEventField("amount", -operation.cashbackRequestedChange)
+        checkEventField("paymentId", operation.paymentId),
+        checkEventField("recipient", operation.payer.address),
+        checkEventField("status", operation.cashbackOperationStatus),
+        checkEventField("oldCashbackAmount", operation.oldCashbackAmount),
+        checkEventField("oldCashbackAmount", operation.oldCashbackAmount + operation.cashbackActualChange)
       );
-
-      if (operation.cashbackOperationSucceeded) {
-        await expect(tx).to.emit(
-          this.cardPaymentProcessorShell.contract,
-          EVENT_NAME_REVOKE_CASHBACK_SUCCESS
-        ).withArgs(
-          checkEventField("cashbackDistributor", this.cashbackDistributorMockShell.contract.address),
-          checkEventField("amount", -operation.cashbackActualChange),
-          checkEventField("nonce", operation.cashbackNonce)
-        );
-        await expect(tx).not.to.emit(
-          this.cardPaymentProcessorShell.contract,
-          EVENT_NAME_REVOKE_CASHBACK_FAILURE
-        );
-      } else { // !(operation.cashbackOperationSucceeded)
-        await expect(tx).to.emit(
-          this.cardPaymentProcessorShell.contract,
-          EVENT_NAME_REVOKE_CASHBACK_FAILURE
-        ).withArgs(
-          checkEventField("cashbackDistributor", this.cashbackDistributorMockShell.contract.address),
-          checkEventField("amount", -operation.cashbackRequestedChange),
-          checkEventField("nonce", operation.cashbackNonce)
-        );
-        await expect(tx).not.to.emit(
-          this.cardPaymentProcessorShell.contract,
-          EVENT_NAME_REVOKE_CASHBACK_SUCCESS
-        );
-      }
     }
 
     if (operation.cashbackOperationKind === CashbackOperationKind.Increase) {
       await expect(tx).to.emit(
-        this.cashbackDistributorMockShell.contract,
-        EVENT_NAME_INCREASE_CASHBACK_MOCK
+        this.cardPaymentProcessorShell.contract,
+        EVENT_NAME_CASHBACK_INCREASED
       ).withArgs(
-        checkEventField("sender", this.cardPaymentProcessorShell.contract.address),
-        checkEventField("nonce", operation.cashbackNonce),
-        checkEventField("amount", operation.cashbackRequestedChange)
+        checkEventField("paymentId", operation.paymentId),
+        checkEventField("recipient", operation.payer.address),
+        checkEventField("status", operation.cashbackOperationStatus),
+        checkEventField("oldCashbackAmount", operation.oldCashbackAmount),
+        checkEventField("oldCashbackAmount", operation.oldCashbackAmount + operation.cashbackActualChange)
       );
-
-      if (operation.cashbackOperationSucceeded) {
-        await expect(tx).to.emit(
-          this.cardPaymentProcessorShell.contract,
-          EVENT_NAME_INCREASE_CASHBACK_SUCCESS
-        ).withArgs(
-          checkEventField("cashbackDistributor", this.cashbackDistributorMockShell.contract.address),
-          checkEventField("amount", operation.cashbackActualChange),
-          checkEventField("nonce", operation.cashbackNonce)
-        );
-        await expect(tx).not.to.emit(
-          this.cardPaymentProcessorShell.contract,
-          EVENT_NAME_INCREASE_CASHBACK_FAILURE
-        );
-      } else { // !(operation.cashbackOperationSucceeded)
-        await expect(tx).to.emit(
-          this.cardPaymentProcessorShell.contract,
-          EVENT_NAME_INCREASE_CASHBACK_FAILURE
-        ).withArgs(
-          checkEventField("cashbackDistributor", this.cashbackDistributorMockShell.contract.address),
-          checkEventField("amount", operation.cashbackRequestedChange),
-          checkEventField("nonce", operation.cashbackNonce)
-        );
-        await expect(tx).not.to.emit(
-          this.cardPaymentProcessorShell.contract,
-          EVENT_NAME_INCREASE_CASHBACK_SUCCESS
-        );
-      }
     }
 
     if (!operationConditions.cashbackSendingRequestedInAnyOperation) {
       await expect(tx).not.to.emit(
-        this.cashbackDistributorMockShell.contract,
-        EVENT_NAME_SEND_CASHBACK_MOCK
-      );
-      await expect(tx).not.to.emit(
         this.cardPaymentProcessorShell.contract,
-        EVENT_NAME_SEND_CASHBACK_SUCCESS
-      );
-      await expect(tx).not.to.emit(
-        this.cardPaymentProcessorShell.contract,
-        EVENT_NAME_SEND_CASHBACK_FAILURE
+        EVENT_NAME_CASHBACK_SENT
       );
     }
 
     if (!operationConditions.cashbackIncreaseRequestedInAnyOperation) {
       await expect(tx).not.to.emit(
-        this.cashbackDistributorMockShell.contract,
-        EVENT_NAME_INCREASE_CASHBACK_MOCK
-      );
-      await expect(tx).not.to.emit(
         this.cardPaymentProcessorShell.contract,
-        EVENT_NAME_INCREASE_CASHBACK_SUCCESS
-      );
-      await expect(tx).not.to.emit(
-        this.cardPaymentProcessorShell.contract,
-        EVENT_NAME_INCREASE_CASHBACK_FAILURE
+        EVENT_NAME_CASHBACK_INCREASED
       );
     }
 
     if (!operationConditions.cashbackRevocationRequestedInAnyOperation) {
       await expect(tx).not.to.emit(
-        this.cashbackDistributorMockShell.contract,
-        EVENT_NAME_REVOKE_CASHBACK_MOCK
-      );
-      await expect(tx).not.to.emit(
         this.cardPaymentProcessorShell.contract,
-        EVENT_NAME_REVOKE_CASHBACK_SUCCESS
-      );
-      await expect(tx).not.to.emit(
-        this.cardPaymentProcessorShell.contract,
-        EVENT_NAME_REVOKE_CASHBACK_FAILURE
+        EVENT_NAME_CASHBACK_REVOKED
       );
     }
   }
@@ -1577,7 +1427,7 @@ class TestContext {
     const cardPaymentProcessorBalanceChange = operations
       .map(operation => operation.cardPaymentProcessorBalanceChange)
       .reduce((sum: number, currentValue: number) => sum + currentValue);
-    const cashbackDistributorBalanceChange = operations
+    const cashbackTreasuryBalanceChange = operations
       .filter(operation => operation.kind != OperationKind.AggregatedMerging)
       .map(operation => -operation.cashbackActualChange)
       .reduce((sum: number, currentValue: number) => sum + currentValue);
@@ -1592,14 +1442,14 @@ class TestContext {
       this.tokenMock,
       [
         this.cardPaymentProcessorShell.contract,
-        this.cashbackDistributorMockShell.contract,
         this.cashOutAccount,
+        this.cashbackTreasury,
         ...accounts
       ],
       [
         cardPaymentProcessorBalanceChange,
-        cashbackDistributorBalanceChange,
         cashOutAccountBalanceChange,
+        cashbackTreasuryBalanceChange,
         ...accountBalanceChanges
       ]
     );
@@ -1607,7 +1457,6 @@ class TestContext {
 
   async checkCardPaymentProcessorState() {
     await this.#checkPaymentStructures();
-    await this.#checkCashbacks();
     await this.#checkTokenBalances();
   }
 
@@ -1715,6 +1564,27 @@ class TestContext {
     );
   }
 
+  async presetCashbackForAccount(account: SignerWithAddress, cashbackAmount: number) {
+    const accountCashbackOld = await this.cardPaymentProcessorShell.contract.getAccountCashbackState(account.address);
+    const cashbackAmountDiff = cashbackAmount - accountCashbackOld.totalAmount;
+    if (cashbackAmountDiff < 0) {
+      throw new Error("Cannot set the expected cashback for account because current cashback is already higher");
+    }
+    const preliminarilyPaymentAmount = Math.floor(
+      cashbackAmountDiff * CASHBACK_FACTOR / this.cardPaymentProcessorShell.model.cashbackRate
+    );
+    const payment: TestPayment = {
+      id: ethers.utils.id("cashbackPresetPayment"),
+      payer: account,
+      baseAmount: preliminarilyPaymentAmount,
+      extraAmount: 0
+    };
+
+    await this.cardPaymentProcessorShell.makeCommonPayments([payment]);
+    const accountCashbackNew = await this.cardPaymentProcessorShell.contract.getAccountCashbackState(account.address);
+    expect(accountCashbackNew.totalAmount).to.equal(cashbackAmount);
+  }
+
   async #checkPaymentStructures() {
     const expectedPayments: PaymentModel[] = this.cardPaymentProcessorShell.model.getPaymentModelsInMakingOrder();
     const paymentNumber = expectedPayments.length;
@@ -1785,20 +1655,6 @@ class TestContext {
     );
   }
 
-  async #checkCashbacks() {
-    const paymentIds: Set<string> = this.cardPaymentProcessorShell.model.getPaymentIds();
-    for (const paymentId of paymentIds) {
-      const expectedCashback = this.cardPaymentProcessorShell.model.getCashbackByPaymentId(paymentId);
-      const actualCashback = await this.cardPaymentProcessorShell.contract.getCashback(paymentId);
-      const note = `The last cashback nonce of a payment with id=${paymentId} is wrong`;
-      if (!expectedCashback) {
-        expect(actualCashback.lastCashbackNonce).to.equal(ethers.constants.Zero, note);
-      } else {
-        expect(actualCashback.lastCashbackNonce).to.equal(expectedCashback.lastCashbackNonce, note);
-      }
-    }
-  }
-
   async #checkTokenBalances() {
     expect(
       await this.tokenMock.balanceOf(this.cardPaymentProcessorShell.contract.address)
@@ -1850,12 +1706,11 @@ async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
 
 describe("Contract 'CardPaymentProcessorV2'", async () => {
   const ZERO_PAYMENT_ID: string = createBytesString("00", BYTES32_LENGTH);
-  const CASHBACK_DISTRIBUTOR_ADDRESS_STUB1 = "0x0000000000000000000000000000000000000001";
-  const CASHBACK_DISTRIBUTOR_ADDRESS_STUB2 = "0x0000000000000000000000000000000000000002";
+  const CASHBACK_TREASURY_ADDRESS_STUB1 = "0x0000000000000000000000000000000000000001";
+  const CASHBACK_TREASURY_ADDRESS_STUB2 = "0x0000000000000000000000000000000000000002";
   const CASHBACK_RATE_MAX = 250; // 25%
   const CASHBACK_RATE_DEFAULT = 100; // 10%
   const CASHBACK_RATE_ZERO = 0;
-  const CASHBACK_NONCE_DEFAULT = 111222333;
 
   const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
@@ -1864,10 +1719,9 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
   const REVERT_ERROR_IF_ACCOUNT_ZERO_ADDRESS = "AccountZeroAddress";
   const REVERT_ERROR_IF_CASHBACK_ALREADY_ENABLED = "CashbackAlreadyEnabled";
   const REVERT_ERROR_IF_CASHBACK_ALREADY_DISABLED = "CashbackAlreadyDisabled";
-  const REVERT_ERROR_IF_CASHBACK_DISTRIBUTOR_ALREADY_CONFIGURED = "CashbackDistributorAlreadyConfigured";
-  const REVERT_ERROR_IF_CASHBACK_DISTRIBUTOR_NOT_CONFIGURED = "CashbackDistributorNotConfigured";
-  const REVERT_ERROR_IF_CASHBACK_DISTRIBUTOR_ZERO_ADDRESS = "CashbackDistributorZeroAddress";
-  const REVERT_ERROR_IF_CASHBACK_MERGING_FAILURE = "CashbackMergingFailure";
+  const REVERT_ERROR_IF_CASHBACK_TREASURY_UNCHANGED = "CashbackTreasuryUnchanged";
+  const REVERT_ERROR_IF_CASHBACK_TREASURY_NOT_CONFIGURED = "CashbackTreasuryNotConfigured";
+  const REVERT_ERROR_IF_CASHBACK_TREASURY_ZERO_ADDRESS = "CashbackTreasuryZeroAddress";
   const REVERT_ERROR_IF_CASHBACK_RATE_EXCESS = "CashbackRateExcess";
   const REVERT_ERROR_IF_CASHBACK_RATE_UNCHANGED = "CashbackRateUnchanged";
   const REVERT_ERROR_IF_CASH_OUT_ACCOUNT_NOT_CONFIGURED = "CashOutAccountNotConfigured";
@@ -1898,11 +1752,11 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
   const executorRole: string = ethers.utils.id("EXECUTOR_ROLE");
 
   let cardPaymentProcessorFactory: ContractFactory;
-  let cashbackDistributorMockFactory: ContractFactory;
   let tokenMockFactory: ContractFactory;
 
   let deployer: SignerWithAddress;
   let cashOutAccount: SignerWithAddress;
+  let cashbackTreasury: SignerWithAddress;
   let executor: SignerWithAddress;
   let sponsor: SignerWithAddress;
   let user1: SignerWithAddress;
@@ -1910,10 +1764,9 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
 
   before(async () => {
     cardPaymentProcessorFactory = await ethers.getContractFactory("CardPaymentProcessorV2");
-    cashbackDistributorMockFactory = await ethers.getContractFactory("CashbackDistributorMock");
     tokenMockFactory = await ethers.getContractFactory("ERC20TokenMock");
 
-    [deployer, cashOutAccount, executor, sponsor, user1, user2] = await ethers.getSigners();
+    [deployer, cashOutAccount, cashbackTreasury, executor, sponsor, user1, user2] = await ethers.getSigners();
   });
 
   async function deployTokenMock(): Promise<{ tokenMock: Contract }> {
@@ -1944,48 +1797,19 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
     };
   }
 
-  async function deployCashbackDistributorMock(): Promise<{
-    cashbackDistributorMock: Contract;
-    cashbackDistributorMockConfig: CashbackDistributorMockConfig;
-  }> {
-    const cashbackDistributorMockConfig: CashbackDistributorMockConfig = {
-      sendCashbackSuccessResult: true,
-      sendCashbackAmountResult: -1,
-      sendCashbackNonceResult: CASHBACK_NONCE_DEFAULT,
-      revokeCashbackSuccessResult: true,
-      increaseCashbackSuccessResult: true,
-      increaseCashbackAmountResult: -1
-    };
-
-    const cashbackDistributorMock: Contract = await cashbackDistributorMockFactory.deploy(
-      cashbackDistributorMockConfig.sendCashbackSuccessResult,
-      cashbackDistributorMockConfig.sendCashbackAmountResult,
-      cashbackDistributorMockConfig.sendCashbackNonceResult,
-      cashbackDistributorMockConfig.revokeCashbackSuccessResult,
-      cashbackDistributorMockConfig.increaseCashbackSuccessResult,
-      cashbackDistributorMockConfig.increaseCashbackAmountResult
-    );
-    await cashbackDistributorMock.deployed();
-
-    return {
-      cashbackDistributorMock,
-      cashbackDistributorMockConfig
-    };
-  }
-
   async function deployAndConfigureAllContracts(): Promise<Fixture> {
     const { cardPaymentProcessor, tokenMock } = await deployTokenMockAndCardPaymentProcessor();
-    const { cashbackDistributorMock, cashbackDistributorMockConfig } = await deployCashbackDistributorMock();
 
     await proveTx(cardPaymentProcessor.grantRole(executorRole, executor.address));
     await proveTx(cardPaymentProcessor.grantRole(pauserRole, deployer.address));
-    await proveTx(cardPaymentProcessor.setCashbackDistributor(cashbackDistributorMock.address));
+    await proveTx(cardPaymentProcessor.setCashbackTreasury(cashbackTreasury.address));
+    await proveTx(tokenMock.connect(cashbackTreasury).approve(cardPaymentProcessor.address, MAX_UINT256));
     await proveTx(cardPaymentProcessor.setCashbackRate(CASHBACK_RATE_DEFAULT));
 
     await proveTx(cardPaymentProcessor.setCashOutAccount(cashOutAccount.address));
     await proveTx(tokenMock.connect(cashOutAccount).approve(cardPaymentProcessor.address, MAX_UINT256));
 
-    await proveTx(tokenMock.mint(cashbackDistributorMock.address, MAX_INT256));
+    await proveTx(tokenMock.mint(cashbackTreasury.address, MAX_INT256));
     await proveTx(tokenMock.mint(sponsor.address, INITIAL_SPONSOR_BALANCE));
     await proveTx(tokenMock.connect(sponsor).approve(cardPaymentProcessor.address, MAX_UINT256));
 
@@ -1993,9 +1817,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
 
     return {
       cardPaymentProcessor,
-      tokenMock,
-      cashbackDistributorMock,
-      cashbackDistributorMockConfig
+      tokenMock
     };
   }
 
@@ -2030,6 +1852,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       cashbackRateInPermil: CASHBACK_RATE_DEFAULT,
       cashbackEnabled: true,
       cashOutAccount,
+      cashbackTreasury,
       cardPaymentProcessorExecutor: executor,
       payments
     });
@@ -2066,11 +1889,13 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       expect(await cardPaymentProcessor.paused()).to.equal(false);
 
       // Cashback related values
-      expect(await cardPaymentProcessor.cashbackDistributor()).to.equal(ZERO_ADDRESS);
+      expect(await cardPaymentProcessor.cashbackTreasury()).to.equal(ZERO_ADDRESS);
       expect(await cardPaymentProcessor.cashbackEnabled()).to.equal(false);
       expect(await cardPaymentProcessor.cashbackRate()).to.equal(0);
       expect(await cardPaymentProcessor.MAX_CASHBACK_RATE()).to.equal(CASHBACK_RATE_MAX);
       expect(await cardPaymentProcessor.CASHBACK_FACTOR()).to.equal(CASHBACK_FACTOR);
+      expect(await cardPaymentProcessor.CASHBACK_CAP_RESET_PERIOD()).to.equal(CASHBACK_CAP_RESET_PERIOD);
+      expect(await cardPaymentProcessor.MAX_CASHBACK_FOR_CAP_PERIOD()).to.equal(MAX_CASHBACK_FOR_CAP_PERIOD);
 
       // The cash-out account
       expect(await cardPaymentProcessor.cashOutAccount()).to.equal(ZERO_ADDRESS);
@@ -2147,50 +1972,59 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
     });
   });
 
-  describe("Function 'setCashbackDistributor()'", async () => {
+  describe("Function 'setCashbackTreasury()'", async () => {
     it("Executes as expected and emits the correct event", async () => {
       const { cardPaymentProcessor, tokenMock } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       expect(
-        await tokenMock.allowance(cardPaymentProcessor.address, CASHBACK_DISTRIBUTOR_ADDRESS_STUB1)
+        await tokenMock.allowance(cardPaymentProcessor.address, CASHBACK_TREASURY_ADDRESS_STUB1)
       ).to.equal(0);
 
       await expect(
-        cardPaymentProcessor.setCashbackDistributor(CASHBACK_DISTRIBUTOR_ADDRESS_STUB1)
+        cardPaymentProcessor.setCashbackTreasury(CASHBACK_TREASURY_ADDRESS_STUB1)
       ).to.emit(
         cardPaymentProcessor,
-        EVENT_NAME_SET_CASHBACK_DISTRIBUTOR
+        EVENT_NAME_CASHBACK_TREASURY_CHANGED
       ).withArgs(
         ZERO_ADDRESS,
-        CASHBACK_DISTRIBUTOR_ADDRESS_STUB1
+        CASHBACK_TREASURY_ADDRESS_STUB1
       );
 
-      expect(await cardPaymentProcessor.cashbackDistributor()).to.equal(CASHBACK_DISTRIBUTOR_ADDRESS_STUB1);
-      expect(
-        await tokenMock.allowance(cardPaymentProcessor.address, CASHBACK_DISTRIBUTOR_ADDRESS_STUB1)
-      ).to.equal(MAX_UINT256);
+      expect(await cardPaymentProcessor.cashbackTreasury()).to.equal(CASHBACK_TREASURY_ADDRESS_STUB1);
+
+      await expect(
+        cardPaymentProcessor.setCashbackTreasury(CASHBACK_TREASURY_ADDRESS_STUB2)
+      ).to.emit(
+        cardPaymentProcessor,
+        EVENT_NAME_CASHBACK_TREASURY_CHANGED
+      ).withArgs(
+        CASHBACK_TREASURY_ADDRESS_STUB1,
+        CASHBACK_TREASURY_ADDRESS_STUB2
+      );
+
+      expect(await cardPaymentProcessor.cashbackTreasury()).to.equal(CASHBACK_TREASURY_ADDRESS_STUB2);
     });
 
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
-        cardPaymentProcessor.connect(user1).setCashbackDistributor(CASHBACK_DISTRIBUTOR_ADDRESS_STUB1)
+        cardPaymentProcessor.connect(user1).setCashbackTreasury(CASHBACK_TREASURY_ADDRESS_STUB1)
       ).to.be.revertedWith(createRevertMessageDueToMissingRole(user1.address, ownerRole));
     });
 
-    it("Is reverted if the new cashback distributor address is zero", async () => {
+    it("Is reverted if the new cashback treasury address is zero", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
-        cardPaymentProcessor.setCashbackDistributor(ZERO_ADDRESS)
-      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASHBACK_DISTRIBUTOR_ZERO_ADDRESS);
+        cardPaymentProcessor.setCashbackTreasury(ZERO_ADDRESS)
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASHBACK_TREASURY_ZERO_ADDRESS);
     });
 
-    it("Is reverted if the cashback distributor has been already configured", async () => {
+    it("Is reverted if the cashback treasury is not changed", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
-      await proveTx(cardPaymentProcessor.setCashbackDistributor(CASHBACK_DISTRIBUTOR_ADDRESS_STUB1));
+      await proveTx(cardPaymentProcessor.setCashbackTreasury(CASHBACK_TREASURY_ADDRESS_STUB1));
 
       await expect(
-        cardPaymentProcessor.setCashbackDistributor(CASHBACK_DISTRIBUTOR_ADDRESS_STUB2)
-      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASHBACK_DISTRIBUTOR_ALREADY_CONFIGURED);
+        cardPaymentProcessor.setCashbackTreasury(CASHBACK_TREASURY_ADDRESS_STUB1)
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASHBACK_TREASURY_UNCHANGED);
     });
   });
 
@@ -2202,7 +2036,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         cardPaymentProcessor.setCashbackRate(CASHBACK_RATE_DEFAULT)
       ).to.emit(
         cardPaymentProcessor,
-        EVENT_NAME_SET_CASHBACK_RATE
+        EVENT_NAME_CASHBACK_RATE_CHANGED
       ).withArgs(
         CASHBACK_RATE_ZERO,
         CASHBACK_RATE_DEFAULT
@@ -2214,7 +2048,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         cardPaymentProcessor.setCashbackRate(CASHBACK_RATE_ZERO)
       ).to.emit(
         cardPaymentProcessor,
-        EVENT_NAME_SET_CASHBACK_RATE
+        EVENT_NAME_CASHBACK_RATE_CHANGED
       ).withArgs(
         CASHBACK_RATE_DEFAULT,
         CASHBACK_RATE_ZERO
@@ -2250,13 +2084,13 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
   describe("Function 'enableCashback()'", async () => {
     it("Executes as expected and emits the correct event", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
-      await proveTx(cardPaymentProcessor.setCashbackDistributor(CASHBACK_DISTRIBUTOR_ADDRESS_STUB1));
+      await proveTx(cardPaymentProcessor.setCashbackTreasury(CASHBACK_TREASURY_ADDRESS_STUB1));
 
       await expect(
         cardPaymentProcessor.enableCashback()
       ).to.emit(
         cardPaymentProcessor,
-        EVENT_NAME_ENABLE_CASHBACK
+        EVENT_NAME_CASHBACK_ENABLED
       );
 
       expect(await cardPaymentProcessor.cashbackEnabled()).to.equal(true);
@@ -2269,16 +2103,16 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       ).to.be.revertedWith(createRevertMessageDueToMissingRole(user1.address, ownerRole));
     });
 
-    it("Is reverted if the cashback distributor was not configured", async () => {
+    it("Is reverted if the cashback treasury was not configured", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
         cardPaymentProcessor.enableCashback()
-      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASHBACK_DISTRIBUTOR_NOT_CONFIGURED);
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASHBACK_TREASURY_NOT_CONFIGURED);
     });
 
     it("Is reverted if the cashback operations are already enabled", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
-      await proveTx(cardPaymentProcessor.setCashbackDistributor(CASHBACK_DISTRIBUTOR_ADDRESS_STUB1));
+      await proveTx(cardPaymentProcessor.setCashbackTreasury(CASHBACK_TREASURY_ADDRESS_STUB1));
       await proveTx(cardPaymentProcessor.enableCashback());
 
       await expect(
@@ -2290,7 +2124,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
   describe("Function 'disableCashback()'", async () => {
     it("Executes as expected and emits the correct event", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
-      await proveTx(cardPaymentProcessor.setCashbackDistributor(CASHBACK_DISTRIBUTOR_ADDRESS_STUB1));
+      await proveTx(cardPaymentProcessor.setCashbackTreasury(CASHBACK_TREASURY_ADDRESS_STUB1));
       await proveTx(cardPaymentProcessor.enableCashback());
       expect(await cardPaymentProcessor.cashbackEnabled()).to.equal(true);
 
@@ -2298,7 +2132,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         cardPaymentProcessor.disableCashback()
       ).to.emit(
         cardPaymentProcessor,
-        EVENT_NAME_DISABLE_CASHBACK
+        EVENT_NAME_CASHBACK_DISABLED
       );
 
       expect(await cardPaymentProcessor.cashbackEnabled()).to.equal(false);
@@ -2397,15 +2231,11 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
 
               it("Both nonzero, and cashback is partially sent with non-zero amount", async () => {
                 const context = await beforeMakingPayments();
+                const { payments: [payment], cardPaymentProcessorShell } = context;
                 const sentCashbackAmount = 2 * CASHBACK_ROUNDING_COEF;
-                await context.cashbackDistributorMockShell.setSendCashbackAmountResult(sentCashbackAmount);
-                await checkPaymentMakingFor(context);
-              });
-
-              it("Nonzero, and cashback is partially sent with zero amount", async () => {
-                const context = await beforeMakingPayments();
-                const sentCashbackAmount = 0;
-                await context.cashbackDistributorMockShell.setSendCashbackAmountResult(sentCashbackAmount);
+                const presetCashbackAmount = MAX_CASHBACK_FOR_CAP_PERIOD - sentCashbackAmount;
+                await context.presetCashbackForAccount(payment.payer, presetCashbackAmount);
+                cardPaymentProcessorShell.model.setCashbackSendingAmountResult(sentCashbackAmount);
                 await checkPaymentMakingFor(context);
               });
             });
@@ -2415,10 +2245,27 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
                 await checkPaymentMakingFor(context, { cashbackEnabled: false });
               });
             });
-            describe("Cashback is enabled but sending fails, and the base and extra payment amounts are", async () => {
-              it("Both nonzero", async () => {
+            describe("Cashback is enabled, and the base and extra payment amounts are nonzero, and", async () => {
+              it("The cashback transfer function returns 'false'", async () => {
                 const context = await beforeMakingPayments();
-                await context.cashbackDistributorMockShell.setSendCashbackSuccessResult(false);
+                const { payments: [payment], cardPaymentProcessorShell, tokenMock } = context;
+                const cashbackAmount = cardPaymentProcessorShell.model.calculateCashback(payment.baseAmount);
+                await proveTx(tokenMock.setSpecialAmountToReturnFalse(cashbackAmount));
+                cardPaymentProcessorShell.model.setCashbackSendingStatus(CashbackOperationStatus.Failed);
+                await checkPaymentMakingFor(context);
+              });
+              it("The cashback transfer is reverted", async () => {
+                const context = await beforeMakingPayments();
+                const { payments: [payment], cardPaymentProcessorShell, tokenMock } = context;
+                const cashbackAmount = cardPaymentProcessorShell.model.calculateCashback(payment.baseAmount);
+                await proveTx(tokenMock.setSpecialAmountToRevert(cashbackAmount));
+                cardPaymentProcessorShell.model.setCashbackSendingStatus(CashbackOperationStatus.Failed);
+                await checkPaymentMakingFor(context);
+              });
+              it("The cashback is capped", async () => {
+                const context = await beforeMakingPayments();
+                const { payments: [payment] } = context;
+                await context.presetCashbackForAccount(payment.payer, MAX_CASHBACK_FOR_CAP_PERIOD);
                 await checkPaymentMakingFor(context);
               });
             });
@@ -2884,8 +2731,10 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         subsidyLimit?: number;
       } = { cashbackCondition: CashbackConditionType.CashbackEnabled }
     ) {
-      const { cardPaymentProcessorShell, payments: [payment] } = context;
+      const { cardPaymentProcessorShell, tokenMock, payments: [payment] } = context;
       const { cashbackCondition, subsidyLimit, confirmedAmount: confirmedAmount } = props;
+      const newBaseAmount = props.newBaseAmount ?? payment.baseAmount;
+      const newExtraAmount = props.newExtraAmount ?? payment.extraAmount;
 
       if (cashbackCondition === CashbackConditionType.CashbackDisabledBeforePaymentMaking) {
         await cardPaymentProcessorShell.disableCashback();
@@ -2906,25 +2755,45 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       }
       if (cashbackCondition === CashbackConditionType.CashbackEnabledButIncreasingPartial) {
         const actualCashbackChange = 2 * CASHBACK_ROUNDING_COEF;
-        await context.cashbackDistributorMockShell.setIncreaseCashbackAmountResult(actualCashbackChange);
+        const presetCashbackAmount = MAX_CASHBACK_FOR_CAP_PERIOD - actualCashbackChange;
+        await context.presetCashbackForAccount(payment.payer, presetCashbackAmount);
+        cardPaymentProcessorShell.model.setCashbackIncreaseAmountResult(actualCashbackChange);
       }
-      if (cashbackCondition === CashbackConditionType.CashbackEnabledButRevokingFails) {
-        await context.cashbackDistributorMockShell.setRevokeCashbackSuccessResult(false);
+      if (
+        cashbackCondition === CashbackConditionType.CashbackEnabledButRevokingFails ||
+        cashbackCondition === CashbackConditionType.CashbackEnabledButRevokingReverts
+      ) {
+        cardPaymentProcessorShell.model.setCashbackRevocationStatus(CashbackOperationStatus.Failed);
       }
-      if (cashbackCondition === CashbackConditionType.CashbackEnabledButIncreasingFails) {
-        await context.cashbackDistributorMockShell.setIncreaseCashbackSuccessResult(false);
+      if (
+        cashbackCondition === CashbackConditionType.CashbackEnabledButIncreasingFails ||
+        cashbackCondition === CashbackConditionType.CashbackEnabledButIncreasingReverts
+      ) {
+        cardPaymentProcessorShell.model.setCashbackIncreaseStatus(CashbackOperationStatus.Failed);
       }
 
       await context.checkCardPaymentProcessorState();
 
-      const newBaseAmount = props.newBaseAmount ?? payment.baseAmount;
-      const newExtraAmount = props.newExtraAmount ?? payment.extraAmount;
-
-      cardPaymentProcessorShell.model.updatePayment(
+      const operationIndex = cardPaymentProcessorShell.model.updatePayment(
         payment.id,
         newBaseAmount,
         newExtraAmount
       );
+
+      if (
+        cashbackCondition === CashbackConditionType.CashbackEnabledButRevokingFails ||
+        cashbackCondition === CashbackConditionType.CashbackEnabledButIncreasingFails
+      ) {
+        const operation = cardPaymentProcessorShell.model.getPaymentOperation(operationIndex);
+        await proveTx(tokenMock.setSpecialAmountToReturnFalse(Math.abs(operation.cashbackRequestedChange)));
+      }
+      if (
+        cashbackCondition === CashbackConditionType.CashbackEnabledButRevokingReverts ||
+        cashbackCondition === CashbackConditionType.CashbackEnabledButIncreasingReverts
+      ) {
+        const operation = cardPaymentProcessorShell.model.getPaymentOperation(operationIndex);
+        await proveTx(tokenMock.setSpecialAmountToRevert(Math.abs(operation.cashbackRequestedChange)));
+      }
       const tx = cardPaymentProcessorShell.contract.connect(executor).updatePayment(
         payment.id,
         newBaseAmount,
@@ -2963,12 +2832,20 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
               });
             });
 
-            it("Enabled but cashback operation fails", async () => {
+            it("Enabled but cashback transfer function returns 'false'", async () => {
               const context = await beforeMakingPayments();
               const newBaseAmount = Math.floor(context.payments[0].baseAmount * 0.9);
               await checkUpdating(context, {
                 newBaseAmount,
                 cashbackCondition: CashbackConditionType.CashbackEnabledButRevokingFails
+              });
+            });
+            it("Enabled but cashback transfer function reverts", async () => {
+              const context = await beforeMakingPayments();
+              const newBaseAmount = Math.floor(context.payments[0].baseAmount * 0.9);
+              await checkUpdating(context, {
+                newBaseAmount,
+                cashbackCondition: CashbackConditionType.CashbackEnabledButRevokingReverts
               });
             });
           });
@@ -3070,12 +2947,21 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
               });
             });
 
-            it("Enabled but cashback operation fails", async () => {
+            it("Enabled but cashback transfer function returns 'false'", async () => {
               const context = await beforeMakingPayments();
               const newBaseAmount = Math.floor(context.payments[0].baseAmount * 1.1);
               await checkUpdating(context, {
                 newBaseAmount,
                 cashbackCondition: CashbackConditionType.CashbackEnabledButIncreasingFails
+              });
+            });
+
+            it("Enabled but cashback transfer function reverts", async () => {
+              const context = await beforeMakingPayments();
+              const newBaseAmount = Math.floor(context.payments[0].baseAmount * 1.1);
+              await checkUpdating(context, {
+                newBaseAmount,
+                cashbackCondition: CashbackConditionType.CashbackEnabledButIncreasingReverts
               });
             });
 
@@ -3464,14 +3350,22 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
   });
 
   describe("Function 'revokePayment()'", async () => {
-    async function checkRevocation(context: TestContext) {
+    async function checkRevocation(context: TestContext, props: { cashbackRevocationFailure?: boolean } = {}) {
       const { cardPaymentProcessorShell, payments: [payment] } = context;
+      const cashbackRevocationFailure = props.cashbackRevocationFailure ?? false;
 
       // To be sure that the `refundAmount` field is taken into account
       const refundAmount = Math.floor(payment.baseAmount * 0.1);
       await cardPaymentProcessorShell.refundPayment(payment, refundAmount);
 
-      cardPaymentProcessorShell.model.revokePayment(payment.id);
+      if (cashbackRevocationFailure) {
+        cardPaymentProcessorShell.model.setCashbackRevocationStatus(CashbackOperationStatus.Failed);
+      }
+      const operationIndex = cardPaymentProcessorShell.model.revokePayment(payment.id);
+      if (cashbackRevocationFailure) {
+        const operation = cardPaymentProcessorShell.model.getPaymentOperation(operationIndex);
+        await proveTx(context.tokenMock.setSpecialAmountToReturnFalse(Math.abs(operation.cashbackRequestedChange)));
+      }
       const tx = cardPaymentProcessorShell.contract.connect(executor).revokePayment(payment.id);
 
       await context.checkPaymentOperationsForTx(tx);
@@ -3493,9 +3387,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
           const { cardPaymentProcessorShell, payments: [payment] } = context;
 
           await cardPaymentProcessorShell.makeCommonPayments([payment]);
-          await context.cashbackDistributorMockShell.setRevokeCashbackSuccessResult(false);
-
-          await checkRevocation(context);
+          await checkRevocation(context, { cashbackRevocationFailure: true });
         });
 
         it("Cashback operations are disabled before sending", async () => {
@@ -4009,7 +3901,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         subsidyLimit?: number;
       } = { refundAmount: 0, cashbackCondition: CashbackConditionType.CashbackEnabled }
     ) {
-      const { cardPaymentProcessorShell, payments: [payment] } = context;
+      const { cardPaymentProcessorShell, tokenMock, payments: [payment] } = context;
       const { cashbackCondition, subsidyLimit, confirmedAmount } = props;
 
       if (cashbackCondition === CashbackConditionType.CashbackDisabledBeforePaymentMaking) {
@@ -4027,21 +3919,33 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
 
       if (cashbackCondition === CashbackConditionType.CashbackEnabledButIncreasingPartial) {
         const actualCashbackChange = 2 * CASHBACK_ROUNDING_COEF;
-        await context.cashbackDistributorMockShell.setIncreaseCashbackAmountResult(actualCashbackChange);
+        const presetCashbackAmount = MAX_CASHBACK_FOR_CAP_PERIOD - actualCashbackChange;
+        await context.presetCashbackForAccount(payment.payer, presetCashbackAmount);
+        cardPaymentProcessorShell.model.setCashbackIncreaseAmountResult(actualCashbackChange);
       }
       if (cashbackCondition === CashbackConditionType.CashbackEnabledButRevokingFails) {
-        await context.cashbackDistributorMockShell.setRevokeCashbackSuccessResult(false);
+        cardPaymentProcessorShell.model.setCashbackRevocationStatus(CashbackOperationStatus.Failed);
       }
-      if (cashbackCondition === CashbackConditionType.CashbackEnabledButIncreasingFails) {
-        await context.cashbackDistributorMockShell.setIncreaseCashbackSuccessResult(false);
+      if (
+        cashbackCondition === CashbackConditionType.CashbackEnabledButRevokingReverts ||
+        cashbackCondition === CashbackConditionType.CashbackEnabledButIncreasingFails ||
+        cashbackCondition === CashbackConditionType.CashbackEnabledButIncreasingReverts
+      ) {
+        throw new Error(`Unexpected cashback condition type: ${cashbackCondition}`);
       }
 
       await context.checkCardPaymentProcessorState();
 
-      cardPaymentProcessorShell.model.refundPayment(
+      const operationIndex = cardPaymentProcessorShell.model.refundPayment(
         payment.id,
         props.refundAmount
       );
+      if (
+        cashbackCondition === CashbackConditionType.CashbackEnabledButRevokingFails
+      ) {
+        const operation = cardPaymentProcessorShell.model.getPaymentOperation(operationIndex);
+        await proveTx(tokenMock.setSpecialAmountToReturnFalse(Math.abs(operation.cashbackRequestedChange)));
+      }
       const tx = cardPaymentProcessorShell.contract.connect(executor).refundPayment(
         payment.id,
         props.refundAmount
@@ -4243,10 +4147,12 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         cashbackCondition?: CashbackConditionType;
         targetPaymentRefundAmount?: number;
         targetPaymentConfirmationAmount?: number;
+        firstMergedPaymentRefundAmount?: number;
+        firstMergedPaymentConfirmationAmount?: number;
       } = { cashbackCondition: CashbackConditionType.CashbackEnabled }
     ) {
       const { cardPaymentProcessorShell, payments } = context;
-      const { cashbackCondition, targetPaymentRefundAmount, targetPaymentConfirmationAmount } = props;
+      const { cashbackCondition } = props;
       const targetPayment = payments[0];
       const mergedPayments = payments.slice(1);
       const mergedPaymentIds: string[] = [];
@@ -4261,18 +4167,22 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
 
       await cardPaymentProcessorShell.makePaymentFor(
         targetPayment,
-        { confirmationAmount: targetPaymentConfirmationAmount }
+        { confirmationAmount: props.targetPaymentConfirmationAmount }
       );
-      if (targetPaymentRefundAmount) {
-        await cardPaymentProcessorShell.refundPayment(targetPayment, targetPaymentRefundAmount);
+      if (props.targetPaymentRefundAmount) {
+        await cardPaymentProcessorShell.refundPayment(targetPayment, props.targetPaymentRefundAmount);
       }
-      await context.cashbackDistributorMockShell.increaseSendCashbackNonceResult();
-      await cardPaymentProcessorShell.makePaymentFor(mergedPayments[0]);
+      await cardPaymentProcessorShell.makePaymentFor(
+        mergedPayments[0],
+        { confirmationAmount: props.firstMergedPaymentConfirmationAmount }
+      );
+      if (props.firstMergedPaymentRefundAmount) {
+        await cardPaymentProcessorShell.refundPayment(mergedPayments[0], props.firstMergedPaymentRefundAmount);
+      }
 
       if (payments.length > 2) {
         const confirmationAmount = Math.floor(mergedPayments[1].baseAmount * 0.2);
         const refundAmount = Math.floor(mergedPayments[1].baseAmount * 0.1);
-        await context.cashbackDistributorMockShell.increaseSendCashbackNonceResult();
         await cardPaymentProcessorShell.makePaymentFor(
           mergedPayments[1],
           { confirmationAmount }
@@ -4283,7 +4193,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
 
         if (mergedPaymentIds.length > 3) {
           for (let i = 3; i < mergedPaymentIds.length; ++i) {
-            await context.cashbackDistributorMockShell.increaseSendCashbackNonceResult();
             await cardPaymentProcessorShell.makePaymentFor(mergedPayments[i]);
           }
         }
@@ -4291,17 +4200,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
 
       if (cashbackCondition === CashbackConditionType.CashbackDisabledAfterPaymentMaking) {
         await cardPaymentProcessorShell.disableCashback();
-      }
-
-      if (cashbackCondition === CashbackConditionType.CashbackEnabledButIncreasingPartial) {
-        const actualCashbackChange = 2 * CASHBACK_ROUNDING_COEF;
-        await context.cashbackDistributorMockShell.setIncreaseCashbackAmountResult(actualCashbackChange);
-      }
-      if (cashbackCondition === CashbackConditionType.CashbackEnabledButRevokingFails) {
-        await context.cashbackDistributorMockShell.setRevokeCashbackSuccessResult(false);
-      }
-      if (cashbackCondition === CashbackConditionType.CashbackEnabledButIncreasingFails) {
-        await context.cashbackDistributorMockShell.setIncreaseCashbackSuccessResult(false);
       }
 
       await context.checkCardPaymentProcessorState();
@@ -4338,6 +4236,22 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
           context,
           { cashbackCondition: CashbackConditionType.CashbackDisabledAfterPaymentMaking }
         );
+      });
+
+      it("There are two fully confirmed payments to merge and cashback is enabled", async () => {
+        const context = await beforeMakingPayments({ paymentNumber: 2 });
+        const { payments: [targetPayment, mergedPayment] } = context;
+        const targetPaymentConfirmationAmount = Math.floor(targetPayment.baseAmount + targetPayment.extraAmount);
+        const firstMergedPaymentConfirmationAmount = Math.floor(mergedPayment.baseAmount + mergedPayment.extraAmount);
+        await checkPaymentMerging(context, { targetPaymentConfirmationAmount, firstMergedPaymentConfirmationAmount });
+      });
+
+      it("There are two fully refund payments to merge and cashback is enabled", async () => {
+        const context = await beforeMakingPayments({ paymentNumber: 2 });
+        const { payments: [targetPayment, mergedPayment] } = context;
+        const targetPaymentRefundAmount = Math.floor(targetPayment.baseAmount + targetPayment.extraAmount);
+        const firstMergedPaymentRefundAmount = Math.floor(mergedPayment.baseAmount + mergedPayment.extraAmount);
+        await checkPaymentMerging(context, { targetPaymentRefundAmount, firstMergedPaymentRefundAmount });
       });
     });
 
@@ -4558,78 +4472,6 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
           targetPayment.id,
           [mergedPayment.id]
         )).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_OVERFLOW_OF_SUM_AMOUNT);
-      });
-
-      it("The processor contract has not enough balance to merge the cashback", async () => {
-        const context = await prepareForPayments({ paymentNumber: 2 });
-        const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
-        mergedPayment.payer = targetPayment.payer;
-        await context.setUpContractsForPayments();
-        await cardPaymentProcessorShell.makePaymentFor(
-          targetPayment,
-          { confirmationAmount: targetPayment.baseAmount + targetPayment.extraAmount }
-        );
-        await cardPaymentProcessorShell.makePaymentFor(
-          mergedPayment,
-          { confirmationAmount: mergedPayment.baseAmount + mergedPayment.extraAmount }
-        );
-
-        await expect(
-          cardPaymentProcessorShell.contract.connect(executor).mergePayments(
-            targetPayment.id,
-            [mergedPayment.id]
-          )
-        ).to.be.revertedWithCustomError(
-          cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_CASHBACK_MERGING_FAILURE
-        ).withArgs(
-          mergedPayment.id,
-          CashbackMergingFailureKind.NotEnoughBalance
-        );
-      });
-
-      it("The cashback revocation fails", async () => {
-        const context = await prepareForPayments({ paymentNumber: 2 });
-        const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
-        mergedPayment.payer = targetPayment.payer;
-        await context.setUpContractsForPayments();
-        await cardPaymentProcessorShell.makeCommonPayments([targetPayment, mergedPayment]);
-        await context.cashbackDistributorMockShell.setRevokeCashbackSuccessResult(false);
-
-        await expect(
-          cardPaymentProcessorShell.contract.connect(executor).mergePayments(
-            targetPayment.id,
-            [mergedPayment.id]
-          )
-        ).to.be.revertedWithCustomError(
-          cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_CASHBACK_MERGING_FAILURE
-        ).withArgs(
-          mergedPayment.id,
-          CashbackMergingFailureKind.RevocationError
-        );
-      });
-
-      it("The cashback increase is executed partially", async () => {
-        const context = await prepareForPayments({ paymentNumber: 2 });
-        const { cardPaymentProcessorShell, payments: [targetPayment, mergedPayment] } = context;
-        mergedPayment.payer = targetPayment.payer;
-        await context.setUpContractsForPayments();
-        await cardPaymentProcessorShell.makeCommonPayments([targetPayment, mergedPayment]);
-        await context.cashbackDistributorMockShell.setIncreaseCashbackAmountResult(CASHBACK_ROUNDING_COEF);
-
-        await expect(
-          cardPaymentProcessorShell.contract.connect(executor).mergePayments(
-            targetPayment.id,
-            [mergedPayment.id]
-          )
-        ).to.be.revertedWithCustomError(
-          cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_CASHBACK_MERGING_FAILURE
-        ).withArgs(
-          mergedPayment.id,
-          CashbackMergingFailureKind.IncreaseError
-        );
       });
     });
   });
@@ -5019,9 +4861,10 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
 
     it("Refunding executes as expected if the initial cashback was capped", async () => {
       const context = await beforeMakingPayments();
-      const { cardPaymentProcessorShell, cashbackDistributorMockShell, payments: [payment] } = context;
+      const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      await cashbackDistributorMockShell.setSendCashbackAmountResult(CASHBACK_ROUNDING_COEF);
+      const presetCashbackAmount = MAX_CASHBACK_FOR_CAP_PERIOD - CASHBACK_ROUNDING_COEF;
+      await context.presetCashbackForAccount(payment.payer, presetCashbackAmount);
       await cardPaymentProcessorShell.makePaymentFor(payment);
       const refundAmount = Math.floor(payment.baseAmount * 0.1);
       await cardPaymentProcessorShell.refundPayment(payment, refundAmount);
@@ -5030,10 +4873,10 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
 
     it("Updating with cashback decreasing executes as expected if the initial cashback was capped", async () => {
       const context = await beforeMakingPayments();
-      const { cardPaymentProcessorShell, cashbackDistributorMockShell, payments: [payment] } = context;
-      expect(payment).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
+      const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      await cashbackDistributorMockShell.setSendCashbackAmountResult(CASHBACK_ROUNDING_COEF);
+      const presetCashbackAmount = MAX_CASHBACK_FOR_CAP_PERIOD - CASHBACK_ROUNDING_COEF;
+      await context.presetCashbackForAccount(payment.payer, presetCashbackAmount);
       await cardPaymentProcessorShell.makePaymentFor(payment);
       const newBaseAmount = Math.floor(payment.baseAmount * 0.1);
       await cardPaymentProcessorShell.updatePayment(payment, newBaseAmount);
@@ -5042,10 +4885,10 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
 
     it("Updating with cashback increasing executes as expected if the initial cashback was capped", async () => {
       const context = await beforeMakingPayments();
-      const { cardPaymentProcessorShell, cashbackDistributorMockShell, payments: [payment] } = context;
-      expect(payment).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
+      const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      await cashbackDistributorMockShell.setSendCashbackAmountResult(CASHBACK_ROUNDING_COEF);
+      const presetCashbackAmount = MAX_CASHBACK_FOR_CAP_PERIOD - CASHBACK_ROUNDING_COEF;
+      await context.presetCashbackForAccount(payment.payer, presetCashbackAmount);
       await cardPaymentProcessorShell.makePaymentFor(payment);
       const newBaseAmount = Math.floor(payment.baseAmount * 1.5);
       await cardPaymentProcessorShell.updatePayment(payment, newBaseAmount);
@@ -5054,10 +4897,10 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
 
     it("Updating with cashback decreasing executes as expected if the initial cashback was capped", async () => {
       const context = await beforeMakingPayments();
-      const { cardPaymentProcessorShell, cashbackDistributorMockShell, payments: [payment] } = context;
-      expect(payment).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
+      const { cardPaymentProcessorShell, payments: [payment] } = context;
 
-      await cashbackDistributorMockShell.setSendCashbackAmountResult(CASHBACK_ROUNDING_COEF);
+      const presetCashbackAmount = MAX_CASHBACK_FOR_CAP_PERIOD - CASHBACK_ROUNDING_COEF;
+      await context.presetCashbackForAccount(payment.payer, presetCashbackAmount);
       await cardPaymentProcessorShell.makePaymentFor(payment);
       const newBaseAmount = Math.floor(payment.baseAmount * 0.1);
       await cardPaymentProcessorShell.updatePayment(payment, newBaseAmount);
@@ -5070,8 +4913,8 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
       payer?: number;
       sponsor?: number;
       cardPaymentProcessor?: number;
-      cashbackDistributor?: number;
       cashOutAccount?: number;
+      cashbackTreasury?: number;
     }
 
     async function checkBalanceChanges(
@@ -5086,15 +4929,15 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
           context.payments[0].payer,
           sponsor,
           context.cardPaymentProcessorShell.contract,
-          context.cashbackDistributorMockShell.contract,
-          context.cashOutAccount
+          context.cashOutAccount,
+          context.cashbackTreasury
         ],
         [
           expectedBalanceChanges.payer ?? 0,
           expectedBalanceChanges.sponsor ?? 0,
           expectedBalanceChanges.cardPaymentProcessor ?? 0,
-          expectedBalanceChanges.cashbackDistributor ?? 0,
-          expectedBalanceChanges.cashOutAccount ?? 0
+          expectedBalanceChanges.cashOutAccount ?? 0,
+          expectedBalanceChanges.cashbackTreasury ?? 0
         ]
       );
     }
@@ -5115,7 +4958,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         payer: -600 * DIGITS_COEF + cashbackChange,
         sponsor: -800 * DIGITS_COEF,
         cardPaymentProcessor: 1400 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange
+        cashbackTreasury: -cashbackChange
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5136,7 +4979,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         payer: -0 + cashbackChange,
         sponsor: -1400 * DIGITS_COEF,
         cardPaymentProcessor: 1400 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange
+        cashbackTreasury: -cashbackChange
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5156,7 +4999,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         payer: -payment.baseAmount + cashbackChange,
         sponsor: -0,
         cardPaymentProcessor: payment.baseAmount,
-        cashbackDistributor: -cashbackChange
+        cashbackTreasury: -cashbackChange
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5176,7 +5019,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         payer: -payment.baseAmount + cashbackChange,
         sponsor: -0,
         cardPaymentProcessor: payment.baseAmount,
-        cashbackDistributor: -cashbackChange
+        cashbackTreasury: -cashbackChange
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5201,7 +5044,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         payer: -600 * DIGITS_COEF + cashbackChange,
         sponsor: -800 * DIGITS_COEF,
         cardPaymentProcessor: 1400 * DIGITS_COEF - confirmationAmount,
-        cashbackDistributor: -cashbackChange,
+        cashbackTreasury: -cashbackChange,
         cashOutAccount: confirmationAmount
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
@@ -5229,7 +5072,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         payer: -400 * DIGITS_COEF + cashbackChange,
         sponsor: 0,
         cardPaymentProcessor: +400 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange
+        cashbackTreasury: -cashbackChange
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5256,7 +5099,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         payer: +1000 * DIGITS_COEF + cashbackChange,
         sponsor: +200 * DIGITS_COEF,
         cardPaymentProcessor: -1200 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange
+        cashbackTreasury: -cashbackChange
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5283,7 +5126,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         payer: -1000 * DIGITS_COEF + cashbackChange,
         sponsor: -200 * DIGITS_COEF,
         cardPaymentProcessor: +1200 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange
+        cashbackTreasury: -cashbackChange
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5309,7 +5152,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         payer: +80 * DIGITS_COEF + cashbackChange,
         sponsor: +320 * DIGITS_COEF,
         cardPaymentProcessor: -400 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange
+        cashbackTreasury: -cashbackChange
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5339,7 +5182,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         payer: +80 * DIGITS_COEF + cashbackChange,
         sponsor: +320 * DIGITS_COEF,
         cardPaymentProcessor: -100 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange,
+        cashbackTreasury: -cashbackChange,
         cashOutAccount: -300 * DIGITS_COEF
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
@@ -5369,7 +5212,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         payer: +600 * DIGITS_COEF + cashbackChange,
         sponsor: +800 * DIGITS_COEF,
         cardPaymentProcessor: -200 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange,
+        cashbackTreasury: -cashbackChange,
         cashOutAccount: -1200 * DIGITS_COEF
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
@@ -5399,7 +5242,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
         payer: cashbackChange,
         sponsor: +1400 * DIGITS_COEF,
         cardPaymentProcessor: -200 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange,
+        cashbackTreasury: -cashbackChange,
         cashOutAccount: -1200 * DIGITS_COEF
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
