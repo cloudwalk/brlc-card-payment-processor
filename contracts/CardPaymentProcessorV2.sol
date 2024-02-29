@@ -1285,7 +1285,8 @@ contract CardPaymentProcessorV2 is
         (bool success, bytes memory returnData) = _token.call(
             abi.encodeWithSelector(IERC20Upgradeable.transfer.selector, treasury, amount)
         );
-        if (success && (returnData.length == 0 || abi.decode(returnData, (bool)))) {
+        bool transferred = success && (returnData.length == 0 || abi.decode(returnData, (bool))); // Test coverage tip
+        if (transferred) {
             _reduceTotalCashback(payer, amount);
             revokedAmount = amount;
         } else {
@@ -1302,17 +1303,16 @@ contract CardPaymentProcessorV2 is
         address treasury = _cashbackTreasury;
         // Condition (treasury != address(0)) is guaranteed by the current contract logic. So it is not checked here
         (status, increasedAmount) = _updateAccountState(payer, amount);
-        bool transferred = (status == CashbackOperationStatus.Success || status == CashbackOperationStatus.Partial);
-        if (transferred) {
+        if ((status == CashbackOperationStatus.Success || status == CashbackOperationStatus.Partial)) {
             (bool success, bytes memory returnData) = _token.call(
-                abi.encodeWithSelector(IERC20Upgradeable.transferFrom.selector, treasury, payer, amount)
+                abi.encodeWithSelector(IERC20Upgradeable.transferFrom.selector, treasury, payer, increasedAmount)
             );
-            transferred = success && (returnData.length == 0 || abi.decode(returnData, (bool)));
-        }
-        if (!transferred) {
-            _reduceTotalCashback(payer, amount);
-            status = CashbackOperationStatus.Failed;
-            increasedAmount = 0;
+            bool transferred = success && (returnData.length == 0 || abi.decode(returnData, (bool)));
+            if (!transferred) {
+                _reduceTotalCashback(payer, increasedAmount);
+                status = CashbackOperationStatus.Failed;
+                increasedAmount = 0;
+            }
         }
     }
 
