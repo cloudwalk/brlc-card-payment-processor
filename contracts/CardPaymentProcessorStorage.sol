@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.16;
+pragma solidity ^0.8.20;
 
 import { ICardPaymentProcessorTypes } from "./interfaces/ICardPaymentProcessor.sol";
 import { ICardPaymentCashbackTypes } from "./interfaces/ICardPaymentCashback.sol";

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.8;
+pragma solidity ^0.8.20;
 
-import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { AccessControlExtUpgradeable } from "./AccessControlExtUpgradeable.sol";
 
@@ -16,12 +16,12 @@ import { AccessControlExtUpgradeable } from "./AccessControlExtUpgradeable.sol";
  * rescue tokens locked up in the contract that is inherited from this one.
  */
 abstract contract RescuableUpgradeable is AccessControlExtUpgradeable {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
 
     /// @dev The role of rescuer that is allowed to rescue tokens locked up in the contract.
     bytes32 public constant RESCUER_ROLE = keccak256("RESCUER_ROLE");
 
-    // -------------------- Functions --------------------------------
+    // -------------------- Initializers -----------------------------
 
     /**
      * @dev The internal initializer of the upgradable contract.
@@ -46,6 +46,8 @@ abstract contract RescuableUpgradeable is AccessControlExtUpgradeable {
         _setRoleAdmin(RESCUER_ROLE, rescuerRoleAdmin);
     }
 
+    // -------------------- Functions --------------------------------
+
     /**
      * @dev Withdraws ERC20 tokens locked up in the contract.
      *
@@ -62,12 +64,6 @@ abstract contract RescuableUpgradeable is AccessControlExtUpgradeable {
         address to,
         uint256 amount
     ) public onlyRole(RESCUER_ROLE) {
-        IERC20Upgradeable(token).safeTransfer(to, amount);
+        IERC20(token).safeTransfer(to, amount);
     }
-
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     */
-    uint256[50] private __gap;
 }

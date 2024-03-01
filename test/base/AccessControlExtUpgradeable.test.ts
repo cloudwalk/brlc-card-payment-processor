@@ -1,11 +1,10 @@
 import { ethers, network, upgrades } from "hardhat";
 import { expect } from "chai";
 import { Contract, ContractFactory } from "ethers";
+import { TransactionResponse } from "@ethersproject/abstract-provider";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { proveTx } from "../../test-utils/eth";
-import { TransactionResponse } from "@ethersproject/abstract-provider";
-import { createRevertMessageDueToMissingRole } from "../../test-utils/misc";
 
 async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
   if (network.name === "hardhat") {
@@ -19,8 +18,9 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
   const EVENT_NAME_ROLE_GRANTED = "RoleGranted";
   const EVENT_NAME_ROLE_REVOKED = "RoleRevoked";
 
-  const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
-  const REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING = "Initializable: contract is not initializing";
+  const REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID = "InvalidInitialization";
+  const REVERT_ERROR_IF_CONTRACT_IS_NOT_INITIALIZING = "NotInitializing";
+  const REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
 
   const ownerRole: string = ethers.utils.id("OWNER_ROLE");
   const userRole: string = ethers.utils.id("USER_ROLE");
@@ -64,21 +64,21 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
       const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
       await expect(
         accessControlExtMock.initialize()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+      ).to.be.revertedWithCustomError(accessControlExtMock, REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID);
     });
 
     it("The internal initializer is reverted if it is called outside the init process", async () => {
       const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
       await expect(
         accessControlExtMock.call_parent_initialize()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
+      ).to.be.revertedWithCustomError(accessControlExtMock, REVERT_ERROR_IF_CONTRACT_IS_NOT_INITIALIZING);
     });
 
     it("The internal unchained initializer is reverted if it is called outside the init process", async () => {
       const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
       await expect(
         accessControlExtMock.call_parent_initialize_unchained()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
+      ).to.be.revertedWithCustomError(accessControlExtMock, REVERT_ERROR_IF_CONTRACT_IS_NOT_INITIALIZING);
     });
   });
 
@@ -136,7 +136,10 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
 
         await expect(
           accessControlExtMock.connect(attacker).grantRoleBatch(userRole, [])
-        ).to.be.revertedWith(createRevertMessageDueToMissingRole(attacker.address, ownerRole));
+        ).to.be.revertedWithCustomError(
+          accessControlExtMock,
+          REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
+        ).withArgs(attacker.address, ownerRole);
       });
     });
 
@@ -195,7 +198,10 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
 
           await expect(
             accessControlExtMock.connect(attacker).revokeRoleBatch(userRole, [])
-          ).to.be.revertedWith(createRevertMessageDueToMissingRole(attacker.address, ownerRole));
+          ).to.be.revertedWithCustomError(
+            accessControlExtMock,
+            REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
+          ).withArgs(attacker.address, ownerRole);
         });
       });
     });

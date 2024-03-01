@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.16;
+pragma solidity ^0.8.0;
 
 /**
  * @title CardPaymentCashback types interface
@@ -37,6 +37,8 @@ interface ICardPaymentCashbackTypes {
  * @dev The interface of the wrapper contract for the card payment cashback operations.
  */
 interface ICardPaymentCashback is ICardPaymentCashbackTypes {
+    // -------------------- Events -----------------------------------
+
     /**
      * @dev Emitted when the cashback rate is changed.
      * @param oldRate The value of the old cashback rate.
@@ -104,20 +106,7 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
     /// @dev Emitted when cashback operations are disabled.
     event CashbackDisabled();
 
-    /**
-     * @dev Returns the current cashback treasury address.
-     */
-    function cashbackTreasury() external view returns (address);
-
-    /**
-     * @dev Checks if the cashback operations are enabled.
-     */
-    function cashbackEnabled() external view returns (bool);
-
-    /**
-     * @dev Returns the current cashback rate.
-     */
-    function cashbackRate() external view returns (uint256);
+    // -------------------- Functions --------------------------------
 
     /**
      * @dev Sets a new address of the cashback treasury.
@@ -150,6 +139,23 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
      * Emits a {DisableCashback} event.
      */
     function disableCashback() external;
+
+    // -------------------- View functions ---------------------------
+
+    /**
+     * @dev Returns the current cashback treasury address.
+     */
+    function cashbackTreasury() external view returns (address);
+
+    /**
+     * @dev Checks if the cashback operations are enabled.
+     */
+    function cashbackEnabled() external view returns (bool);
+
+    /**
+     * @dev Returns the current cashback rate.
+     */
+    function cashbackRate() external view returns (uint256);
 
     /**
      * @dev Returns a structure with cashback-related data for a single account.

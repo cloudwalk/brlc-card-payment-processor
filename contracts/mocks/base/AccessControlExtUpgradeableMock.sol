@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.8;
+pragma solidity ^0.8.20;
 
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
@@ -16,19 +16,23 @@ contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable, UUPSUpg
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
     bytes32 public constant USER_ROLE = keccak256("USER_ROLE");
 
+    // -------------------- Initializers -----------------------------
+
     /**
      * @dev The initialize function of the upgradable contract.
      *
      * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
      */
     function initialize() public initializer {
-        _setupRole(OWNER_ROLE, _msgSender());
+        _grantRole(OWNER_ROLE, _msgSender());
         _setRoleAdmin(USER_ROLE, OWNER_ROLE);
         __AccessControlExt_init();
 
         // Only to provide the 100 % test coverage
         _authorizeUpgrade(address(0));
     }
+
+    // -------------------- Functions --------------------------------
 
     /**
      * @dev Needed to check that the initialize function of the ancestor contract
@@ -45,6 +49,8 @@ contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable, UUPSUpg
     function call_parent_initialize_unchained() public {
         __AccessControlExt_init_unchained();
     }
+
+    // -------------------- Internal functions -----------------------
 
     /**
      * @dev The upgrade authorization function for UUPSProxy.

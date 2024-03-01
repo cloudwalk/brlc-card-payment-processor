@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.16;
+pragma solidity 0.8.22;
 
-import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import { BlocklistableUpgradeable } from "./base/BlocklistableUpgradeable.sol";
@@ -29,7 +29,9 @@ contract CardPaymentProcessor is
     ICardPaymentProcessor,
     ICardPaymentCashback
 {
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using SafeERC20 for IERC20;
+
+    // -------------------- Constants --------------------------------
 
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
@@ -186,7 +188,7 @@ contract CardPaymentProcessor is
     /// @dev The zero token address has been passed as a function argument.
     error TokenZeroAddress();
 
-    // ------------------- Functions ---------------------------------
+    // -------------------- Initializers -----------------------------
 
     /**
      * @dev The initializer of the upgradable contract.
@@ -216,7 +218,6 @@ contract CardPaymentProcessor is
         __Pausable_init_unchained();
         __PausableExt_init_unchained(OWNER_ROLE);
         __Rescuable_init_unchained(OWNER_ROLE);
-        __ERC1967Upgrade_init_unchained();
         __UUPSUpgradeable_init_unchained();
 
         __CardPaymentProcessor_init_unchained(token_);
@@ -237,8 +238,10 @@ contract CardPaymentProcessor is
         _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
         _setRoleAdmin(EXECUTOR_ROLE, OWNER_ROLE);
 
-        _setupRole(OWNER_ROLE, _msgSender());
+        _grantRole(OWNER_ROLE, _msgSender());
     }
+
+    // -------------------- Functions --------------------------------
 
     /// @dev Contains parameters of a payment making operation.
     struct MakingOperation {
@@ -379,13 +382,8 @@ contract CardPaymentProcessor is
      * - The caller must have the {EXECUTOR_ROLE} role.
      * - The input payment ID must not be zero.
      */
-    function reversePayment(
-        bytes32 paymentId
-    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        _cancelPayment(
-            paymentId,
-            PaymentStatus.Reversed
-        );
+    function reversePayment(bytes32 paymentId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        _cancelPayment(paymentId, PaymentStatus.Reversed);
     }
 
     /**
@@ -397,13 +395,8 @@ contract CardPaymentProcessor is
      * - The caller must have the {EXECUTOR_ROLE} role.
      * - The input payment ID must not be zero.
      */
-    function revokePayment(
-        bytes32 paymentId
-    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        _cancelPayment(
-            paymentId,
-            PaymentStatus.Revoked
-        );
+    function revokePayment(bytes32 paymentId) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        _cancelPayment(paymentId, PaymentStatus.Revoked);
     }
 
     /**
@@ -450,7 +443,7 @@ contract CardPaymentProcessor is
         _paymentStatistics.totalUnconfirmedRemainder = uint128(
             uint256(_paymentStatistics.totalUnconfirmedRemainder) - totalConfirmedAmount
         );
-        IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), totalConfirmedAmount);
+        IERC20(_token).safeTransfer(_requireCashOutAccount(), totalConfirmedAmount);
     }
 
     /**
@@ -542,7 +535,7 @@ contract CardPaymentProcessor is
             bytes("")
         );
 
-        IERC20Upgradeable(_token).safeTransferFrom(_requireCashOutAccount(), account, refundingAmount);
+        IERC20(_token).safeTransferFrom(_requireCashOutAccount(), account, refundingAmount);
     }
 
     /**
@@ -652,6 +645,8 @@ contract CardPaymentProcessor is
         emit CashbackDisabled();
     }
 
+    // -------------------- View functions ---------------------------
+
     /**
      * @inheritdoc ICardPaymentProcessor
      */
@@ -707,6 +702,8 @@ contract CardPaymentProcessor is
     function getAccountCashbackState(address account) external view returns (AccountCashbackState memory) {
         return _accountCashbackStates[account];
     }
+
+    // -------------------- Internal functions ---------------------------
 
     /// @dev Making a payment internally
     function _makePayment(MakingOperation memory operation) internal {
@@ -910,7 +907,7 @@ contract CardPaymentProcessor is
         _paymentStatistics.totalUnconfirmedRemainder = uint128(
             uint256(_paymentStatistics.totalUnconfirmedRemainder) - confirmationAmount
         );
-        IERC20Upgradeable(_token).safeTransfer(_requireCashOutAccount(), confirmationAmount);
+        IERC20(_token).safeTransfer(_requireCashOutAccount(), confirmationAmount);
     }
 
     /// @dev Makes a refund for a payment internally
@@ -1114,7 +1111,7 @@ contract CardPaymentProcessor is
             revert OverflowOfSubsidyLimit();
         }
         (uint256 payerSumAmount, uint256 sponsorSumAmount) = _defineSumAmountParts(sumAmount, operation.subsidyLimit);
-        IERC20Upgradeable erc20Token = IERC20Upgradeable(_token);
+        IERC20 erc20Token = IERC20(_token);
         operation.payerSumAmount = payerSumAmount;
         operation.sponsorSumAmount = sponsorSumAmount;
 
@@ -1153,7 +1150,7 @@ contract CardPaymentProcessor is
         PaymentDetails memory oldPaymentDetails,
         PaymentDetails memory newPaymentDetails
     ) internal {
-        IERC20Upgradeable erc20Token = IERC20Upgradeable(_token);
+        IERC20 erc20Token = IERC20(_token);
 
         // Cash-out account token transferring
         if (newPaymentDetails.confirmedAmount < oldPaymentDetails.confirmedAmount) {
@@ -1285,7 +1282,7 @@ contract CardPaymentProcessor is
         // Condition (treasury != address(0)) is guaranteed by the current contract logic. So it is not checked here
         status = CashbackOperationStatus.Success;
         (bool success, bytes memory returnData) = _token.call(
-            abi.encodeWithSelector(IERC20Upgradeable.transfer.selector, treasury, amount)
+            abi.encodeWithSelector(IERC20.transfer.selector, treasury, amount)
         );
         bool transferred = success && (returnData.length == 0 || abi.decode(returnData, (bool))); // Test coverage tip
         if (transferred) {
@@ -1307,7 +1304,7 @@ contract CardPaymentProcessor is
         (status, increasedAmount) = _updateAccountState(payer, amount);
         if ((status == CashbackOperationStatus.Success || status == CashbackOperationStatus.Partial)) {
             (bool success, bytes memory returnData) = _token.call(
-                abi.encodeWithSelector(IERC20Upgradeable.transferFrom.selector, treasury, payer, increasedAmount)
+                abi.encodeWithSelector(IERC20.transferFrom.selector, treasury, payer, increasedAmount)
             );
             bool transferred = success && (returnData.length == 0 || abi.decode(returnData, (bool)));
             if (!transferred) {
@@ -1569,5 +1566,15 @@ contract CardPaymentProcessor is
     function _authorizeUpgrade(address newImplementation) internal view override {
         newImplementation; // Suppresses a compiler warning about the unused variable
         _checkRole(OWNER_ROLE);
+    }
+
+    // -------------------- Service functions ------------------------
+
+    /**
+     * @dev The version of the standard upgrade function without the second parameter for backward compatibility.
+     * @custom:oz-upgrades-unsafe-allow-reachable delegatecall
+     */
+    function upgradeTo(address newImplementation) external {
+        upgradeToAndCall(newImplementation, "");
     }
 }

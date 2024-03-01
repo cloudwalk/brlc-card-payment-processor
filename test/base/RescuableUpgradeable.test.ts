@@ -4,7 +4,6 @@ import { Contract, ContractFactory } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { proveTx } from "../../test-utils/eth";
-import { createRevertMessageDueToMissingRole } from "../../test-utils/misc";
 
 async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
   if (network.name === "hardhat") {
@@ -19,8 +18,9 @@ describe("Contract 'RescuableUpgradeable'", async () => {
 
   const EVENT_NAME_TRANSFER = "Transfer";
 
-  const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
-  const REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING = "Initializable: contract is not initializing";
+  const REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID = "InvalidInitialization";
+  const REVERT_ERROR_IF_CONTRACT_IS_NOT_INITIALIZING = "NotInitializing";
+  const REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
 
   const ownerRole: string = ethers.utils.id("OWNER_ROLE");
   const rescuerRole: string = ethers.utils.id("RESCUER_ROLE");
@@ -84,21 +84,21 @@ describe("Contract 'RescuableUpgradeable'", async () => {
       const { rescuableMock } = await setUpFixture(deployRescuableMock);
       await expect(
         rescuableMock.initialize()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+      ).to.be.revertedWithCustomError(rescuableMock, REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID);
     });
 
     it("The internal initializer is reverted if it is called outside the init process", async () => {
       const { rescuableMock } = await setUpFixture(deployRescuableMock);
       await expect(
         rescuableMock.call_parent_initialize()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
+      ).to.be.revertedWithCustomError(rescuableMock, REVERT_ERROR_IF_CONTRACT_IS_NOT_INITIALIZING);
     });
 
     it("The internal unchained initializer is reverted if it is called outside the init process", async () => {
       const { rescuableMock } = await setUpFixture(deployRescuableMock);
       await expect(
         rescuableMock.call_parent_initialize_unchained()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
+      ).to.be.revertedWithCustomError(rescuableMock, REVERT_ERROR_IF_CONTRACT_IS_NOT_INITIALIZING);
     });
   });
 
@@ -116,7 +116,10 @@ describe("Contract 'RescuableUpgradeable'", async () => {
       const { rescuableMock, tokenMock } = await setUpFixture(deployAndConfigureAllContracts);
       await expect(
         rescuableMock.rescueERC20(tokenMock.address, deployer.address, TOKEN_AMOUNT)
-      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, rescuerRole));
+      ).to.be.revertedWithCustomError(
+        rescuableMock,
+        REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
+      ).withArgs(deployer.address, rescuerRole);
     });
   });
 });

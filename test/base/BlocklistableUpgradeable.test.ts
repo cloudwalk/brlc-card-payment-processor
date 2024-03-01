@@ -4,7 +4,6 @@ import { Contract, ContractFactory } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { proveTx } from "../../test-utils/eth";
-import { createRevertMessageDueToMissingRole } from "../../test-utils/misc";
 
 async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
   if (network.name === "hardhat") {
@@ -20,8 +19,9 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
   const EVENT_NAME_TEST_NOT_BLOCKLISTED_MODIFIER_SUCCEEDED = "TestNotBlocklistedModifierSucceeded";
   const EVENT_NAME_UNBLOCKLISTED = "UnBlocklisted";
 
-  const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
-  const REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING = "Initializable: contract is not initializing";
+  const REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID = "InvalidInitialization";
+  const REVERT_ERROR_IF_CONTRACT_IS_NOT_INITIALIZING = "NotInitializing";
+  const REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
 
   const REVERT_ERROR_IF_ACCOUNT_IS_BLOCKLISTED = "BlocklistedAccount";
 
@@ -73,21 +73,21 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
       const { blocklistableMock } = await setUpFixture(deployBlocklistableMock);
       await expect(
         blocklistableMock.initialize()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+      ).to.be.revertedWithCustomError(blocklistableMock, REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID);
     });
 
     it("The internal initializer is reverted if it is called outside the init process", async () => {
       const { blocklistableMock } = await setUpFixture(deployBlocklistableMock);
       await expect(
         blocklistableMock.call_parent_initialize()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
+      ).to.be.revertedWithCustomError(blocklistableMock, REVERT_ERROR_IF_CONTRACT_IS_NOT_INITIALIZING);
     });
 
     it("The internal unchained initializer is reverted if it is called outside the init process", async () => {
       const { blocklistableMock } = await setUpFixture(deployBlocklistableMock);
       await expect(
         blocklistableMock.call_parent_initialize_unchained()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING);
+      ).to.be.revertedWithCustomError(blocklistableMock, REVERT_ERROR_IF_CONTRACT_IS_NOT_INITIALIZING);
     });
   });
 
@@ -112,7 +112,10 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
     const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
     await expect(
       blocklistableMock.blocklist(user.address)
-    ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, blocklisterRole));
+    ).to.be.revertedWithCustomError(
+      blocklistableMock,
+      REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
+    ).withArgs(deployer.address, blocklisterRole);
   });
 
   describe("Function 'unBlocklist()'", async () => {
@@ -136,7 +139,10 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
       const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
       await expect(
         blocklistableMock.unBlocklist(user.address)
-      ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, blocklisterRole));
+      ).to.be.revertedWithCustomError(
+        blocklistableMock,
+        REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
+      ).withArgs(deployer.address, blocklisterRole);
     });
   });
 

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.16;
+pragma solidity ^0.8.0;
 
 /**
  * @title CardPaymentProcessor types interface
@@ -86,6 +86,8 @@ interface ICardPaymentProcessorTypes {
  * @dev The interface of the wrapper contract for the card payment operations.
  */
 interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
+    // -------------------- Events -----------------------------------
+
     /**
      * @dev Emitted when a payment is made.
      *
@@ -300,6 +302,8 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         bytes addendum
     );
 
+    // -------------------- Functions --------------------------------
+
     /**
      * @dev Makes a card payment for a given account initiated by a service account.
      *
@@ -496,6 +500,8 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         address account,
         uint256 refundingAmount
     ) external;
+
+    // -------------------- View functions ---------------------------
 
     /**
      * @dev Returns the address of the underlying token.

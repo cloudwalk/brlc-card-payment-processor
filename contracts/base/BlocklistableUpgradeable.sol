@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.8;
+pragma solidity ^0.8.20;
 
 import { AccessControlExtUpgradeable } from "./AccessControlExtUpgradeable.sol";
 
@@ -16,8 +16,22 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
     /// @dev The role of the blocklister that is allowed to blocklist and unblocklist accounts.
     bytes32 public constant BLOCKLISTER_ROLE = keccak256("BLOCKLISTER_ROLE");
 
-    /// @dev Mapping of presence in the blocklist for a given address.
-    mapping(address => bool) private _blocklisted;
+    /**
+     * @dev The first storage slot of the contract data.
+     *
+     * Calculated as:
+     * keccak256(abi.encode(uint256(keccak256("cloudwalk.storage.Blocklistable")) - 1)) & ~bytes32(uint256(0xff))
+     */
+    bytes32 private constant BlocklistableStorageLocation =
+        0x9a5d41467ec00b9c4ff3b10f2ab1b7fef3c7f16bd8fba9cd308a28e3cd7ef400;
+
+    /**
+     * @dev The structure that contains all the data of the Blocklistable contract.
+     * @custom:storage-location erc7201:cloudwalk.storage.Blocklistable
+     */
+    struct BlocklistableStorage {
+        mapping(address => bool) blocklisted; // Mapping of presence in the blocklist for a given address.
+    }
 
     // -------------------- Events -----------------------------------
 
@@ -42,13 +56,13 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
      * @param account The address to check for presence in the blocklist.
      */
     modifier notBlocklisted(address account) {
-        if (_blocklisted[account]) {
+        if (_getBlocklistableStorage().blocklisted[account]) {
             revert BlocklistedAccount(account);
         }
         _;
     }
 
-    // -------------------- Functions --------------------------------
+    // -------------------- Initializers -----------------------------
 
     /**
      * @dev The internal initializer of the upgradable contract.
@@ -73,6 +87,8 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
         _setRoleAdmin(BLOCKLISTER_ROLE, blocklisterRoleAdmin);
     }
 
+    // -------------------- Functions --------------------------------
+
     /**
      * @dev Adds an account to the blocklist.
      *
@@ -85,11 +101,12 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
      * @param account The address to blocklist.
      */
     function blocklist(address account) public onlyRole(BLOCKLISTER_ROLE) {
-        if (_blocklisted[account]) {
+        BlocklistableStorage storage s = _getBlocklistableStorage();
+        if (s.blocklisted[account]) {
             return;
         }
 
-        _blocklisted[account] = true;
+        s.blocklisted[account] = true;
 
         emit Blocklisted(account);
     }
@@ -106,11 +123,12 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
      * @param account The address to remove from the blocklist.
      */
     function unBlocklist(address account) public onlyRole(BLOCKLISTER_ROLE) {
-        if (!_blocklisted[account]) {
+        BlocklistableStorage storage s = _getBlocklistableStorage();
+        if (!s.blocklisted[account]) {
             return;
         }
 
-        _blocklisted[account] = false;
+        s.blocklisted[account] = false;
 
         emit UnBlocklisted(account);
     }
@@ -123,16 +141,19 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
      */
     function selfBlocklist() public {
         address sender = _msgSender();
+        BlocklistableStorage storage s = _getBlocklistableStorage();
 
-        if (_blocklisted[sender]) {
+        if (s.blocklisted[sender]) {
             return;
         }
 
-        _blocklisted[sender] = true;
+        s.blocklisted[sender] = true;
 
         emit SelfBlocklisted(sender);
         emit Blocklisted(sender);
     }
+
+    // -------------------- View functions ---------------------------
 
     /**
      * @dev Checks if an account is blocklisted.
@@ -140,12 +161,17 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
      * @return True if the account is present in the blocklist.
      */
     function isBlocklisted(address account) public view returns (bool) {
-        return _blocklisted[account];
+        return _getBlocklistableStorage().blocklisted[account];
     }
 
+    // -------------------- Private functions ------------------------
+
     /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
+     * @dev Returns the contract storage structure.
      */
-    uint256[49] private __gap;
+    function _getBlocklistableStorage() private pure returns (BlocklistableStorage storage $) {
+        assembly {
+            $.slot := BlocklistableStorageLocation
+        }
+    }
 }

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.8;
+pragma solidity ^0.8.20;
 
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
@@ -15,8 +15,12 @@ contract BlocklistableUpgradeableMock is BlocklistableUpgradeable, UUPSUpgradeab
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
+    // -------------------- Events -----------------------------------
+
     /// @dev Emitted when a test function of the `notBlocklisted` modifier executes successfully.
     event TestNotBlocklistedModifierSucceeded();
+
+    // -------------------- Initializers -----------------------------
 
     /**
      * @dev The initialize function of the upgradable contract.
@@ -24,12 +28,14 @@ contract BlocklistableUpgradeableMock is BlocklistableUpgradeable, UUPSUpgradeab
      * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
      */
     function initialize() public initializer {
-        _setupRole(OWNER_ROLE, _msgSender());
+        _grantRole(OWNER_ROLE, _msgSender());
         __Blocklistable_init(OWNER_ROLE);
 
         // Only to provide the 100 % test coverage
         _authorizeUpgrade(address(0));
     }
+
+    // -------------------- Functions --------------------------------
 
     /**
      * @dev Needed to check that the initialize function of the ancestor contract
@@ -54,6 +60,8 @@ contract BlocklistableUpgradeableMock is BlocklistableUpgradeable, UUPSUpgradeab
     function testNotBlocklistedModifier() external notBlocklisted(_msgSender()) {
         emit TestNotBlocklistedModifierSucceeded();
     }
+
+    // -------------------- Internal functions -----------------------
 
     /**
      * @dev The upgrade authorization function for UUPSProxy.

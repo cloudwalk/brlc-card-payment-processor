@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.8;
+pragma solidity ^0.8.20;
 
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 import { AccessControlExtUpgradeable } from "./AccessControlExtUpgradeable.sol";
 
@@ -18,7 +18,7 @@ abstract contract PausableExtUpgradeable is AccessControlExtUpgradeable, Pausabl
     /// @dev The role of pauser that is allowed to trigger the paused or unpaused state of the contract.
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    // -------------------- Functions --------------------------------
+    // -------------------- Initializers -----------------------------
 
     /**
      * @dev The internal initializer of the upgradable contract.
@@ -44,6 +44,8 @@ abstract contract PausableExtUpgradeable is AccessControlExtUpgradeable, Pausabl
         _setRoleAdmin(PAUSER_ROLE, pauserRoleAdmin);
     }
 
+    // -------------------- Functions --------------------------------
+
     /**
      * @dev Triggers the paused state of the contract.
      *
@@ -65,10 +67,4 @@ abstract contract PausableExtUpgradeable is AccessControlExtUpgradeable, Pausabl
     function unpause() public onlyRole(PAUSER_ROLE) {
         _unpause();
     }
-
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     */
-    uint256[50] private __gap;
 }
