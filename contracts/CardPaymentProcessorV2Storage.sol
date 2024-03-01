@@ -44,4 +44,10 @@ abstract contract CardPaymentProcessorV2StorageV1 is ICardPaymentProcessorV2Type
  * e.g. CardPaymentProcessorV2Storage<versionNumber>, so finally it would look like
  * "contract CardPaymentProcessorV2Storage is CardPaymentProcessorV2StorageV1, CardPaymentProcessorV2StorageV2".
  */
-abstract contract CardPaymentProcessorV2Storage is CardPaymentProcessorV2StorageV1 {}
+abstract contract CardPaymentProcessorV2Storage is CardPaymentProcessorV2StorageV1 {
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     */
+    uint256[43] private __gap;
+}

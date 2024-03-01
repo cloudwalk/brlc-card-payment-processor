@@ -8,7 +8,6 @@ import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/
 import { BlocklistableUpgradeable } from "./base/BlocklistableUpgradeable.sol";
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
-import { StoragePlaceholder200 } from "./base/StoragePlaceholder200.sol";
 import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
 
 import { CardPaymentProcessorV2Storage } from "./CardPaymentProcessorV2Storage.sol";
@@ -20,12 +19,11 @@ import { ICardPaymentCashbackV2 } from "./interfaces/ICardPaymentCashbackV2.sol"
  * @dev A wrapper contract for the card payment operations.
  */
 contract CardPaymentProcessorV2 is
+    CardPaymentProcessorV2Storage,
     AccessControlExtUpgradeable,
     BlocklistableUpgradeable,
     PausableExtUpgradeable,
     RescuableUpgradeable,
-    StoragePlaceholder200,
-    CardPaymentProcessorV2Storage,
     ICardPaymentProcessorV2,
     ICardPaymentCashbackV2
 {
