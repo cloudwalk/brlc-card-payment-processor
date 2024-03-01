@@ -2,7 +2,7 @@ import { ethers, network, upgrades } from "hardhat";
 import { expect } from "chai";
 import { Contract, ContractFactory } from "ethers";
 import { TransactionResponse } from "@ethersproject/abstract-provider";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { proveTx } from "../../test-utils/eth";
 
@@ -22,13 +22,13 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
   const REVERT_ERROR_IF_CONTRACT_IS_NOT_INITIALIZING = "NotInitializing";
   const REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
 
-  const ownerRole: string = ethers.utils.id("OWNER_ROLE");
-  const userRole: string = ethers.utils.id("USER_ROLE");
+  const ownerRole: string = ethers.id("OWNER_ROLE");
+  const userRole: string = ethers.id("USER_ROLE");
 
   let accessControlExtMockFactory: ContractFactory;
-  let deployer: SignerWithAddress;
-  let attacker: SignerWithAddress;
-  let users: SignerWithAddress[];
+  let deployer: HardhatEthersSigner;
+  let attacker: HardhatEthersSigner;
+  let users: HardhatEthersSigner[];
   let userAddresses: string[];
 
   before(async () => {
@@ -40,7 +40,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
 
   async function deployAccessControlExtMock(): Promise<{ accessControlExtMock: Contract }> {
     const accessControlExtMock: Contract = await upgrades.deployProxy(accessControlExtMockFactory);
-    await accessControlExtMock.deployed();
+    await accessControlExtMock.waitForDeployment();
     return { accessControlExtMock };
   }
 
@@ -53,7 +53,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
       expect((await accessControlExtMock.USER_ROLE()).toLowerCase()).to.equal(userRole);
 
       // The role admins
-      expect(await accessControlExtMock.getRoleAdmin(ownerRole)).to.equal(ethers.constants.HashZero);
+      expect(await accessControlExtMock.getRoleAdmin(ownerRole)).to.equal(ethers.ZeroHash);
       expect(await accessControlExtMock.getRoleAdmin(userRole)).to.equal(ownerRole);
 
       // The deployer should have the owner role, but not the other roles
@@ -135,7 +135,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
 
         await expect(
-          accessControlExtMock.connect(attacker).grantRoleBatch(userRole, [])
+          (accessControlExtMock.connect(attacker) as Contract).grantRoleBatch(userRole, [])
         ).to.be.revertedWithCustomError(
           accessControlExtMock,
           REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
@@ -197,7 +197,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
           const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
 
           await expect(
-            accessControlExtMock.connect(attacker).revokeRoleBatch(userRole, [])
+            (accessControlExtMock.connect(attacker) as Contract).revokeRoleBatch(userRole, [])
           ).to.be.revertedWithCustomError(
             accessControlExtMock,
             REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT

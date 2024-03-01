@@ -3,8 +3,8 @@
     "@openzeppelin/contracts-upgradeable": "5.0.2"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^2.0.2",
-    "@openzeppelin/hardhat-upgrades": "^1.28.0",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@openzeppelin/hardhat-upgrades": "^3.0.4",
     "@stylistic/eslint-plugin": "^1.5.4",
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
