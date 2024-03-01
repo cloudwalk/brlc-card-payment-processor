@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import { SafeERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import { BlocklistableUpgradeable } from "./base/BlocklistableUpgradeable.sol";
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
@@ -24,6 +25,7 @@ contract CardPaymentProcessor is
     BlocklistableUpgradeable,
     PausableExtUpgradeable,
     RescuableUpgradeable,
+    UUPSUpgradeable,
     ICardPaymentProcessor,
     ICardPaymentCashback
 {
@@ -214,6 +216,8 @@ contract CardPaymentProcessor is
         __Pausable_init_unchained();
         __PausableExt_init_unchained(OWNER_ROLE);
         __Rescuable_init_unchained(OWNER_ROLE);
+        __ERC1967Upgrade_init_unchained();
+        __UUPSUpgradeable_init_unchained();
 
         __CardPaymentProcessor_init_unchained(token_);
     }
@@ -1557,5 +1561,13 @@ contract CardPaymentProcessor is
             eventFlags |= EVENT_FLAG_MASK_SPONSORED;
         }
         return eventFlags;
+    }
+
+    /**
+     * @dev The upgrade authorization function for UUPSProxy.
+     */
+    function _authorizeUpgrade(address newImplementation) internal view override {
+        newImplementation; // Suppresses a compiler warning about the unused variable
+        _checkRole(OWNER_ROLE);
     }
 }

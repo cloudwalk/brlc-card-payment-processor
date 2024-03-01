@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.8;
 
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
 import { AccessControlExtUpgradeable } from "../../base/AccessControlExtUpgradeable.sol";
 
 /**
@@ -9,7 +11,7 @@ import { AccessControlExtUpgradeable } from "../../base/AccessControlExtUpgradea
  * @author CloudWalk Inc.
  * @dev An implementation of the {AccessControlExtUpgradeable} contract for test purposes.
  */
-contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable {
+contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable, UUPSUpgradeable {
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
     bytes32 public constant USER_ROLE = keccak256("USER_ROLE");
@@ -23,6 +25,9 @@ contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable {
         _setupRole(OWNER_ROLE, _msgSender());
         _setRoleAdmin(USER_ROLE, OWNER_ROLE);
         __AccessControlExt_init();
+
+        // Only to provide the 100 % test coverage
+        _authorizeUpgrade(address(0));
     }
 
     /**
@@ -39,5 +44,12 @@ contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable {
      */
     function call_parent_initialize_unchained() public {
         __AccessControlExt_init_unchained();
+    }
+
+    /**
+     * @dev The upgrade authorization function for UUPSProxy.
+     */
+    function _authorizeUpgrade(address newImplementation) internal pure override {
+        newImplementation; // Suppresses a compiler warning about the unused variable
     }
 }

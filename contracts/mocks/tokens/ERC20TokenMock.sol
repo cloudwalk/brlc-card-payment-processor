@@ -2,13 +2,14 @@
 
 pragma solidity 0.8.16;
 
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 /**
  * @title ERC20TokenMock contract
  * @dev An implementation of the {ERC20Upgradeable} contract for testing purposes
  */
-contract ERC20TokenMock is ERC20Upgradeable {
+contract ERC20TokenMock is ERC20Upgradeable, UUPSUpgradeable {
     /// @dev A special amount when the transfer functions should return `false`.
     uint256 public specialAmountToReturnFalse;
 
@@ -24,6 +25,9 @@ contract ERC20TokenMock is ERC20Upgradeable {
         __ERC20_init(name_, symbol_);
         specialAmountToReturnFalse = type(uint256).max;
         specialAmountToRevert = type(uint256).max;
+
+        // Only to provide the 100 % test coverage
+        _authorizeUpgrade(address(0));
     }
 
     /**
@@ -73,5 +77,12 @@ contract ERC20TokenMock is ERC20Upgradeable {
      */
     function setSpecialAmountToRevert(uint256 newSpecialAmount) external {
         specialAmountToRevert = newSpecialAmount;
+    }
+
+    /**
+     * @dev The upgrade authorization function for UUPSProxy.
+     */
+    function _authorizeUpgrade(address newImplementation) internal pure override {
+        newImplementation; // Suppresses a compiler warning about the unused variable
     }
 }

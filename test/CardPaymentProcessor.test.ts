@@ -1949,6 +1949,27 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
+  describe("Upgrading", async () => {
+    it("Executes as expected if it is called by an owner", async () => {
+      const { cardPaymentProcessor, tokenMock } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+      await upgrades.upgradeProxy(
+        cardPaymentProcessor,
+        cardPaymentProcessorFactory.connect(deployer),
+        { redeployImplementation: "always" }
+      );
+    });
+    it("Is reverted if the caller does not have the owner role", async () => {
+      const { cardPaymentProcessor, tokenMock } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+      await expect(
+        upgrades.upgradeProxy(
+          cardPaymentProcessor,
+          cardPaymentProcessorFactory.connect(user1),
+          { redeployImplementation: "always" }
+        )
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(user1.address, ownerRole));
+    });
+  });
+
   describe("Function 'setCashOutAccount()'", async () => {
     it("Executes as expected and emits the correct event", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
