@@ -3,9 +3,9 @@
 pragma solidity 0.8.16;
 
 /**
- * @title CardPaymentProcessorV2 types interface
+ * @title CardPaymentProcessor types interface
  */
-interface ICardPaymentProcessorV2Types {
+interface ICardPaymentProcessorTypes {
     /**
      * @dev Possible statuses of a payment as an enum.
      *
@@ -82,10 +82,10 @@ interface ICardPaymentProcessorV2Types {
 }
 
 /**
- * @title CardPaymentProcessorV2 interface
+ * @title CardPaymentProcessor interface
  * @dev The interface of the wrapper contract for the card payment operations.
  */
-interface ICardPaymentProcessorV2 is ICardPaymentProcessorV2Types {
+interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Emitted when a payment is made.
      *

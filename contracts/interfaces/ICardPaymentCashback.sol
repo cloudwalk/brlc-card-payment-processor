@@ -3,9 +3,9 @@
 pragma solidity 0.8.16;
 
 /**
- * @title CardPaymentCashbackV2 types interface
+ * @title CardPaymentCashback types interface
  */
-interface ICardPaymentCashbackV2Types {
+interface ICardPaymentCashbackTypes {
     /**
      * @dev Statuses of a cashback operation as an enum.
      *
@@ -33,10 +33,10 @@ interface ICardPaymentCashbackV2Types {
 }
 
 /**
- * @title CardPaymentCashbackV2 interface
+ * @title CardPaymentCashback interface
  * @dev The interface of the wrapper contract for the card payment cashback operations.
  */
-interface ICardPaymentCashbackV2 is ICardPaymentCashbackV2Types {
+interface ICardPaymentCashback is ICardPaymentCashbackTypes {
     /**
      * @dev Emitted when the cashback rate is changed.
      * @param oldRate The value of the old cashback rate.

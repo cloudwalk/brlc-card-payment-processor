@@ -10,22 +10,22 @@ import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
 import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
 
-import { CardPaymentProcessorV2Storage } from "./CardPaymentProcessorV2Storage.sol";
-import { ICardPaymentProcessorV2 } from "./interfaces/ICardPaymentProcessorV2.sol";
-import { ICardPaymentCashbackV2 } from "./interfaces/ICardPaymentCashbackV2.sol";
+import { CardPaymentProcessorStorage } from "./CardPaymentProcessorStorage.sol";
+import { ICardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
+import { ICardPaymentCashback } from "./interfaces/ICardPaymentCashback.sol";
 
 /**
- * @title CardPaymentProcessorV2 contract
+ * @title CardPaymentProcessor contract
  * @dev A wrapper contract for the card payment operations.
  */
-contract CardPaymentProcessorV2 is
-    CardPaymentProcessorV2Storage,
+contract CardPaymentProcessor is
+    CardPaymentProcessorStorage,
     AccessControlExtUpgradeable,
     BlocklistableUpgradeable,
     PausableExtUpgradeable,
     RescuableUpgradeable,
-    ICardPaymentProcessorV2,
-    ICardPaymentCashbackV2
+    ICardPaymentProcessor,
+    ICardPaymentCashback
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -251,7 +251,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorV2
+     * @inheritdoc ICardPaymentProcessor
      *
      * @dev Requirements:
      *
@@ -307,7 +307,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorV2
+     * @inheritdoc ICardPaymentProcessor
      *
      * @dev Requirements:
      *
@@ -344,7 +344,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorV2
+     * @inheritdoc ICardPaymentProcessor
      *
      * @dev Requirements:
      *
@@ -367,7 +367,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorV2
+     * @inheritdoc ICardPaymentProcessor
      *
      * @dev Requirements:
      *
@@ -385,7 +385,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorV2
+     * @inheritdoc ICardPaymentProcessor
      *
      * @dev Requirements:
      *
@@ -403,7 +403,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorV2
+     * @inheritdoc ICardPaymentProcessor
      *
      * @dev Requirements:
      *
@@ -419,7 +419,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorV2
+     * @inheritdoc ICardPaymentProcessor
      *
      * @dev Requirements:
      *
@@ -450,7 +450,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorV2
+     * @inheritdoc ICardPaymentProcessor
      *
      * @dev Requirements:
      *
@@ -475,7 +475,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorV2
+     * @inheritdoc ICardPaymentProcessor
      *
      * @dev Requirements:
      *
@@ -492,7 +492,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorV2
+     * @inheritdoc ICardPaymentProcessor
      *
      * @dev Requirements:
      *
@@ -516,7 +516,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorV2
+     * @inheritdoc ICardPaymentProcessor
      *
      * @dev Requirements:
      *
@@ -562,7 +562,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentCashbackV2
+     * @inheritdoc ICardPaymentCashback
      *
      * @dev Requirements:
      *
@@ -586,7 +586,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentCashbackV2
+     * @inheritdoc ICardPaymentCashback
      *
      * @dev Requirements:
      *
@@ -609,7 +609,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentCashbackV2
+     * @inheritdoc ICardPaymentCashback
      *
      * @dev Requirements:
      *
@@ -631,7 +631,7 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentCashbackV2
+     * @inheritdoc ICardPaymentCashback
      *
      * @dev Requirements:
      *
@@ -649,56 +649,56 @@ contract CardPaymentProcessorV2 is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorV2
+     * @inheritdoc ICardPaymentProcessor
      */
     function cashOutAccount() external view returns (address) {
         return _cashOutAccount;
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorV2
+     * @inheritdoc ICardPaymentProcessor
      */
     function token() external view returns (address) {
         return _token;
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorV2
+     * @inheritdoc ICardPaymentProcessor
      */
     function getPayment(bytes32 paymentId) external view returns (Payment memory) {
         return _payments[paymentId];
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorV2
+     * @inheritdoc ICardPaymentProcessor
      */
     function getPaymentStatistics() external view returns (PaymentStatistics memory) {
         return _paymentStatistics;
     }
 
     /**
-     * @inheritdoc ICardPaymentCashbackV2
+     * @inheritdoc ICardPaymentCashback
      */
     function cashbackTreasury() external view returns (address) {
         return _cashbackTreasury;
     }
 
     /**
-     * @inheritdoc ICardPaymentCashbackV2
+     * @inheritdoc ICardPaymentCashback
      */
     function cashbackEnabled() external view returns (bool) {
         return _cashbackEnabled;
     }
 
     /**
-     * @inheritdoc ICardPaymentCashbackV2
+     * @inheritdoc ICardPaymentCashback
      */
     function cashbackRate() external view returns (uint256) {
         return _cashbackRate;
     }
 
     /**
-     * @inheritdoc ICardPaymentCashbackV2
+     * @inheritdoc ICardPaymentCashback
      */
     function getAccountCashbackState(address account) external view returns (AccountCashbackState memory) {
         return _accountCashbackStates[account];

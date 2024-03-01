@@ -2,13 +2,13 @@
 
 pragma solidity 0.8.16;
 
-import { ICardPaymentProcessorV2Types } from "./interfaces/ICardPaymentProcessorV2.sol";
-import { ICardPaymentCashbackV2Types } from "./interfaces/ICardPaymentCashbackV2.sol";
+import { ICardPaymentProcessorTypes } from "./interfaces/ICardPaymentProcessor.sol";
+import { ICardPaymentCashbackTypes } from "./interfaces/ICardPaymentCashback.sol";
 
 /**
- * @title CardPaymentProcessorV2 storage version 1
+ * @title CardPaymentProcessor storage version 1
  */
-abstract contract CardPaymentProcessorV2StorageV1 is ICardPaymentProcessorV2Types, ICardPaymentCashbackV2Types {
+abstract contract CardPaymentProcessorStorageV1 is ICardPaymentProcessorTypes, ICardPaymentCashbackTypes {
     /// @dev The address of the underlying token.
     address internal _token;
 
@@ -35,16 +35,16 @@ abstract contract CardPaymentProcessorV2StorageV1 is ICardPaymentProcessorV2Type
 }
 
 /**
- * @title CardPaymentProcessorV2 storage
- * @dev Contains storage variables of the {CardPaymentProcessorV2} contract.
+ * @title CardPaymentProcessor storage
+ * @dev Contains storage variables of the {CardPaymentProcessor} contract.
  *
  * We are following Compound's approach of upgrading new contract implementations.
  * See https://github.com/compound-finance/compound-protocol.
  * When we need to add new storage variables, we create a new version of CardPaymentProcessorStorage
- * e.g. CardPaymentProcessorV2Storage<versionNumber>, so finally it would look like
- * "contract CardPaymentProcessorV2Storage is CardPaymentProcessorV2StorageV1, CardPaymentProcessorV2StorageV2".
+ * e.g. CardPaymentProcessorStorage<versionNumber>, so finally it would look like
+ * "contract CardPaymentProcessorStorage is CardPaymentProcessorStorageV1, CardPaymentProcessorStorageV2".
  */
-abstract contract CardPaymentProcessorV2Storage is CardPaymentProcessorV2StorageV1 {
+abstract contract CardPaymentProcessorStorage is CardPaymentProcessorStorageV1 {
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.

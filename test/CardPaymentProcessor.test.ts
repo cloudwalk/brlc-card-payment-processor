@@ -1732,7 +1732,7 @@ async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
   }
 }
 
-describe("Contract 'CardPaymentProcessorV2'", async () => {
+describe("Contract 'CardPaymentProcessor'", async () => {
   const ZERO_PAYMENT_ID: string = createBytesString("00", BYTES32_LENGTH);
   const CASHBACK_TREASURY_ADDRESS_STUB1 = "0x0000000000000000000000000000000000000001";
   const CASHBACK_TREASURY_ADDRESS_STUB2 = "0x0000000000000000000000000000000000000002";
@@ -1791,7 +1791,7 @@ describe("Contract 'CardPaymentProcessorV2'", async () => {
   let user2: SignerWithAddress;
 
   before(async () => {
-    cardPaymentProcessorFactory = await ethers.getContractFactory("CardPaymentProcessorV2");
+    cardPaymentProcessorFactory = await ethers.getContractFactory("CardPaymentProcessor");
     tokenMockFactory = await ethers.getContractFactory("ERC20TokenMock");
 
     [deployer, cashOutAccount, cashbackTreasury, executor, sponsor, user1, user2] = await ethers.getSigners();
