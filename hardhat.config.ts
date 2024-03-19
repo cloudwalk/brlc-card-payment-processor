@@ -25,6 +25,9 @@ const config: HardhatUserConfig = {
         mnemonic: "test test test test test test test test test test test junk"
       }
     }
+  },
+  gasReporter: {
+    enabled: false
   }
 };
 
