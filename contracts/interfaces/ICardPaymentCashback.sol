@@ -100,10 +100,10 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
         uint256 newCashbackAmount
     );
 
-    /// @dev Emitted when cashback operations are enabled.
+    /// @dev Emitted when cashback operations for new payments are enabled. Does not affect the existing payments.
     event CashbackEnabled();
 
-    /// @dev Emitted when cashback operations are disabled.
+    /// @dev Emitted when cashback operations for new payments are disabled. Does not affect the existing payments.
     event CashbackDisabled();
 
     // -------------------- Functions --------------------------------
@@ -118,9 +118,9 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
     function setCashbackTreasury(address newCashbackTreasury) external;
 
     /**
-     * @dev Sets a new cashback rate.
+     * @dev Sets a new default cashback rate for new payments.
      *
-     * Emits a {SetCashbackRate} event.
+     * Emits a {CashbackRateChanged} event.
      *
      * @param newCashbackRate The value of the new cashback rate.
      */
@@ -129,14 +129,14 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
     /**
      * @dev Enables the cashback operations.
      *
-     * Emits a {EnableCashback} event.
+     * Emits a {CashbackEnabled} event.
      */
     function enableCashback() external;
 
     /**
      * @dev Disables the cashback operations.
      *
-     * Emits a {DisableCashback} event.
+     * Emits a {CashbackDisabled} event.
      */
     function disableCashback() external;
 

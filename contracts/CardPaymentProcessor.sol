@@ -1483,10 +1483,10 @@ contract CardPaymentProcessor is
 
     /// @dev Defines the payer part of a payment base amount according to a subsidy limit.
     function _definePayerBaseAmount(uint256 paymentBaseAmount, uint256 subsidyLimit) internal pure returns (uint256) {
-        if (subsidyLimit >= paymentBaseAmount) {
-            return 0;
-        } else {
+        if (paymentBaseAmount > subsidyLimit) {
             return paymentBaseAmount - subsidyLimit;
+        } else {
+            return 0;
         }
     }
 
@@ -1510,7 +1510,7 @@ contract CardPaymentProcessor is
         uint256 baseAmount,
         uint256 subsidyLimit
     ) internal pure returns (uint256) {
-        if (subsidyLimit < baseAmount) {
+        if (baseAmount > subsidyLimit) {
             refundAmount = (refundAmount * subsidyLimit) / baseAmount;
         }
         if (refundAmount > subsidyLimit) {

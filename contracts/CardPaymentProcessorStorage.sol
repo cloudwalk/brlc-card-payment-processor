@@ -24,10 +24,10 @@ abstract contract CardPaymentProcessorStorageV1 is ICardPaymentProcessorTypes, I
     /// @dev The address of the cashback treasury.
     address internal _cashbackTreasury;
 
-    /// @dev The enable flag of the cashback operations.
+    /// @dev The enable flag of the cashback operations for new payments. Does not affect the existing payments.
     bool internal _cashbackEnabled;
 
-    /// @dev The current cashback rate in units of `CASHBACK_FACTOR`.
+    /// @dev The default cashback rate for new payments in units of `CASHBACK_FACTOR`.
     uint16 internal _cashbackRate;
 
     /// @dev The mapping of an account cashback structure for a given account address.
