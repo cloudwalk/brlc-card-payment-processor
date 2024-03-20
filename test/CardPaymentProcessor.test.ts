@@ -40,6 +40,7 @@ const eventDataFieldCheckingOptions: EventFieldCheckingOptions = {
 };
 
 const EVENT_NAME_ACCOUNT_REFUNDED = "AccountRefunded";
+const EVENT_NAME_CASH_OUT_ACCOUNT_CHANGED = "CashOutAccountChanged";
 const EVENT_NAME_CASHBACK_ENABLED = "CashbackEnabled";
 const EVENT_NAME_CASHBACK_DISABLED = "CashbackDisabled";
 const EVENT_NAME_CASHBACK_INCREASED = "CashbackIncreased";
@@ -55,7 +56,6 @@ const EVENT_NAME_PAYMENT_REFUNDED = "PaymentRefunded";
 const EVENT_NAME_PAYMENT_REVERSED = "PaymentReversed";
 const EVENT_NAME_PAYMENT_REVOKED = "PaymentRevoked";
 const EVENT_NAME_PAYMENT_UPDATED = "PaymentUpdated";
-const EVENT_NAME_SET_CASH_OUT_ACCOUNT = "SetCashOutAccount";
 
 enum PaymentStatus {
   // Nonexistent = 0,
@@ -2012,7 +2012,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         cardPaymentProcessor.setCashOutAccount(cashOutAccount.address)
       ).to.emit(
         cardPaymentProcessor,
-        EVENT_NAME_SET_CASH_OUT_ACCOUNT
+        EVENT_NAME_CASH_OUT_ACCOUNT_CHANGED
       ).withArgs(
         ZERO_ADDRESS,
         cashOutAccount.address
@@ -2025,7 +2025,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         cardPaymentProcessor.setCashOutAccount(ZERO_ADDRESS)
       ).to.emit(
         cardPaymentProcessor,
-        EVENT_NAME_SET_CASH_OUT_ACCOUNT
+        EVENT_NAME_CASH_OUT_ACCOUNT_CHANGED
       ).withArgs(
         cashOutAccount.address,
         ZERO_ADDRESS

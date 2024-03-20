@@ -72,7 +72,7 @@ contract CardPaymentProcessor is
     // -------------------- Events -----------------------------------
 
     /// @dev Emitted when the cash-out account is changed.
-    event SetCashOutAccount(
+    event CashOutAccountChanged(
         address oldCashOutAccount,
         address newCashOutAccount
     );
@@ -555,7 +555,7 @@ contract CardPaymentProcessor is
 
         _cashOutAccount = newCashOutAccount;
 
-        emit SetCashOutAccount(oldCashOutAccount, newCashOutAccount);
+        emit CashOutAccountChanged(oldCashOutAccount, newCashOutAccount);
     }
 
     /**
