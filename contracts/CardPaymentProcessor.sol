@@ -1302,7 +1302,7 @@ contract CardPaymentProcessor is
         address treasury = _cashbackTreasury;
         // Condition (treasury != address(0)) is guaranteed by the current contract logic. So it is not checked here
         (status, increasedAmount) = _updateAccountState(payer, amount);
-        if ((status == CashbackOperationStatus.Success || status == CashbackOperationStatus.Partial)) {
+        if (status == CashbackOperationStatus.Success || status == CashbackOperationStatus.Partial) {
             (bool success, bytes memory returnData) = _token.call(
                 abi.encodeWithSelector(IERC20.transferFrom.selector, treasury, payer, increasedAmount)
             );
