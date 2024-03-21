@@ -72,7 +72,7 @@ contract CardPaymentProcessor is
     // -------------------- Events -----------------------------------
 
     /// @dev Emitted when the cash-out account is changed.
-    event SetCashOutAccount(
+    event CashOutAccountChanged(
         address oldCashOutAccount,
         address newCashOutAccount
     );
@@ -555,7 +555,7 @@ contract CardPaymentProcessor is
 
         _cashOutAccount = newCashOutAccount;
 
-        emit SetCashOutAccount(oldCashOutAccount, newCashOutAccount);
+        emit CashOutAccountChanged(oldCashOutAccount, newCashOutAccount);
     }
 
     /**
@@ -1302,7 +1302,7 @@ contract CardPaymentProcessor is
         address treasury = _cashbackTreasury;
         // Condition (treasury != address(0)) is guaranteed by the current contract logic. So it is not checked here
         (status, increasedAmount) = _updateAccountState(payer, amount);
-        if ((status == CashbackOperationStatus.Success || status == CashbackOperationStatus.Partial)) {
+        if (status == CashbackOperationStatus.Success || status == CashbackOperationStatus.Partial) {
             (bool success, bytes memory returnData) = _token.call(
                 abi.encodeWithSelector(IERC20.transferFrom.selector, treasury, payer, increasedAmount)
             );
@@ -1483,10 +1483,10 @@ contract CardPaymentProcessor is
 
     /// @dev Defines the payer part of a payment base amount according to a subsidy limit.
     function _definePayerBaseAmount(uint256 paymentBaseAmount, uint256 subsidyLimit) internal pure returns (uint256) {
-        if (subsidyLimit >= paymentBaseAmount) {
-            return 0;
-        } else {
+        if (paymentBaseAmount > subsidyLimit) {
             return paymentBaseAmount - subsidyLimit;
+        } else {
+            return 0;
         }
     }
 
@@ -1510,7 +1510,7 @@ contract CardPaymentProcessor is
         uint256 baseAmount,
         uint256 subsidyLimit
     ) internal pure returns (uint256) {
-        if (subsidyLimit < baseAmount) {
+        if (baseAmount > subsidyLimit) {
             refundAmount = (refundAmount * subsidyLimit) / baseAmount;
         }
         if (refundAmount > subsidyLimit) {

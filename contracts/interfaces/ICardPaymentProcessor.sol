@@ -13,13 +13,16 @@ interface ICardPaymentProcessorTypes {
      * - Nonexistent - The payment does not exist (the default value).
      * - Active ------ The status immediately after the payment making.
      * - Merged ------ The payment was merged to another payment.
-     * - Revoked ----- The payment was revoked due to some technical reason.
-     *                 The related tokens have been transferred back to the customer.
-     *                 The payment can be made again with the same ID
-     *                 if its revocation counter does not reach the configure limit.
-     * - Reversed ---- The payment was reversed due to the decision of the off-chain card processing service.
-     *                 The related tokens have been transferred back to the customer.
      *                 The payment cannot be made again with the same ID.
+     *                 All further operations with this payment are prohibited.
+     * - Revoked ----- The payment was cancelled due to some technical reason.
+     *                 The related tokens have been transferred back to the payer and (optionally) sponsor.
+     *                 The payment can be made again with the same ID.
+     *                 All further operations with this payment except making again are prohibited.
+     * - Reversed ---- The payment was cancelled due to the decision of the off-chain card processing service.
+     *                 The related tokens have been transferred back to the payer and (optionally) sponsor.
+     *                 The payment cannot be made again with the same ID.
+     *                 All further operations with this payment are prohibited.
      */
     enum PaymentStatus {
         Nonexistent, // 0
@@ -29,26 +32,31 @@ interface ICardPaymentProcessorTypes {
         Reversed     // 4
     }
 
-    // DEV Think about removing the cash-out account
-
     /** @dev Structure with data of a single payment.
      *
      *  The following additional payment parameters can be derived from the structure fields:
      *
-     *  - sumAmount = baseAmount + extraAmount.
-     *  - commonRemainder = sumAmount - refundAmount.
+     *  - sumAmount = basAmount + extraAmount = payerSumAmount + sponsorSumAmount.
+     *  - commonRemainder = sumAmount - refundAmount = payerRemainder + sponsorRemainder.
      *  - unconfirmedAmount = commonRemainder - confirmedAmount.
      *  - payerBaseAmount = (baseAmount > subsidyLimit) ? (baseAmount - subsidyLimit) : 0.
      *  - payerSumAmount = (sumAmount > subsidyLimit) ? (sumAmount - subsidyLimit) : 0.
+     *  - sponsorSumAmount = sumAmount - payerSumAmount.
      *  - assumedSponsorRefundAmount = (baseAmount > subsidyLimit)
      *                                 ? (refundAmount * subsidyLimit / baseAmount)
      *                                 : refundAmount.
      *  - sponsorRefundAmount = (assumedSponsorRefundAmount < subsidyLimit) ? assumedSponsorRefundAmount : subsidyLimit.
      *  - payerRefundAmount = refundAmount - sponsorRefundAmount.
      *  - payerRemainder = payerSumAmount - payerRefundAmount.
-     *  - sponsorRemainder = sumAmount - payerSumAmount - payerRemainder.
+     *  - sponsorRemainder = sponsorSumAmount - sponsorRefundAmount.
+     *  - cashbackAmount = (payerBaseAmount > payerRefundAmount)
+     *                     ? (payerBaseAmount - payerRefundAmount) * cashbackRate
+     *                     : 0.
+     *
+     *  The following restrictions are applied to a payment:
+     *  - `refundAmount <= sumAmount`.
+     *  - `commonReminder >= confirmedAmount`.
      */
-    // DEV Type `uint64` allows us execute payments up to 1.8E13 BRLC. I believe, instead of that, we can use `uint56` (up to 72E9 BRLC) or even `uint48` (up to 281M BRLC). It will save more storage.
     struct Payment {
         //slot1
         PaymentStatus status;   // The Current status of the payment.
@@ -113,7 +121,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     );
 
     /**
-     * @dev Emitted when a payment is updated.
+     * @dev Emitted when a payment is updated inside a function whose name started with the `update` word.
      *
      * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
      * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
@@ -211,7 +219,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     );
 
     /**
-     * @dev Emitted when a payment is refunded.
+     * @dev Emitted when a payment is refunded inside a function whose name started with the `refund` word.
      *
      * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
      * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
@@ -291,7 +299,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     );
 
     /**
-     * @dev Emitted when an account is refunded.
+     * @dev Emitted when an account is refunded inside the `refundAccount()` function.
      * @param account The account that is refunded.
      * @param refundingAmount The amount of tokens to refund.
      * @param addendum Empty. Reserved for future possible additional information.
@@ -472,7 +480,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     ) external;
 
     /**
-     * @dev Merges several non-subsidized payments into a single one.
+     * @dev Merges several non-subsidized existing payments into a single one.
      *
      * Emits a {PaymentExpanded} event for the target payment that is expanded by the merged payments.
      * Emits a {PaymentMerged} event for each merged payment.
@@ -491,7 +499,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      *
      * During this operation the needed amount of tokens is transferred from the cash-out account to the target account.
      *
-     * Emits a {RefundAccount} event.
+     * Emits a {AccountRefunded} event.
      *
      * @param account The address of the account to refund.
      * @param refundingAmount The amount of tokens to refund.
