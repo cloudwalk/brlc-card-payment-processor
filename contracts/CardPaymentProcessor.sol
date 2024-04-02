@@ -125,36 +125,6 @@ contract CardPaymentProcessor is
     /// @dev The requested or result or updated sum amount (base + extra) does not meet the requirements.
     error InappropriateSumAmount();
 
-    /**
-     * @dev The cashback rate of a merged payment is greater the rate of the target payment.
-     * @param mergedPaymentId The ID of the merged payment with a mismatched payer.
-     * @param mergedPaymentCashbackRate The cashback rate of the merged payment.
-     * @param targetPaymentCashbackRate The cashback rate of the target payment.
-     */
-    error MergedPaymentCashbackRateMismatch(
-        bytes32 mergedPaymentId,
-        uint256 mergedPaymentCashbackRate,
-        uint256 targetPaymentCashbackRate
-    );
-
-    /// @dev The merged payment ID equals the target payment ID.
-    error MergedPaymentIdAndTargetPaymentIdEquality();
-
-    /// @dev The array of merged payment Ids is empty.
-    error MergedPaymentIdArrayEmpty();
-
-    /**
-     * @dev The payer of a merged payment does not match the payer of the target payment.
-     * @param mergedPaymentId The ID of the merged payment with a mismatched payer.
-     * @param mergedPaymentPayer The payer address of the merged payment.
-     * @param targetPaymentPayer The payer address of the target payment.
-     */
-    error MergedPaymentPayerMismatch(
-        bytes32 mergedPaymentId,
-        address mergedPaymentPayer,
-        address targetPaymentPayer
-    );
-
     /// @dev The requested subsidy limit is greater than the allowed maximum to store.
     error OverflowOfSubsidyLimit();
 
@@ -175,12 +145,6 @@ contract CardPaymentProcessor is
      * @param paymentId The ID of the payment that does not exist.
      */
     error PaymentNonExistent(bytes32 paymentId);
-
-    /**
-     * @dev The payment is subsidized, but this is prohibited by the terms of the function.
-     * @param paymentId The ID of the payment that is subsidized.
-     */
-    error PaymentSubsidized(bytes32 paymentId);
 
     /// @dev Zero payment ID has been passed as a function argument.
     error PaymentZeroId();
@@ -486,30 +450,6 @@ contract CardPaymentProcessor is
         uint256 refundingAmount
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         _refundPayment(paymentId, refundingAmount);
-    }
-
-    /**
-     * @inheritdoc ICardPaymentProcessor
-     *
-     * @dev Requirements:
-     *
-     * - The contract must not be paused.
-     * - The caller must have the {EXECUTOR_ROLE} role.
-     * - The target payment ID and the merged payment ones must not be zero.
-     * - The target payment ID and the merged payment ones must not be equal.
-     * - The target payment and the merged ones must be active.
-     * - The target payment and the merged ones must have the same payer address.
-     * - The target payment and the merged ones must not be subsidized.
-     * - The cashback rate of the target payment must not be less than the cashback rate of merged payments.
-     * - The contract must have enough token balance to make a cashback merge during the payment merging.
-     * - The cashback revocation of the merged payments must succeed.
-     * - The cashback increase of the target payment must succeed.
-     */
-    function mergePayments(
-        bytes32 targetPaymentId,
-        bytes32[] calldata sourcePaymentIds
-    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
-        _mergePayments(targetPaymentId, sourcePaymentIds);
     }
 
     /**
@@ -958,145 +898,6 @@ contract CardPaymentProcessor is
             payment.payer,
             eventData
         );
-    }
-
-    /// @dev Defines the payment merge operation details
-    struct MergeOperation {
-        uint256 oldBaseAmount;
-        uint256 newBaseAmount;
-        uint256 oldExtraAmount;
-        uint256 newExtraAmount;
-        uint256 oldCashbackAmount;
-        uint256 newCashbackAmount;
-        uint256 oldRefundAmount;
-        uint256 newRefundAmount;
-        uint256 oldConfirmedAmount;
-        uint256 newConfirmedAmount;
-    }
-
-    /// @dev Merge payments internally
-    function _mergePayments(
-        bytes32 targetPaymentId,
-        bytes32[] calldata mergedPaymentIds
-    ) internal {
-        if (targetPaymentId == 0) {
-            revert PaymentZeroId();
-        }
-        if (mergedPaymentIds.length == 0) {
-            revert MergedPaymentIdArrayEmpty();
-        }
-
-        Payment storage storedTargetPayment = _payments[targetPaymentId];
-        _checkActivePaymentStatus(targetPaymentId, storedTargetPayment.status);
-        if (storedTargetPayment.sponsor != address(0)) {
-            revert PaymentSubsidized(targetPaymentId);
-        }
-
-        MergeOperation memory operation = MergeOperation({
-            oldBaseAmount: storedTargetPayment.baseAmount,
-            newBaseAmount: storedTargetPayment.baseAmount,
-            oldExtraAmount: storedTargetPayment.extraAmount,
-            newExtraAmount: storedTargetPayment.extraAmount,
-            oldCashbackAmount: storedTargetPayment.cashbackAmount,
-            newCashbackAmount: storedTargetPayment.cashbackAmount,
-            oldRefundAmount: storedTargetPayment.refundAmount,
-            newRefundAmount: storedTargetPayment.refundAmount,
-            oldConfirmedAmount: storedTargetPayment.confirmedAmount,
-            newConfirmedAmount: storedTargetPayment.confirmedAmount
-        });
-
-        address payer = storedTargetPayment.payer;
-        for (uint256 i = 0; i < mergedPaymentIds.length; i++) {
-            bytes32 mergedPaymentId = mergedPaymentIds[i];
-            if (mergedPaymentId == 0) {
-                revert PaymentZeroId();
-            }
-            if (mergedPaymentId == targetPaymentId) {
-                revert MergedPaymentIdAndTargetPaymentIdEquality();
-            }
-
-            Payment storage mergedPayment = _payments[mergedPaymentId];
-            _checkActivePaymentStatus(mergedPaymentId, mergedPayment.status);
-
-            address mergedPaymentPayer = mergedPayment.payer;
-            if (mergedPaymentPayer != payer) {
-                revert MergedPaymentPayerMismatch(mergedPaymentId, mergedPaymentPayer, payer);
-            }
-            if (mergedPayment.sponsor != address(0)) {
-                revert PaymentSubsidized(mergedPaymentId);
-            }
-            if (mergedPayment.cashbackRate > storedTargetPayment.cashbackRate) {
-                revert MergedPaymentCashbackRateMismatch(
-                    mergedPaymentId,
-                    mergedPayment.cashbackRate,
-                    storedTargetPayment.cashbackRate
-                );
-            }
-            uint256 newBaseAmount;
-            uint256 newExtraAmount;
-            uint256 sumAmount;
-            unchecked {
-                newBaseAmount = operation.newBaseAmount + mergedPayment.baseAmount;
-                newExtraAmount = operation.newExtraAmount + mergedPayment.extraAmount;
-                sumAmount = newBaseAmount + newExtraAmount;
-            }
-            if (sumAmount > type(uint64).max) {
-                revert OverflowOfSumAmount();
-            }
-            operation.newBaseAmount = newBaseAmount;
-            operation.newExtraAmount = newExtraAmount;
-            unchecked {
-                operation.newRefundAmount += mergedPayment.refundAmount;
-                operation.newCashbackAmount += mergedPayment.cashbackAmount;
-                operation.newConfirmedAmount += mergedPayment.confirmedAmount;
-            }
-            mergedPayment.status = PaymentStatus.Merged;
-
-            emit PaymentMerged(
-                mergedPaymentId,
-                payer,
-                targetPaymentId,
-                abi.encodePacked(
-                    EVENT_DEFAULT_VERSION,
-                    uint8(0),
-                    uint64(mergedPayment.baseAmount + mergedPayment.extraAmount - mergedPayment.refundAmount)
-                )
-            );
-        }
-
-        emit PaymentExpanded(
-            targetPaymentId,
-            payer,
-            mergedPaymentIds,
-            abi.encodePacked(
-                EVENT_DEFAULT_VERSION,
-                uint8(0),
-                uint64(operation.oldBaseAmount),
-                uint64(operation.newBaseAmount),
-                uint64(operation.oldExtraAmount),
-                uint64(operation.newExtraAmount),
-                uint64(operation.oldCashbackAmount),
-                uint64(operation.newCashbackAmount),
-                uint64(operation.oldRefundAmount),
-                uint64(operation.newRefundAmount)
-            )
-        );
-
-        storedTargetPayment.baseAmount = uint64(operation.newBaseAmount);
-        storedTargetPayment.extraAmount = uint64(operation.newExtraAmount);
-        storedTargetPayment.cashbackAmount = uint64(operation.newCashbackAmount);
-        storedTargetPayment.refundAmount = uint64(operation.newRefundAmount);
-
-        if (operation.newConfirmedAmount != operation.oldConfirmedAmount) {
-            storedTargetPayment.confirmedAmount = uint64(operation.newConfirmedAmount);
-            _emitPaymentConfirmedAmountChanged(
-                targetPaymentId,
-                payer,
-                address(0), //sponsor
-                operation.oldConfirmedAmount,
-                operation.newConfirmedAmount
-            );
-        }
     }
 
     /// @dev Executes token transfers related to a new payment.
