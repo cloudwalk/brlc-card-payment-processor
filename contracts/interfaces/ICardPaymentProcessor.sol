@@ -12,7 +12,7 @@ interface ICardPaymentProcessorTypes {
      * The possible values:
      * - Nonexistent - The payment does not exist (the default value).
      * - Active ------ The status immediately after the payment making.
-     * - Merged ------ The payment was merged to another payment.
+     * - Merged ------ The payment was merged to another payment. Obsolete and is not used anymore.
      *                 The payment cannot be made again with the same ID.
      *                 All further operations with this payment are prohibited.
      * - Revoked ----- The payment was cancelled due to some technical reason.
@@ -244,61 +244,6 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     );
 
     /**
-     * @dev Emitted when a payment is expanded by merging other payments to it.
-     *
-     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
-     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
-     * with the following arguments:
-     *
-     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - uint8(flags) -- the flags that for now define that the payment is not subsidized: always (`0x00`).
-     * - uint64(oldBaseAmount) -- the old base amount of the payment.
-     * - uint64(newBaseAmount) -- the new base amount of the payment.
-     * - uint64(oldExtraAmount) -- the old extra amount of the payment.
-     * - uint64(newExtraAmount) -- the new extra amount of the payment.
-     * - uint64(oldCashbackAmount) -- the old cashback amount of the payment.
-     * - uint64(newCashbackAmount) -- the new cashback amount of the payment.
-     * - uint64(oldRefundAmount) -- the old refund amount of the payment.
-     * - uint64(newRefundAmount) -- the new refund amount of the payment.
-     *
-     * Note: all the data of this event is related to the target payment, not to the merged ones.
-     *
-     * @param paymentId The ID of the current target payment that is expanded by the merged payments.
-     * @param payer The account on that behalf the target payment and the merged ones.
-     * @param mergedPaymentIds The IDs of the payments that are merged to the current one.
-     * @param data The main data of the event as described above.
-     */
-    event PaymentExpanded(
-        bytes32 indexed paymentId,
-        address indexed payer,
-        bytes32[] mergedPaymentIds,
-        bytes data
-    );
-
-    /**
-     * @dev Emitted when a payment is merged to another one.
-     *
-     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
-     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
-     * with the following arguments:
-     *
-     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
-     * - uint8(flags) -- the flags that for now define that the payment is not subsidized: always (`0x00`).
-     * - uint64(payerRemainder) -- the payer remainder part of the payment.
-     *
-     * @param paymentId The ID of the current merged payment from the off-chain card processing backend.
-     * @param payer The account on that behalf the payment is made.
-     * @param targetPaymentId The ID of the payment with which the current payment is merged with.
-     * @param data The main data of the event as described above.
-     */
-    event PaymentMerged(
-        bytes32 indexed paymentId,
-        address indexed payer,
-        bytes32 indexed targetPaymentId,
-        bytes data
-    );
-
-    /**
      * @dev Emitted when an account is refunded inside the `refundAccount()` function.
      * @param account The account that is refunded.
      * @param refundingAmount The amount of tokens to refund.
@@ -477,21 +422,6 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     function refundPayment(
         bytes32 paymentId,
         uint256 refundingAmount
-    ) external;
-
-    /**
-     * @dev Merges several non-subsidized existing payments into a single one.
-     *
-     * Emits a {PaymentExpanded} event for the target payment that is expanded by the merged payments.
-     * Emits a {PaymentMerged} event for each merged payment.
-     * Emits a {PaymentConfirmedAmountChanged} event for the target payment if its confirmed amount is changed.
-     *
-     * @param targetPaymentId The ID of the target payment to merge with.
-     * @param mergedPaymentIds The IDs of payments to merge.
-     */
-    function mergePayments(
-        bytes32 targetPaymentId,
-        bytes32[] calldata mergedPaymentIds
     ) external;
 
     /**
