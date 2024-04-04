@@ -2,14 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-/**
- * @title CardPaymentCashback types interface
- */
+/// @title CardPaymentCashback types interface
 interface ICardPaymentCashbackTypes {
     /**
      * @dev Statuses of a cashback operation as an enum.
      *
      * The possible values:
+     *
      * - Undefined - The operation does not exist (the default value).
      * - Success --- The operation has been successfully executed with a full amount transfer.
      * - Partial --- The operation has been successfully executed but with a partial amount transfer.
@@ -24,7 +23,7 @@ interface ICardPaymentCashbackTypes {
         Failed     // 4
     }
 
-    /// @dev Structure with cashback-related data for a single account
+    /// @dev Structure with cashback-related data for a single account.
     struct AccountCashbackState {
         uint72 totalAmount;
         uint72 capPeriodStartAmount;
@@ -37,7 +36,7 @@ interface ICardPaymentCashbackTypes {
  * @dev The interface of the wrapper contract for the card payment cashback operations.
  */
 interface ICardPaymentCashback is ICardPaymentCashbackTypes {
-    // -------------------- Events -----------------------------------
+    // ------------------ Events ---------------------------------- //
 
     /**
      * @dev Emitted when the cashback rate is changed.
@@ -106,7 +105,7 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
     /// @dev Emitted when cashback operations for new payments are disabled. Does not affect the existing payments.
     event CashbackDisabled();
 
-    // -------------------- Functions --------------------------------
+    // ------------------ Functions ------------------------------- //
 
     /**
      * @dev Sets a new address of the cashback treasury.
@@ -140,21 +139,15 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
      */
     function disableCashback() external;
 
-    // -------------------- View functions ---------------------------
+    // ------------------ View functions -------------------------- //
 
-    /**
-     * @dev Returns the current cashback treasury address.
-     */
+    /// @dev Returns the current cashback treasury address.
     function cashbackTreasury() external view returns (address);
 
-    /**
-     * @dev Checks if the cashback operations are enabled.
-     */
+    /// @dev Checks if the cashback operations are enabled.
     function cashbackEnabled() external view returns (bool);
 
-    /**
-     * @dev Returns the current cashback rate.
-     */
+    /// @dev Returns the current cashback rate.
     function cashbackRate() external view returns (uint256);
 
     /**

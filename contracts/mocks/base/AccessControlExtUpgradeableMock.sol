@@ -16,7 +16,7 @@ contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable, UUPSUpg
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
     bytes32 public constant USER_ROLE = keccak256("USER_ROLE");
 
-    // -------------------- Initializers -----------------------------
+    // ------------------ Initializers ---------------------------- //
 
     /**
      * @dev The initialize function of the upgradable contract.
@@ -32,7 +32,7 @@ contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable, UUPSUpg
         _authorizeUpgrade(address(0));
     }
 
-    // -------------------- Functions --------------------------------
+    // ------------------ Functions ------------------------------- //
 
     /**
      * @dev Needed to check that the initialize function of the ancestor contract
@@ -50,11 +50,9 @@ contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable, UUPSUpg
         __AccessControlExt_init_unchained();
     }
 
-    // -------------------- Internal functions -----------------------
+    // ------------------ Internal functions ---------------------- //
 
-    /**
-     * @dev The upgrade authorization function for UUPSProxy.
-     */
+    /// @dev The upgrade authorization function for UUPSProxy.
     function _authorizeUpgrade(address newImplementation) internal pure override {
         newImplementation; // Suppresses a compiler warning about the unused variable
     }

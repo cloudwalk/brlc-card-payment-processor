@@ -5,9 +5,7 @@ pragma solidity ^0.8.20;
 import { ICardPaymentProcessorTypes } from "./interfaces/ICardPaymentProcessor.sol";
 import { ICardPaymentCashbackTypes } from "./interfaces/ICardPaymentCashback.sol";
 
-/**
- * @title CardPaymentProcessor storage version 1
- */
+/// @title CardPaymentProcessor storage version 1
 abstract contract CardPaymentProcessorStorageV1 is ICardPaymentProcessorTypes, ICardPaymentCashbackTypes {
     /// @dev The address of the underlying token.
     address internal _token;

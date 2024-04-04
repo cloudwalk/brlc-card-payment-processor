@@ -15,7 +15,7 @@ contract PausableExtUpgradeableMock is PausableExtUpgradeable, UUPSUpgradeable {
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
-    // -------------------- Initializers -----------------------------
+    // ------------------ Initializers ---------------------------- //
 
     /**
      * @dev The initialize function of the upgradable contract.
@@ -30,7 +30,7 @@ contract PausableExtUpgradeableMock is PausableExtUpgradeable, UUPSUpgradeable {
         _authorizeUpgrade(address(0));
     }
 
-    // -------------------- Functions --------------------------------
+    // ------------------ Functions ------------------------------- //
 
     /**
      * @dev Needed to check that the initialize function of the ancestor contract
@@ -48,11 +48,9 @@ contract PausableExtUpgradeableMock is PausableExtUpgradeable, UUPSUpgradeable {
         __PausableExt_init_unchained(OWNER_ROLE);
     }
 
-    // -------------------- Internal functions -----------------------
+    // ------------------ Internal functions ---------------------- //
 
-    /**
-     * @dev The upgrade authorization function for UUPSProxy.
-     */
+    /// @dev The upgrade authorization function for UUPSProxy.
     function _authorizeUpgrade(address newImplementation) internal pure override {
         newImplementation; // Suppresses a compiler warning about the unused variable
     }

@@ -15,12 +15,12 @@ contract BlocklistableUpgradeableMock is BlocklistableUpgradeable, UUPSUpgradeab
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
-    // -------------------- Events -----------------------------------
+    // ------------------ Events ---------------------------------- //
 
     /// @dev Emitted when a test function of the `notBlocklisted` modifier executes successfully.
     event TestNotBlocklistedModifierSucceeded();
 
-    // -------------------- Initializers -----------------------------
+    // ------------------ Initializers ---------------------------- //
 
     /**
      * @dev The initialize function of the upgradable contract.
@@ -35,7 +35,7 @@ contract BlocklistableUpgradeableMock is BlocklistableUpgradeable, UUPSUpgradeab
         _authorizeUpgrade(address(0));
     }
 
-    // -------------------- Functions --------------------------------
+    // ------------------ Functions ------------------------------- //
 
     /**
      * @dev Needed to check that the initialize function of the ancestor contract
@@ -61,11 +61,9 @@ contract BlocklistableUpgradeableMock is BlocklistableUpgradeable, UUPSUpgradeab
         emit TestNotBlocklistedModifierSucceeded();
     }
 
-    // -------------------- Internal functions -----------------------
+    // ------------------ Internal functions ---------------------- //
 
-    /**
-     * @dev The upgrade authorization function for UUPSProxy.
-     */
+    /// @dev The upgrade authorization function for UUPSProxy.
     function _authorizeUpgrade(address newImplementation) internal pure override {
         newImplementation; // Suppresses a compiler warning about the unused variable
     }
