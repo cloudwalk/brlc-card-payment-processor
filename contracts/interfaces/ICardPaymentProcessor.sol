@@ -12,9 +12,6 @@ interface ICardPaymentProcessorTypes {
      * The possible values:
      * - Nonexistent - The payment does not exist (the default value).
      * - Active ------ The status immediately after the payment making.
-     * - Merged ------ The payment was merged to another payment. Obsolete and is not used anymore.
-     *                 The payment cannot be made again with the same ID.
-     *                 All further operations with this payment are prohibited.
      * - Revoked ----- The payment was cancelled due to some technical reason.
      *                 The related tokens have been transferred back to the payer and (optionally) sponsor.
      *                 The payment can be made again with the same ID.
@@ -27,9 +24,8 @@ interface ICardPaymentProcessorTypes {
     enum PaymentStatus {
         Nonexistent, // 0
         Active,      // 1
-        Merged,      // 2
-        Revoked,     // 3
-        Reversed     // 4
+        Revoked,     // 2
+        Reversed     // 3
     }
 
     /** @dev Structure with data of a single payment.

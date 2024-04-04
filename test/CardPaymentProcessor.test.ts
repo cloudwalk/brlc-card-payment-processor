@@ -57,9 +57,8 @@ const EVENT_NAME_PAYMENT_UPDATED = "PaymentUpdated";
 enum PaymentStatus {
   // Nonexistent = 0, is not used in the tests.
   Active = 1,
-  // Merged = 2, is not used in the tests.
-  Revoked = 3,
-  Reversed = 4
+  Revoked = 2,
+  Reversed = 3
 }
 
 enum CashbackOperationStatus {
