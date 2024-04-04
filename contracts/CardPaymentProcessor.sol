@@ -149,6 +149,9 @@ contract CardPaymentProcessor is
     /// @dev Zero payment ID has been passed as a function argument.
     error PaymentZeroId();
 
+    /// @dev The sponsor address is zero while the subsidy limit is non-zero.
+    error SponsorZeroAddress();
+
     /// @dev The zero token address has been passed as a function argument.
     error TokenZeroAddress();
 
@@ -907,9 +910,10 @@ contract CardPaymentProcessor is
         if (sumAmount > type(uint64).max) {
             revert OverflowOfSumAmount();
         }
-        if (operation.sponsor == address(0)) {
-            operation.subsidyLimit = 0;
-        } else if (operation.subsidyLimit > type(uint64).max) {
+        if (operation.sponsor == address(0) && operation.subsidyLimit != 0) {
+            revert SponsorZeroAddress();
+        }
+        if (operation.subsidyLimit > type(uint64).max) {
             revert OverflowOfSubsidyLimit();
         }
         (uint256 payerSumAmount, uint256 sponsorSumAmount) = _defineSumAmountParts(sumAmount, operation.subsidyLimit);

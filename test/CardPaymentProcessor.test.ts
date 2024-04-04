@@ -1561,6 +1561,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const REVERT_ERROR_IF_PAYMENT_CONFIRMATION_ARRAY_EMPTY = "PaymentConfirmationArrayEmpty";
   const REVERT_ERROR_IF_PAYMENT_NON_EXISTENT = "PaymentNonExistent";
   const REVERT_ERROR_IF_PAYMENT_ZERO_ID = "PaymentZeroId";
+  const REVERT_ERROR_IF_SPONSOR_ZERO_ADDRESS = "SponsorZeroAddress";
   const REVERT_ERROR_IF_TOKEN_ZERO_ADDRESS = "TokenZeroAddress";
 
   const ownerRole: string = ethers.id("OWNER_ROLE");
@@ -2084,10 +2085,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
                 await checkPaymentMakingFor(context);
               });
 
-              it("Both nonzero, and if the subsidy limit argument is not zero", async () => {
+              it("Both nonzero, and if the subsidy limit argument is zero", async () => {
                 const context = await beforeMakingPayments();
-                const subsidyLimit = Math.floor(context.payments[0].baseAmount / 2);
-                await checkPaymentMakingFor(context, { subsidyLimit });
+                await checkPaymentMakingFor(context);
               });
 
               it("Both zero", async () => {
@@ -2493,6 +2493,24 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             ZERO_CONFIRMATION_AMOUNT
           )
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_OVERFLOW_OF_SUM_AMOUNT);
+      });
+
+      it("The payment subsidy limit is not zero, but the sponsor address is zero", async () => {
+        const context = await prepareForPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+
+        await expect(
+          (cardPaymentProcessorShell.contract.connect(executor) as Contract).makePaymentFor(
+            payment.id,
+            payment.payer.address,
+            payment.baseAmount,
+            payment.extraAmount,
+            ZERO_SPONSOR_ADDRESS,
+            subsidyLimit,
+            CASHBACK_RATE_AS_IN_CONTRACT,
+            ZERO_CONFIRMATION_AMOUNT
+          )
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_SPONSOR_ZERO_ADDRESS);
       });
 
       it("The payment subsidy limit is greater than 64-bit unsigned integer", async () => {
