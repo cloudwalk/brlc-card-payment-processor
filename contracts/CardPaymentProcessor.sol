@@ -178,6 +178,7 @@ contract CardPaymentProcessor is
         __Context_init_unchained();
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
+        __AccessControlExt_init_unchained();
         __Blocklistable_init_unchained(OWNER_ROLE);
         __Pausable_init_unchained();
         __PausableExt_init_unchained(OWNER_ROLE);
@@ -767,7 +768,7 @@ contract CardPaymentProcessor is
         _checkActivePaymentStatus(paymentId, payment.status);
 
         PaymentDetails memory oldPaymentDetails = _definePaymentDetails(payment, PaymentRecalculationKind.None);
-        PaymentDetails memory newPaymentDetails; //all fields are zero
+        PaymentDetails memory newPaymentDetails; // All fields are zero
 
         _processPaymentChange(paymentId, payment, oldPaymentDetails, newPaymentDetails);
         _updatePaymentStatistics(oldPaymentDetails, newPaymentDetails);
@@ -981,7 +982,7 @@ contract CardPaymentProcessor is
             );
         }
 
-        //Payer token transferring
+        // Payer token transferring
         {
             int256 amount = -(int256(newPaymentDetails.payerRemainder) - int256(oldPaymentDetails.payerRemainder));
             int256 cashbackChange = int256(newPaymentDetails.cashbackAmount) - int256(oldPaymentDetails.cashbackAmount);
@@ -1010,7 +1011,7 @@ contract CardPaymentProcessor is
             );
         }
 
-        //Sponsor token transferring
+        // Sponsor token transferring
         address sponsor = payment.sponsor;
         if (payment.sponsor != address(0)) {
             if (newPaymentDetails.sponsorRemainder > oldPaymentDetails.sponsorRemainder) {

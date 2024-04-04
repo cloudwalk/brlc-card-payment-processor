@@ -36,7 +36,7 @@ interface ICardPaymentProcessorTypes {
      *
      *  The following additional payment parameters can be derived from the structure fields:
      *
-     *  - sumAmount = basAmount + extraAmount = payerSumAmount + sponsorSumAmount.
+     *  - sumAmount = baseAmount + extraAmount = payerSumAmount + sponsorSumAmount.
      *  - commonRemainder = sumAmount - refundAmount = payerRemainder + sponsorRemainder.
      *  - unconfirmedAmount = commonRemainder - confirmedAmount.
      *  - payerBaseAmount = (baseAmount > subsidyLimit) ? (baseAmount - subsidyLimit) : 0.
@@ -59,7 +59,7 @@ interface ICardPaymentProcessorTypes {
      */
     struct Payment {
         //slot1
-        PaymentStatus status;   // The Current status of the payment.
+        PaymentStatus status;   // The current status of the payment.
         uint8 reserve1;         // The reserved filed for future changes.
         address payer;          // The account who made the payment.
         uint16 cashbackRate;    // The cashback rate in units of `CASHBACK_FACTOR`.
@@ -75,13 +75,13 @@ interface ICardPaymentProcessorTypes {
         uint64 refundAmount;    // The total amount of all refunds related to the payment.
     }
 
-    /// @dev Structure with data of a single confirmation operation
+    /// @dev Structure with data of a single confirmation operation.
     struct PaymentConfirmation {
         bytes32 paymentId; // The card transaction payment ID from the off-chain card processing backend.
         uint256 amount;    // The amount to confirm for the payment.
     }
 
-    /// @dev Structure with statistics of all payments
+    /// @dev Structure with statistics of all payments.
     struct PaymentStatistics {
         uint128 totalUnconfirmedRemainder; // The total remainder of all payments that are not confirmed yet.
         uint128 reserve1;                  // The reserved filed for future changes.
@@ -100,6 +100,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @dev Emitted when a payment is made.
      *
      * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
+     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
      * with the following arguments:
      *
      * - uint8(version) -- the version of the event data, for now it equals `0x01`.
