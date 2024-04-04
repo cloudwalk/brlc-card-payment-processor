@@ -20,13 +20,14 @@ const ZERO_SPONSOR_ADDRESS = ethers.ZeroAddress;
 const ZERO_SUBSIDY_LIMIT = 0;
 const BYTES32_LENGTH: number = 32;
 const CASHBACK_RATE_AS_IN_CONTRACT = -1;
-const CASHBACK_ROUNDING_COEF = 10000;
-const DIGITS_COEF = 1000000;
+const TOKE_DECIMALS = 6;
+const CASHBACK_ROUNDING_COEF = 10 ** (TOKE_DECIMALS - 2);
+const DIGITS_COEF = 10 ** TOKE_DECIMALS;
 const INITIAL_USER_BALANCE = 1000_000 * DIGITS_COEF;
 const INITIAL_SPONSOR_BALANCE = INITIAL_USER_BALANCE * 2;
 const CASHBACK_FACTOR = 1000;
 const CASHBACK_CAP_RESET_PERIOD = 30 * 24 * 60 * 60;
-const MAX_CASHBACK_FOR_CAP_PERIOD = 300 * 10 ** 6;
+const MAX_CASHBACK_FOR_CAP_PERIOD = 300 * 10 ** TOKE_DECIMALS;
 
 const EVENT_DATA_FIELD_VERSION_DEFAULT_VALUE = "01";
 const EVENT_DATA_FIELD_FLAGS_NON_SUBSIDIZED = "00";
@@ -1725,6 +1726,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       expect(await cardPaymentProcessor.cashbackRate()).to.equal(0);
       expect(await cardPaymentProcessor.MAX_CASHBACK_RATE()).to.equal(CASHBACK_RATE_MAX);
       expect(await cardPaymentProcessor.CASHBACK_FACTOR()).to.equal(CASHBACK_FACTOR);
+      expect(await cardPaymentProcessor.TOKE_DECIMALS()).to.equal(TOKE_DECIMALS);
+      expect(await cardPaymentProcessor.CASHBACK_ROUNDING_COEF()).to.equal(CASHBACK_ROUNDING_COEF);
       expect(await cardPaymentProcessor.CASHBACK_CAP_RESET_PERIOD()).to.equal(CASHBACK_CAP_RESET_PERIOD);
       expect(await cardPaymentProcessor.MAX_CASHBACK_FOR_CAP_PERIOD()).to.equal(MAX_CASHBACK_FOR_CAP_PERIOD);
 

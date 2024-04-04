@@ -49,19 +49,22 @@ contract CardPaymentProcessor is
     /// @dev The maximum allowable cashback rate in units of `CASHBACK_FACTOR`.
     uint256 public constant MAX_CASHBACK_RATE = 250;
 
+    /// @dev The number of decimals that is used in the underlying token contract.
+    uint256 public constant TOKE_DECIMALS = 6;
+
     /**
      * @dev The coefficient used to round the cashback according to the formula:
      *      `roundedCashback = ((cashback + coef / 2) / coef) * coef`.
      *
      * Currently, it can only be changed by deploying a new implementation of the contract.
      */
-    uint256 public constant CASHBACK_ROUNDING_COEF = 10000;
+    uint256 public constant CASHBACK_ROUNDING_COEF = 10 ** (TOKE_DECIMALS - 2);
 
     /// @dev The cashback cap reset period.
     uint256 public constant CASHBACK_CAP_RESET_PERIOD = 30 days;
 
     /// @dev The maximum cashback for a cap period.
-    uint256 public constant MAX_CASHBACK_FOR_CAP_PERIOD = 300 * 10 ** 6;
+    uint256 public constant MAX_CASHBACK_FOR_CAP_PERIOD = 300 * 10 ** TOKE_DECIMALS;
 
     /// @dev Event data flag mask defining whether the payment is sponsored.
     uint256 internal constant EVENT_FLAG_MASK_SPONSORED = 1;
