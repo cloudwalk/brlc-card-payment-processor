@@ -517,6 +517,7 @@ contract CardPaymentProcessor is
     function setCashbackTreasury(address newCashbackTreasury) external onlyRole(OWNER_ROLE) {
         address oldCashbackTreasury = _cashbackTreasury;
 
+        // This is needed to allow cashback changes for any existing active payments.
         if (newCashbackTreasury == address(0)) {
             revert CashbackTreasuryZeroAddress();
         }
@@ -712,10 +713,12 @@ contract CardPaymentProcessor is
         Payment storage storedPayment = _payments[paymentId];
         Payment memory payment = storedPayment;
 
-        if (kind != UpdatingOperationKind.Full) {
-            if (payment.baseAmount == newBaseAmount && payment.extraAmount == newExtraAmount) {
-                return;
-            }
+        if (
+            kind == UpdatingOperationKind.Lazy &&
+            payment.baseAmount == newBaseAmount &&
+            payment.extraAmount == newExtraAmount
+        ) {
+            return;
         }
 
         _checkActivePaymentStatus(paymentId, payment.status);
@@ -927,8 +930,6 @@ contract CardPaymentProcessor is
         erc20Token.safeTransferFrom(operation.payer, address(this), payerSumAmount);
         if (operation.sponsor != address(0)) {
             erc20Token.safeTransferFrom(operation.sponsor, address(this), sponsorSumAmount);
-        } else {
-            operation.subsidyLimit = 0;
         }
     }
 
@@ -1064,8 +1065,8 @@ contract CardPaymentProcessor is
         if (operation.cashbackRate == 0) {
             return;
         }
-        address treasury = _cashbackTreasury;
-        if (_cashbackEnabled && treasury != address(0)) {
+        // Condition (treasury != address(0)) is guaranteed by the current contract logic. So it is not checked here
+        if (_cashbackEnabled) {
             uint256 basePaymentAmount = _definePayerBaseAmount(operation.baseAmount, operation.subsidyLimit);
             uint256 amount = _calculateCashback(basePaymentAmount, operation.cashbackRate);
             CashbackOperationStatus status;
@@ -1110,7 +1111,7 @@ contract CardPaymentProcessor is
     ) internal returns (CashbackOperationStatus status, uint256 increasedAmount) {
         address treasury = _cashbackTreasury;
         // Condition (treasury != address(0)) is guaranteed by the current contract logic. So it is not checked here
-        (status, increasedAmount) = _updateAccountState(payer, amount);
+        (status, increasedAmount) = _updateAccountCashbackState(payer, amount);
         if (status == CashbackOperationStatus.Success || status == CashbackOperationStatus.Partial) {
             (bool success, bytes memory returnData) = _token.call(
                 abi.encodeWithSelector(IERC20.transferFrom.selector, treasury, payer, increasedAmount)
@@ -1127,7 +1128,7 @@ contract CardPaymentProcessor is
     /**
      * @dev Updates the account cashback state and checks the cashback cap.
      */
-    function _updateAccountState(
+    function _updateAccountCashbackState(
         address account,
         uint256 amount
     ) internal returns (CashbackOperationStatus cashbackStatus, uint256 acceptedAmount) {
