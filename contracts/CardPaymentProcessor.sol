@@ -31,7 +31,7 @@ contract CardPaymentProcessor is
 {
     using SafeERC20 for IERC20;
 
-    // -------------------- Constants --------------------------------
+    // ------------------ Constants ------------------------------- //
 
     /// @dev The role of this contract owner.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
@@ -39,10 +39,13 @@ contract CardPaymentProcessor is
     /// @dev The role of executor that is allowed to execute the card payment operations.
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
 
+    /// @dev The number of decimals that is used in the underlying token contract.
+    uint256 public constant TOKE_DECIMALS = 6;
+
     /**
      * @dev The factor to represent the cashback rates in the contract, e.g. number 15 means 1.5% cashback rate.
      *
-     * The formula to calculate cashback by an amount: cashbackAmount = cashbackRate * amount / CASHBACK_FACTOR
+     * The formula to calculate cashback by an amount: `cashbackAmount = cashbackRate * amount / CASHBACK_FACTOR`.
      */
     uint256 public constant CASHBACK_FACTOR = 1000;
 
@@ -55,13 +58,13 @@ contract CardPaymentProcessor is
      *
      * Currently, it can only be changed by deploying a new implementation of the contract.
      */
-    uint256 public constant CASHBACK_ROUNDING_COEF = 10000;
+    uint256 public constant CASHBACK_ROUNDING_COEF = 10 ** (TOKE_DECIMALS - 2);
 
     /// @dev The cashback cap reset period.
     uint256 public constant CASHBACK_CAP_RESET_PERIOD = 30 days;
 
     /// @dev The maximum cashback for a cap period.
-    uint256 public constant MAX_CASHBACK_FOR_CAP_PERIOD = 300 * 10 ** 6;
+    uint256 public constant MAX_CASHBACK_FOR_CAP_PERIOD = 300 * 10 ** TOKE_DECIMALS;
 
     /// @dev Event data flag mask defining whether the payment is sponsored.
     uint256 internal constant EVENT_FLAG_MASK_SPONSORED = 1;
@@ -69,7 +72,7 @@ contract CardPaymentProcessor is
     /// @dev Default version of the event data.
     uint8 internal constant EVENT_DEFAULT_VERSION = 1;
 
-    // -------------------- Events -----------------------------------
+    // ------------------ Events ---------------------------------- //
 
     /// @dev Emitted when the cash-out account is changed.
     event CashOutAccountChanged(
@@ -77,7 +80,7 @@ contract CardPaymentProcessor is
         address newCashOutAccount
     );
 
-    // -------------------- Errors -----------------------------------
+    // ------------------ Errors ---------------------------------- //
 
     /// @dev The zero payer address has been passed as a function argument.
     error AccountZeroAddress();
@@ -149,10 +152,13 @@ contract CardPaymentProcessor is
     /// @dev Zero payment ID has been passed as a function argument.
     error PaymentZeroId();
 
+    /// @dev The sponsor address is zero while the subsidy limit is non-zero.
+    error SponsorZeroAddress();
+
     /// @dev The zero token address has been passed as a function argument.
     error TokenZeroAddress();
 
-    // -------------------- Initializers -----------------------------
+    // ------------------ Initializers ---------------------------- //
 
     /**
      * @dev The initializer of the upgradable contract.
@@ -206,7 +212,7 @@ contract CardPaymentProcessor is
         _grantRole(OWNER_ROLE, _msgSender());
     }
 
-    // -------------------- Functions --------------------------------
+    // ------------------ Functions ------------------------------- //
 
     /// @dev Contains parameters of a payment making operation.
     struct MakingOperation {
@@ -511,6 +517,7 @@ contract CardPaymentProcessor is
     function setCashbackTreasury(address newCashbackTreasury) external onlyRole(OWNER_ROLE) {
         address oldCashbackTreasury = _cashbackTreasury;
 
+        // This is needed to allow cashback changes for any existing active payments.
         if (newCashbackTreasury == address(0)) {
             revert CashbackTreasuryZeroAddress();
         }
@@ -586,67 +593,51 @@ contract CardPaymentProcessor is
         emit CashbackDisabled();
     }
 
-    // -------------------- View functions ---------------------------
+    // ------------------ View functions -------------------------- //
 
-    /**
-     * @inheritdoc ICardPaymentProcessor
-     */
+    /// @inheritdoc ICardPaymentProcessor
     function cashOutAccount() external view returns (address) {
         return _cashOutAccount;
     }
 
-    /**
-     * @inheritdoc ICardPaymentProcessor
-     */
+    /// @inheritdoc ICardPaymentProcessor
     function token() external view returns (address) {
         return _token;
     }
 
-    /**
-     * @inheritdoc ICardPaymentProcessor
-     */
+    /// @inheritdoc ICardPaymentProcessor
     function getPayment(bytes32 paymentId) external view returns (Payment memory) {
         return _payments[paymentId];
     }
 
-    /**
-     * @inheritdoc ICardPaymentProcessor
-     */
+    /// @inheritdoc ICardPaymentProcessor
     function getPaymentStatistics() external view returns (PaymentStatistics memory) {
         return _paymentStatistics;
     }
 
-    /**
-     * @inheritdoc ICardPaymentCashback
-     */
+    /// @inheritdoc ICardPaymentCashback
     function cashbackTreasury() external view returns (address) {
         return _cashbackTreasury;
     }
 
-    /**
-     * @inheritdoc ICardPaymentCashback
-     */
+    /// @inheritdoc ICardPaymentCashback
     function cashbackEnabled() external view returns (bool) {
         return _cashbackEnabled;
     }
 
-    /**
-     * @inheritdoc ICardPaymentCashback
-     */
+    /// @inheritdoc ICardPaymentCashback
     function cashbackRate() external view returns (uint256) {
         return _cashbackRate;
     }
 
-    /**
-     * @inheritdoc ICardPaymentCashback
-     */
+    /// @inheritdoc ICardPaymentCashback
     function getAccountCashbackState(address account) external view returns (AccountCashbackState memory) {
         return _accountCashbackStates[account];
     }
 
-    // -------------------- Internal functions ---------------------------
+    // ------------------ Internal functions ---------------------- //
 
-    /// @dev Making a payment internally
+    /// @dev Making a payment internally.
     function _makePayment(MakingOperation memory operation) internal {
         if (operation.paymentId == 0) {
             revert PaymentZeroId();
@@ -686,13 +677,13 @@ contract CardPaymentProcessor is
         );
     }
 
-    /// @dev Kind of a payment updating operation
+    /// @dev Kind of a payment updating operation.
     enum UpdatingOperationKind {
         Full, // 0 The operation is executed fully regardless of the new values of the base amount and extra amount.
         Lazy  // 1 The operation is executed only if the new amounts differ from the current ones of the payment.
     }
 
-    /// @dev Updates the base amount and extra amount of a payment internally
+    /// @dev Updates the base amount and extra amount of a payment internally.
     function _updatePayment(
         bytes32 paymentId,
         uint256 newBaseAmount,
@@ -706,10 +697,12 @@ contract CardPaymentProcessor is
         Payment storage storedPayment = _payments[paymentId];
         Payment memory payment = storedPayment;
 
-        if (kind != UpdatingOperationKind.Full) {
-            if (payment.baseAmount == newBaseAmount && payment.extraAmount == newExtraAmount) {
-                return;
-            }
+        if (
+            kind == UpdatingOperationKind.Lazy &&
+            payment.baseAmount == newBaseAmount &&
+            payment.extraAmount == newExtraAmount
+        ) {
+            return;
         }
 
         _checkActivePaymentStatus(paymentId, payment.status);
@@ -753,7 +746,7 @@ contract CardPaymentProcessor is
         );
     }
 
-    /// @dev Cancels a payment internally
+    /// @dev Cancels a payment internally.
     function _cancelPayment(
         bytes32 paymentId,
         PaymentStatus targetStatus
@@ -805,7 +798,7 @@ contract CardPaymentProcessor is
         }
     }
 
-    /// @dev Confirms a payment internally
+    /// @dev Confirms a payment internally.
     function _confirmPayment(
         bytes32 paymentId,
         uint256 confirmationAmount
@@ -839,7 +832,7 @@ contract CardPaymentProcessor is
         return confirmationAmount;
     }
 
-    /// @dev Confirms a payment internally with the token transfer to the cash-out account
+    /// @dev Confirms a payment internally with the token transfer to the cash-out account.
     function _confirmPaymentWithTransfer(
         bytes32 paymentId,
         uint256 confirmationAmount
@@ -851,7 +844,7 @@ contract CardPaymentProcessor is
         IERC20(_token).safeTransfer(_requireCashOutAccount(), confirmationAmount);
     }
 
-    /// @dev Makes a refund for a payment internally
+    /// @dev Makes a refund for a payment internally.
     function _refundPayment(
         bytes32 paymentId,
         uint256 refundingAmount
@@ -907,9 +900,10 @@ contract CardPaymentProcessor is
         if (sumAmount > type(uint64).max) {
             revert OverflowOfSumAmount();
         }
-        if (operation.sponsor == address(0)) {
-            operation.subsidyLimit = 0;
-        } else if (operation.subsidyLimit > type(uint64).max) {
+        if (operation.sponsor == address(0) && operation.subsidyLimit != 0) {
+            revert SponsorZeroAddress();
+        }
+        if (operation.subsidyLimit > type(uint64).max) {
             revert OverflowOfSubsidyLimit();
         }
         (uint256 payerSumAmount, uint256 sponsorSumAmount) = _defineSumAmountParts(sumAmount, operation.subsidyLimit);
@@ -920,8 +914,6 @@ contract CardPaymentProcessor is
         erc20Token.safeTransferFrom(operation.payer, address(this), payerSumAmount);
         if (operation.sponsor != address(0)) {
             erc20Token.safeTransferFrom(operation.sponsor, address(this), sponsorSumAmount);
-        } else {
-            operation.subsidyLimit = 0;
         }
     }
 
@@ -1024,6 +1016,7 @@ contract CardPaymentProcessor is
         }
     }
 
+    /// @dev Emits an appropriate event when the confirmed amount is changed for a payment.
     function _emitPaymentConfirmedAmountChanged(
         bytes32 paymentId,
         address payer,
@@ -1057,8 +1050,8 @@ contract CardPaymentProcessor is
         if (operation.cashbackRate == 0) {
             return;
         }
-        address treasury = _cashbackTreasury;
-        if (_cashbackEnabled && treasury != address(0)) {
+        // Condition (treasury != address(0)) is guaranteed by the current contract logic. So it is not checked here
+        if (_cashbackEnabled) {
             uint256 basePaymentAmount = _definePayerBaseAmount(operation.baseAmount, operation.subsidyLimit);
             uint256 amount = _calculateCashback(basePaymentAmount, operation.cashbackRate);
             CashbackOperationStatus status;
@@ -1103,7 +1096,7 @@ contract CardPaymentProcessor is
     ) internal returns (CashbackOperationStatus status, uint256 increasedAmount) {
         address treasury = _cashbackTreasury;
         // Condition (treasury != address(0)) is guaranteed by the current contract logic. So it is not checked here
-        (status, increasedAmount) = _updateAccountState(payer, amount);
+        (status, increasedAmount) = _updateAccountCashbackState(payer, amount);
         if (status == CashbackOperationStatus.Success || status == CashbackOperationStatus.Partial) {
             (bool success, bytes memory returnData) = _token.call(
                 abi.encodeWithSelector(IERC20.transferFrom.selector, treasury, payer, increasedAmount)
@@ -1117,10 +1110,8 @@ contract CardPaymentProcessor is
         }
     }
 
-    /**
-     * @dev Updates the account cashback state and checks the cashback cap.
-     */
-    function _updateAccountState(
+    /// @dev Updates the account cashback state and checks the cashback cap.
+    function _updateAccountCashbackState(
         address account,
         uint256 amount
     ) internal returns (CashbackOperationStatus cashbackStatus, uint256 acceptedAmount) {
@@ -1162,9 +1153,7 @@ contract CardPaymentProcessor is
         state.capPeriodStartTime = uint32(capPeriodStartTime);
     }
 
-    /**
-     * @dev Reduces the total cashback amount for an account.
-     */
+    /// @dev Reduces the total cashback amount for an account.
     function _reduceTotalCashback(address account, uint256 amount) internal {
         AccountCashbackState storage state = _accountCashbackStates[account];
         state.totalAmount = uint72(uint256(state.totalAmount) - amount);
@@ -1362,15 +1351,13 @@ contract CardPaymentProcessor is
         return eventFlags;
     }
 
-    /**
-     * @dev The upgrade authorization function for UUPSProxy.
-     */
+    /// @dev The upgrade authorization function for UUPSProxy.
     function _authorizeUpgrade(address newImplementation) internal view override {
         newImplementation; // Suppresses a compiler warning about the unused variable
         _checkRole(OWNER_ROLE);
     }
 
-    // -------------------- Service functions ------------------------
+    // ------------------ Service functions ----------------------- //
 
     /**
      * @dev The version of the standard upgrade function without the second parameter for backward compatibility.

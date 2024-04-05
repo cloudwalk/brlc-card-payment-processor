@@ -2,19 +2,15 @@
 
 pragma solidity ^0.8.0;
 
-/**
- * @title CardPaymentProcessor types interface
- */
+/// @title CardPaymentProcessor types interface
 interface ICardPaymentProcessorTypes {
     /**
      * @dev Possible statuses of a payment as an enum.
      *
      * The possible values:
+     *
      * - Nonexistent - The payment does not exist (the default value).
      * - Active ------ The status immediately after the payment making.
-     * - Merged ------ The payment was merged to another payment. Obsolete and is not used anymore.
-     *                 The payment cannot be made again with the same ID.
-     *                 All further operations with this payment are prohibited.
      * - Revoked ----- The payment was cancelled due to some technical reason.
      *                 The related tokens have been transferred back to the payer and (optionally) sponsor.
      *                 The payment can be made again with the same ID.
@@ -27,9 +23,8 @@ interface ICardPaymentProcessorTypes {
     enum PaymentStatus {
         Nonexistent, // 0
         Active,      // 1
-        Merged,      // 2
-        Revoked,     // 3
-        Reversed     // 4
+        Revoked,     // 2
+        Reversed     // 3
     }
 
     /** @dev Structure with data of a single payment.
@@ -58,17 +53,17 @@ interface ICardPaymentProcessorTypes {
      *  - `commonReminder >= confirmedAmount`.
      */
     struct Payment {
-        //slot1
+        // Slot1
         PaymentStatus status;   // The current status of the payment.
         uint8 reserve1;         // The reserved filed for future changes.
         address payer;          // The account who made the payment.
         uint16 cashbackRate;    // The cashback rate in units of `CASHBACK_FACTOR`.
         uint64 confirmedAmount; // The confirmed amount that was transferred to the cash-out account.
-        //slot2
+        // Slot2
         address sponsor;        // The sponsor of the payment if it is subsidized. Otherwise the zero address.
         uint64 subsidyLimit;    // The subsidy limit of the payment if it is subsidized. Otherwise zero.
         uint32 reserve2;        // The reserved filed for future changes.
-        //slot3
+        // Slot3
         uint64 baseAmount;      // The base amount of tokens in the payment.
         uint64 extraAmount;     // The extra amount of tokens in the payment, without a cashback.
         uint64 cashbackAmount;  // The cumulative cashback amount that was granted to payer related to the payment.
@@ -94,7 +89,7 @@ interface ICardPaymentProcessorTypes {
  * @dev The interface of the wrapper contract for the card payment operations.
  */
 interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
-    // -------------------- Events -----------------------------------
+    // ------------------ Events ---------------------------------- //
 
     /**
      * @dev Emitted when a payment is made.
@@ -256,7 +251,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         bytes addendum
     );
 
-    // -------------------- Functions --------------------------------
+    // ------------------ Functions ------------------------------- //
 
     /**
      * @dev Makes a card payment for a given account initiated by a service account.
@@ -440,16 +435,12 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint256 refundingAmount
     ) external;
 
-    // -------------------- View functions ---------------------------
+    // ------------------ View functions -------------------------- //
 
-    /**
-     * @dev Returns the address of the underlying token.
-     */
+    /// @dev Returns the address of the underlying token.
     function token() external view returns (address);
 
-    /**
-     * @dev Returns the address of the cash-out account.
-     */
+    /// @dev Returns the address of the cash-out account.
     function cashOutAccount() external view returns (address);
 
     /**
@@ -458,8 +449,6 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      */
     function getPayment(bytes32 paymentId) external view returns (Payment memory);
 
-    /**
-     * @dev Returns statistics of all payments.
-     */
+    /// @dev Returns statistics of all payments.
     function getPaymentStatistics() external view returns (PaymentStatistics memory);
 }

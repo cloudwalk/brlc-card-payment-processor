@@ -18,7 +18,7 @@ abstract contract PausableExtUpgradeable is AccessControlExtUpgradeable, Pausabl
     /// @dev The role of pauser that is allowed to trigger the paused or unpaused state of the contract.
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
 
-    // -------------------- Initializers -----------------------------
+    // ------------------ Initializers ---------------------------- //
 
     /**
      * @dev The internal initializer of the upgradable contract.
@@ -44,7 +44,7 @@ abstract contract PausableExtUpgradeable is AccessControlExtUpgradeable, Pausabl
         _setRoleAdmin(PAUSER_ROLE, pauserRoleAdmin);
     }
 
-    // -------------------- Functions --------------------------------
+    // ------------------ Functions ------------------------------- //
 
     /**
      * @dev Triggers the paused state of the contract.

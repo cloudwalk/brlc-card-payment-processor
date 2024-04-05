@@ -33,7 +33,7 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
         mapping(address => bool) blocklisted; // Mapping of presence in the blocklist for a given address.
     }
 
-    // -------------------- Events -----------------------------------
+    // ------------------ Events ---------------------------------- //
 
     /// @dev Emitted when an account is blocklisted.
     event Blocklisted(address indexed account);
@@ -44,12 +44,12 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
     /// @dev Emitted when an account is self blocklisted.
     event SelfBlocklisted(address indexed account);
 
-    // -------------------- Errors -----------------------------------
+    // ------------------ Errors ---------------------------------- //
 
     /// @dev The account is blocklisted.
     error BlocklistedAccount(address account);
 
-    // -------------------- Modifiers --------------------------------
+    // ------------------ Modifiers ------------------------------- //
 
     /**
      * @dev Throws if called by a blocklisted account.
@@ -62,7 +62,7 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
         _;
     }
 
-    // -------------------- Initializers -----------------------------
+    // ------------------ Initializers ---------------------------- //
 
     /**
      * @dev The internal initializer of the upgradable contract.
@@ -87,7 +87,7 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
         _setRoleAdmin(BLOCKLISTER_ROLE, blocklisterRoleAdmin);
     }
 
-    // -------------------- Functions --------------------------------
+    // ------------------ Functions ------------------------------- //
 
     /**
      * @dev Adds an account to the blocklist.
@@ -153,7 +153,7 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
         emit Blocklisted(sender);
     }
 
-    // -------------------- View functions ---------------------------
+    // ------------------ View functions -------------------------- //
 
     /**
      * @dev Checks if an account is blocklisted.
@@ -164,7 +164,7 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
         return _getBlocklistableStorage().blocklisted[account];
     }
 
-    // -------------------- Private functions ------------------------
+    // ------------------ Private functions ----------------------- //
 
     /**
      * @dev Returns the contract storage structure.

@@ -16,7 +16,7 @@ contract ERC20TokenMock is ERC20Upgradeable, UUPSUpgradeable {
     /// @dev A special amount when the transfer functions should revert.
     uint256 public specialAmountToRevert;
 
-    // -------------------- Initializers -----------------------------
+    // ------------------ Initializers ---------------------------- //
 
     /**
      * @dev The initialize function of the upgradable contract.
@@ -32,7 +32,7 @@ contract ERC20TokenMock is ERC20Upgradeable, UUPSUpgradeable {
         _authorizeUpgrade(address(0));
     }
 
-    // -------------------- Functions --------------------------------
+    // ------------------ Functions ------------------------------- //
 
     /**
      * @dev Calls the appropriate internal function to mint needed amount of tokens for an account.
@@ -43,9 +43,7 @@ contract ERC20TokenMock is ERC20Upgradeable, UUPSUpgradeable {
         _mint(account, amount);
     }
 
-    /**
-     * @dev The variation of the standard transfer function that returns `false` if the special amount is passed.
-     */
+    /// @dev The variation of the standard transfer function that returns `false` if the special amount is passed.
     function transfer(address to, uint256 amount) public override returns (bool) {
         if (amount == specialAmountToRevert) {
             revert("ERC20TokenMock: The special amount has been used inside the 'transfer()' function");
@@ -56,9 +54,7 @@ contract ERC20TokenMock is ERC20Upgradeable, UUPSUpgradeable {
         }
     }
 
-    /**
-     * @dev The variation of the standard transfer from function that returns `false` if the special amount is passed.
-     */
+    /// @dev The variation of the standard transfer from function that returns `false` if the special amount is passed.
     function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
         if (amount == specialAmountToRevert) {
             revert("ERC20TokenMock: The special amount has been used inside the 'transferFrom()' function");
@@ -69,25 +65,19 @@ contract ERC20TokenMock is ERC20Upgradeable, UUPSUpgradeable {
         }
     }
 
-    /**
-     * @dev Configures the special amount when the transfer functions should return `false`.
-     */
+    /// @dev Configures the special amount when the transfer functions should return `false`.
     function setSpecialAmountToReturnFalse(uint256 newSpecialAmount) external {
         specialAmountToReturnFalse = newSpecialAmount;
     }
 
-    /**
-     * @dev Configures the special amount when the transfer functions should revert.
-     */
+    /// @dev Configures the special amount when the transfer functions should revert.
     function setSpecialAmountToRevert(uint256 newSpecialAmount) external {
         specialAmountToRevert = newSpecialAmount;
     }
 
-    // -------------------- Internal functions -----------------------
+    // ------------------ Internal functions ---------------------- //
 
-    /**
-     * @dev The upgrade authorization function for UUPSProxy.
-     */
+    /// @dev The upgrade authorization function for UUPSProxy.
     function _authorizeUpgrade(address newImplementation) internal pure override {
         newImplementation; // Suppresses a compiler warning about the unused variable
     }

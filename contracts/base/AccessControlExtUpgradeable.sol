@@ -14,7 +14,7 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
  * that is allowed to grant and revoke roles in batch.
  */
 abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
-    // -------------------- Initializers -----------------------------
+    // ------------------ Initializers ---------------------------- //
 
     /**
      * @dev The internal initializer of the upgradable contract.
@@ -36,7 +36,7 @@ abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
      */
     function __AccessControlExt_init_unchained() internal onlyInitializing {}
 
-    // -------------------- Functions --------------------------------
+    // ------------------ Functions ------------------------------- //
 
     /**
      * @dev Grants `role` to `account` in batch.
