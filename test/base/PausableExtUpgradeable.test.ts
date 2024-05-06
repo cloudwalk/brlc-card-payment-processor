@@ -1,9 +1,9 @@
 import { ethers, network, upgrades } from "hardhat";
 import { expect } from "chai";
 import { Contract, ContractFactory } from "ethers";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { proveTx } from "../../test-utils/eth";
+import { connect, proveTx } from "../../test-utils/eth";
 import { createRevertMessageDueToMissingRole } from "../../test-utils/misc";
 
 async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
@@ -18,13 +18,13 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
   const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING = "Initializable: contract is not initializing";
 
-  const ownerRole: string = ethers.utils.id("OWNER_ROLE");
-  const pauserRole: string = ethers.utils.id("PAUSER_ROLE");
+  const ownerRole: string = ethers.id("OWNER_ROLE");
+  const pauserRole: string = ethers.id("PAUSER_ROLE");
 
   let pausableExtMockFactory: ContractFactory;
 
-  let deployer: SignerWithAddress;
-  let pauser: SignerWithAddress;
+  let deployer: HardhatEthersSigner;
+  let pauser: HardhatEthersSigner;
 
   before(async () => {
     pausableExtMockFactory = await ethers.getContractFactory("PausableExtUpgradeableMock");
@@ -33,7 +33,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
 
   async function deployPausableExtMock(): Promise<{ pausableExtMock: Contract }> {
     const pausableExtMock: Contract = await upgrades.deployProxy(pausableExtMockFactory);
-    await pausableExtMock.deployed();
+    await pausableExtMock.waitForDeployment();
     return { pausableExtMock };
   }
 
@@ -52,7 +52,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
       expect((await pausableExtMock.PAUSER_ROLE()).toLowerCase()).to.equal(pauserRole);
 
       // The role admins
-      expect(await pausableExtMock.getRoleAdmin(ownerRole)).to.equal(ethers.constants.HashZero);
+      expect(await pausableExtMock.getRoleAdmin(ownerRole)).to.equal(ethers.ZeroHash);
       expect(await pausableExtMock.getRoleAdmin(pauserRole)).to.equal(ownerRole);
 
       // The deployer should have the owner role, but not the other roles
@@ -89,7 +89,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
     it("Executes successfully and emits the correct event", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
 
-      await expect(pausableExtMock.connect(pauser).pause())
+      await expect(connect(pausableExtMock, pauser).pause())
         .to.emit(pausableExtMock, "Paused")
         .withArgs(pauser.address);
 
@@ -107,9 +107,9 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
   describe("Function 'unpause()'", async () => {
     it("Executes successfully and emits the correct event", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
-      await proveTx(pausableExtMock.connect(pauser).pause());
+      await proveTx(connect(pausableExtMock, pauser).pause());
 
-      await expect(pausableExtMock.connect(pauser).unpause())
+      await expect(connect(pausableExtMock, pauser).unpause())
         .to.emit(pausableExtMock, "Unpaused")
         .withArgs(pauser.address);
 

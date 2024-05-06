@@ -1,9 +1,9 @@
 import { ethers, network, upgrades } from "hardhat";
 import { expect } from "chai";
 import { Contract, ContractFactory } from "ethers";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { proveTx } from "../../test-utils/eth";
+import { connect, proveTx } from "../../test-utils/eth";
 import { createRevertMessageDueToMissingRole } from "../../test-utils/misc";
 
 async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
@@ -25,14 +25,14 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
 
   const REVERT_ERROR_IF_ACCOUNT_IS_BLOCKLISTED = "BlocklistedAccount";
 
-  const ownerRole: string = ethers.utils.id("OWNER_ROLE");
-  const blocklisterRole: string = ethers.utils.id("BLOCKLISTER_ROLE");
+  const ownerRole: string = ethers.id("OWNER_ROLE");
+  const blocklisterRole: string = ethers.id("BLOCKLISTER_ROLE");
 
   let blocklistableMockFactory: ContractFactory;
 
-  let deployer: SignerWithAddress;
-  let blocklister: SignerWithAddress;
-  let user: SignerWithAddress;
+  let deployer: HardhatEthersSigner;
+  let blocklister: HardhatEthersSigner;
+  let user: HardhatEthersSigner;
 
   before(async () => {
     [deployer, blocklister, user] = await ethers.getSigners();
@@ -41,7 +41,7 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
 
   async function deployBlocklistableMock(): Promise<{ blocklistableMock: Contract }> {
     const blocklistableMock: Contract = await upgrades.deployProxy(blocklistableMockFactory);
-    await blocklistableMock.deployed();
+    await blocklistableMock.waitForDeployment();
 
     return { blocklistableMock };
   }
@@ -61,7 +61,7 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
       expect(await blocklistableMock.BLOCKLISTER_ROLE()).to.equal(blocklisterRole);
 
       // The role admins
-      expect(await blocklistableMock.getRoleAdmin(ownerRole)).to.equal(ethers.constants.HashZero);
+      expect(await blocklistableMock.getRoleAdmin(ownerRole)).to.equal(ethers.ZeroHash);
       expect(await blocklistableMock.getRoleAdmin(blocklisterRole)).to.equal(ownerRole);
 
       // The deployer should have the owner role, but not the other roles
@@ -96,14 +96,14 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
       const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(false);
 
-      await expect(blocklistableMock.connect(blocklister).blocklist(user.address))
+      await expect(connect(blocklistableMock, blocklister).blocklist(user.address))
         .to.emit(blocklistableMock, EVENT_NAME_BLOCKLISTED)
         .withArgs(user.address);
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(true);
 
       // Second call with the same argument should not emit an event
       await expect(
-        blocklistableMock.connect(blocklister).blocklist(user.address)
+        connect(blocklistableMock, blocklister).blocklist(user.address)
       ).not.to.emit(blocklistableMock, EVENT_NAME_BLOCKLISTED);
     });
   });
@@ -118,17 +118,17 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
   describe("Function 'unBlocklist()'", async () => {
     it("Executes as expected and emits the correct event if it is called by a blocklister", async () => {
       const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
-      await proveTx(blocklistableMock.connect(blocklister).blocklist(user.address));
+      await proveTx(connect(blocklistableMock, blocklister).blocklist(user.address));
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(true);
 
-      await expect(blocklistableMock.connect(blocklister).unBlocklist(user.address))
+      await expect(connect(blocklistableMock, blocklister).unBlocklist(user.address))
         .to.emit(blocklistableMock, EVENT_NAME_UNBLOCKLISTED)
         .withArgs(user.address);
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(false);
 
       // The second call with the same argument should not emit an event
       await expect(
-        blocklistableMock.connect(blocklister).unBlocklist(user.address)
+        connect(blocklistableMock, blocklister).unBlocklist(user.address)
       ).not.to.emit(blocklistableMock, EVENT_NAME_UNBLOCKLISTED);
     });
 
@@ -145,7 +145,7 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
       const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
       expect(await blocklistableMock.isBlocklisted(user.address)).to.equal(false);
 
-      await expect(blocklistableMock.connect(user).selfBlocklist())
+      await expect(connect(blocklistableMock, user).selfBlocklist())
         .to.emit(blocklistableMock, EVENT_NAME_BLOCKLISTED)
         .withArgs(user.address)
         .and.to.emit(blocklistableMock, EVENT_NAME_SELFBLOCKLISTED)
@@ -154,7 +154,7 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
 
       // Second call should not emit an event
       await expect(
-        blocklistableMock.connect(user).selfBlocklist()
+        connect(blocklistableMock, user).selfBlocklist()
       ).not.to.emit(blocklistableMock, EVENT_NAME_SELFBLOCKLISTED);
     });
   });
@@ -163,7 +163,7 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
     it("Reverts the target function if the caller is blocklisted", async () => {
       const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
 
-      await proveTx(blocklistableMock.connect(blocklister).blocklist(deployer.address));
+      await proveTx(connect(blocklistableMock, blocklister).blocklist(deployer.address));
       await expect(
         blocklistableMock.testNotBlocklistedModifier()
       ).to.be.revertedWithCustomError(blocklistableMock, REVERT_ERROR_IF_ACCOUNT_IS_BLOCKLISTED);
@@ -172,7 +172,7 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
     it("Does not revert the target function if the caller is not blocklisted", async () => {
       const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
       await expect(
-        blocklistableMock.connect(user).testNotBlocklistedModifier()
+        connect(blocklistableMock, user).testNotBlocklistedModifier()
       ).to.emit(blocklistableMock, EVENT_NAME_TEST_NOT_BLOCKLISTED_MODIFIER_SUCCEEDED);
     });
   });

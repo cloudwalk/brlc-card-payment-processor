@@ -1,10 +1,9 @@
 import { ethers, network, upgrades } from "hardhat";
 import { expect } from "chai";
-import { Contract, ContractFactory } from "ethers";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { Contract, ContractFactory, TransactionResponse } from "ethers";
+import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { proveTx } from "../../test-utils/eth";
-import { TransactionResponse } from "@ethersproject/abstract-provider";
+import { connect, proveTx } from "../../test-utils/eth";
 import { createRevertMessageDueToMissingRole } from "../../test-utils/misc";
 
 async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
@@ -22,13 +21,13 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
   const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const REVERT_MESSAGE_IF_CONTRACT_IS_NOT_INITIALIZING = "Initializable: contract is not initializing";
 
-  const ownerRole: string = ethers.utils.id("OWNER_ROLE");
-  const userRole: string = ethers.utils.id("USER_ROLE");
+  const ownerRole: string = ethers.id("OWNER_ROLE");
+  const userRole: string = ethers.id("USER_ROLE");
 
   let accessControlExtMockFactory: ContractFactory;
-  let deployer: SignerWithAddress;
-  let attacker: SignerWithAddress;
-  let users: SignerWithAddress[];
+  let deployer: HardhatEthersSigner;
+  let attacker: HardhatEthersSigner;
+  let users: HardhatEthersSigner[];
   let userAddresses: string[];
 
   before(async () => {
@@ -40,7 +39,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
 
   async function deployAccessControlExtMock(): Promise<{ accessControlExtMock: Contract }> {
     const accessControlExtMock: Contract = await upgrades.deployProxy(accessControlExtMockFactory);
-    await accessControlExtMock.deployed();
+    await accessControlExtMock.waitForDeployment();
     return { accessControlExtMock };
   }
 
@@ -53,7 +52,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
       expect((await accessControlExtMock.USER_ROLE()).toLowerCase()).to.equal(userRole);
 
       // The role admins
-      expect(await accessControlExtMock.getRoleAdmin(ownerRole)).to.equal(ethers.constants.HashZero);
+      expect(await accessControlExtMock.getRoleAdmin(ownerRole)).to.equal(ethers.ZeroHash);
       expect(await accessControlExtMock.getRoleAdmin(userRole)).to.equal(ownerRole);
 
       // The deployer should have the owner role, but not the other roles
@@ -135,7 +134,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
 
         await expect(
-          accessControlExtMock.connect(attacker).grantRoleBatch(userRole, [])
+          connect(accessControlExtMock, attacker).grantRoleBatch(userRole, [])
         ).to.be.revertedWith(createRevertMessageDueToMissingRole(attacker.address, ownerRole));
       });
     });
@@ -194,7 +193,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
           const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
 
           await expect(
-            accessControlExtMock.connect(attacker).revokeRoleBatch(userRole, [])
+            connect(accessControlExtMock, attacker).revokeRoleBatch(userRole, [])
           ).to.be.revertedWith(createRevertMessageDueToMissingRole(attacker.address, ownerRole));
         });
       });
