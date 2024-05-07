@@ -19,5 +19,5 @@ export function getAddress(contract: Contract): string {
   if (typeof address !== "string" || address.length != 42 || !address.startsWith("0x")) {
     throw new Error("The '.target' field of the contract is not an address string");
   }
-  return (address as string);
+  return address;
 }
