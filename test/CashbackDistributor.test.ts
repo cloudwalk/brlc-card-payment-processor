@@ -2,8 +2,8 @@ import { ethers, network, upgrades } from "hardhat";
 import { expect } from "chai";
 import { Block, Contract, ContractFactory, TransactionReceipt } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
-import { connect, getAddress, proveTx } from "../test-utils/eth";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { connect, getAddress, increaseBlockTimestamp, proveTx } from "../test-utils/eth";
 import { createBytesString, createRevertMessageDueToMissingRole } from "../test-utils/misc";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 
@@ -1310,13 +1310,13 @@ describe("Contract 'CashbackDistributor'", async () => {
         expectedCashbackSum: MAX_CASHBACK_FOR_PERIOD
       });
 
-      // The following part of the test is executed only for Hardhat network because we need to shift block time.
-      if (network.name !== "hardhat") {
+      // The following part of the test is executed only for some networks because we need to shift block time.
+      if (network.name !== "hardhat" && network.name !== "stratus") {
         return;
       }
 
       // Shift next block time for a period of cap checking.
-      await time.increase(CASHBACK_RESET_PERIOD);
+      await increaseBlockTimestamp(CASHBACK_RESET_PERIOD);
 
       // Check that next cashback sending executes successfully due to the cap period resets
       cashbacks[4].sentAmount = cashbacks[4].requestedAmount;
