@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { Contract, ContractFactory } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { proveTx } from "../../test-utils/eth";
+import { connect, proveTx } from "../../test-utils/eth";
 
 async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
   if (network.name === "hardhat") {
@@ -120,7 +120,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
         tokenMockAddress
       } = await setUpFixture(deployAndConfigureAllContracts);
 
-      const rescuableMockConnected = rescuableMock.connect(rescuer) as Contract;
+      const rescuableMockConnected = connect(rescuableMock, rescuer);
       const tx = rescuableMockConnected.rescueERC20(tokenMockAddress, deployer.address, TOKEN_AMOUNT);
       await expect(tx).to.changeTokenBalances(
         tokenMock,

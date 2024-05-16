@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { Contract, ContractFactory, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { proveTx } from "../../test-utils/eth";
+import { connect, proveTx } from "../../test-utils/eth";
 
 async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
   if (network.name === "hardhat") {
@@ -134,7 +134,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
 
         await expect(
-          (accessControlExtMock.connect(attacker) as Contract).grantRoleBatch(userRole, [])
+          connect(accessControlExtMock, attacker).grantRoleBatch(userRole, [])
         ).to.be.revertedWithCustomError(
           accessControlExtMock,
           REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
@@ -196,7 +196,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
           const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
 
           await expect(
-            (accessControlExtMock.connect(attacker) as Contract).revokeRoleBatch(userRole, [])
+            connect(accessControlExtMock, attacker).revokeRoleBatch(userRole, [])
           ).to.be.revertedWithCustomError(
             accessControlExtMock,
             REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT

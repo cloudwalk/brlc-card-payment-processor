@@ -4,7 +4,7 @@ import { Block, Contract, ContractFactory, TransactionReceipt, TransactionRespon
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
-import { proveTx } from "../test-utils/eth";
+import { connect, proveTx } from "../test-utils/eth";
 import { createBytesString } from "../test-utils/misc";
 import { checkEventField, checkEventFieldNotEqual, EventFieldCheckingOptions } from "../test-utils/checkers";
 
@@ -1632,15 +1632,15 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     await proveTx(cardPaymentProcessor.grantRole(executorRole, executor.address));
     await proveTx(cardPaymentProcessor.grantRole(pauserRole, deployer.address));
     await proveTx(cardPaymentProcessor.setCashbackTreasury(cashbackTreasury.address));
-    await proveTx((tokenMock.connect(cashbackTreasury) as Contract).approve(cardPaymentProcessorAddress, MAX_UINT256));
+    await proveTx(connect(tokenMock, cashbackTreasury).approve(cardPaymentProcessorAddress, MAX_UINT256));
     await proveTx(cardPaymentProcessor.setCashbackRate(CASHBACK_RATE_DEFAULT));
 
     await proveTx(cardPaymentProcessor.setCashOutAccount(cashOutAccount.address));
-    await proveTx((tokenMock.connect(cashOutAccount) as Contract).approve(cardPaymentProcessorAddress, MAX_UINT256));
+    await proveTx(connect(tokenMock, cashOutAccount).approve(cardPaymentProcessorAddress, MAX_UINT256));
 
     await proveTx(tokenMock.mint(cashbackTreasury.address, MAX_INT256));
     await proveTx(tokenMock.mint(sponsor.address, INITIAL_SPONSOR_BALANCE));
-    await proveTx((tokenMock.connect(sponsor) as Contract).approve(cardPaymentProcessorAddress, MAX_UINT256));
+    await proveTx(connect(tokenMock, sponsor).approve(cardPaymentProcessorAddress, MAX_UINT256));
 
     await proveTx(cardPaymentProcessor.enableCashback());
 
@@ -1817,7 +1817,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
-        (cardPaymentProcessor.connect(user1) as Contract).setCashOutAccount(cashOutAccount.address)
+        connect(cardPaymentProcessor, user1).setCashOutAccount(cashOutAccount.address)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
@@ -1877,7 +1877,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
-        (cardPaymentProcessor.connect(user1) as Contract).setCashbackTreasury(CASHBACK_TREASURY_ADDRESS_STUB1)
+        connect(cardPaymentProcessor, user1).setCashbackTreasury(CASHBACK_TREASURY_ADDRESS_STUB1)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
@@ -1933,7 +1933,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
-        (cardPaymentProcessor.connect(user1) as Contract).setCashbackRate(CASHBACK_RATE_DEFAULT)
+        connect(cardPaymentProcessor, user1).setCashbackRate(CASHBACK_RATE_DEFAULT)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
@@ -1975,7 +1975,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
-        (cardPaymentProcessor.connect(user1) as Contract).enableCashback()
+        connect(cardPaymentProcessor, user1).enableCashback()
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
@@ -2020,7 +2020,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
-        (cardPaymentProcessor.connect(user1) as Contract).disableCashback()
+        connect(cardPaymentProcessor, user1).disableCashback()
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
@@ -4184,7 +4184,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const paymentIds = payments.map(payment => payment.id);
 
       await expect(
-        (cardPaymentProcessor.connect(executor) as Contract).revokePayment(paymentIds[0])
+        connect(cardPaymentProcessor, executor).revokePayment(paymentIds[0])
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS
@@ -4194,7 +4194,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       );
 
       await expect(
-        (cardPaymentProcessor.connect(executor) as Contract).reversePayment(paymentIds[0])
+        connect(cardPaymentProcessor, executor).reversePayment(paymentIds[0])
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS
@@ -4204,7 +4204,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       );
 
       await expect(
-        (cardPaymentProcessor.connect(executor) as Contract).confirmPayment(paymentIds[0], ZERO_CONFIRMATION_AMOUNT)
+        connect(cardPaymentProcessor, executor).confirmPayment(paymentIds[0], ZERO_CONFIRMATION_AMOUNT)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS
@@ -4221,7 +4221,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       });
 
       await expect(
-        (cardPaymentProcessor.connect(executor) as Contract).confirmPayments(paymentConfirmations)
+        connect(cardPaymentProcessor, executor).confirmPayments(paymentConfirmations)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS
@@ -4231,7 +4231,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       );
 
       await expect(
-        (cardPaymentProcessor.connect(executor) as Contract).updatePayment(
+        connect(cardPaymentProcessor, executor).updatePayment(
           paymentIds[0],
           payments[0].baseAmount,
           payments[0].extraAmount
@@ -4245,7 +4245,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       );
 
       await expect(
-        (cardPaymentProcessor.connect(executor) as Contract).updateLazyAndConfirmPayment(
+        connect(cardPaymentProcessor, executor).updateLazyAndConfirmPayment(
           paymentIds[0],
           payments[0].baseAmount,
           payments[0].extraAmount,
@@ -4260,7 +4260,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       );
 
       await expect(
-        (cardPaymentProcessor.connect(executor) as Contract).refundPayment(
+        connect(cardPaymentProcessor, executor).refundPayment(
           paymentIds[0],
           ZERO_REFUND_AMOUNT
         )
