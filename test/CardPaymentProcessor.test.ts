@@ -1,12 +1,11 @@
 import { ethers, network, upgrades } from "hardhat";
 import { expect } from "chai";
-import { Block, Contract, ContractFactory } from "ethers";
+import { Block, Contract, ContractFactory, TransactionReceipt, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
 import { proveTx } from "../test-utils/eth";
 import { createBytesString } from "../test-utils/misc";
-import { TransactionReceipt, TransactionResponse } from "@ethersproject/abstract-provider";
 import { checkEventField, checkEventFieldNotEqual, EventFieldCheckingOptions } from "../test-utils/checkers";
 
 const MAX_UINT256 = ethers.MaxUint256;

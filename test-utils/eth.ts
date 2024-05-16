@@ -1,6 +1,10 @@
-import { TransactionReceipt, TransactionResponse } from "@ethersproject/abstract-provider";
+import { TransactionReceipt, TransactionResponse } from "ethers";
 
 export async function proveTx(txResponsePromise: Promise<TransactionResponse>): Promise<TransactionReceipt> {
-  const txReceipt = await txResponsePromise;
-  return txReceipt.wait();
+  const txResponse = await txResponsePromise;
+  const txReceipt = await txResponse.wait();
+  if (!txReceipt) {
+    throw new Error("The transaction receipt is empty");
+  }
+  return txReceipt as TransactionReceipt;
 }
