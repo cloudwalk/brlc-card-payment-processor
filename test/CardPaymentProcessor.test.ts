@@ -4,7 +4,7 @@ import { Block, Contract, ContractFactory, TransactionReceipt, TransactionRespon
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
-import { connect, proveTx } from "../test-utils/eth";
+import { connect, getAddress, proveTx } from "../test-utils/eth";
 import { createBytesString } from "../test-utils/misc";
 import { checkEventField, checkEventFieldNotEqual, EventFieldCheckingOptions } from "../test-utils/checkers";
 
@@ -174,8 +174,6 @@ interface PaymentOperation {
 interface Fixture {
   cardPaymentProcessor: Contract;
   tokenMock: Contract;
-  cardPaymentProcessorAddress: string;
-  tokenMockAddress: string;
 }
 
 interface AmountParts {
@@ -811,18 +809,15 @@ interface OperationConditions {
 
 class CardPaymentProcessorShell {
   contract: Contract;
-  contractAddress: string;
   model: CardPaymentProcessorModel;
   executor: HardhatEthersSigner;
 
   constructor(props: {
     cardPaymentProcessorContract: Contract;
-    cardPaymentProcessorContractAddress: string;
     cardPaymentProcessorModel: CardPaymentProcessorModel;
     executor: HardhatEthersSigner;
   }) {
     this.contract = props.cardPaymentProcessorContract;
-    this.contractAddress = props.cardPaymentProcessorContractAddress;
     this.model = props.cardPaymentProcessorModel;
     this.executor = props.executor;
   }
@@ -1025,7 +1020,6 @@ class TestContext {
     this.tokenMock = props.fixture.tokenMock;
     this.cardPaymentProcessorShell = new CardPaymentProcessorShell({
       cardPaymentProcessorContract: props.fixture.cardPaymentProcessor,
-      cardPaymentProcessorContractAddress: props.fixture.cardPaymentProcessorAddress,
       cardPaymentProcessorModel: new CardPaymentProcessorModel({
         cashbackRate: props.cashbackRateInPermil,
         cashbackEnabled: props.cashbackEnabled
@@ -1043,12 +1037,12 @@ class TestContext {
       await proveTx(this.tokenMock.mint(account.address, INITIAL_USER_BALANCE));
       const allowance: bigint = await this.tokenMock.allowance(
         account.address,
-        this.cardPaymentProcessorShell.contractAddress
+        getAddress(this.cardPaymentProcessorShell.contract)
       );
       if (allowance < MAX_UINT256) {
         await proveTx(
           (this.tokenMock.connect(account) as Contract).approve(
-            this.cardPaymentProcessorShell.contractAddress,
+            getAddress(this.cardPaymentProcessorShell.contract),
             MAX_UINT256
           )
         );
@@ -1479,7 +1473,7 @@ class TestContext {
 
   async #checkTokenBalances() {
     expect(
-      await this.tokenMock.balanceOf(this.cardPaymentProcessorShell.contractAddress)
+      await this.tokenMock.balanceOf(getAddress(this.cardPaymentProcessorShell.contract))
     ).to.equal(
       this.cardPaymentProcessorShell.model.totalBalance,
       `The card payment processor token balance is wrong`
@@ -1587,68 +1581,55 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     [deployer, cashOutAccount, cashbackTreasury, executor, sponsor, user1, user2] = await ethers.getSigners();
   });
 
-  async function deployTokenMock(): Promise<{ tokenMock: Contract; tokenMockAddress: string }> {
+  async function deployTokenMock(): Promise<{ tokenMock: Contract }> {
     const name = "ERC20 Test";
     const symbol = "TEST";
 
     const tokenMock: Contract = await upgrades.deployProxy(tokenMockFactory, [name, symbol]);
     await tokenMock.waitForDeployment();
-    const tokenMockAddress = await tokenMock.getAddress();
 
-    return { tokenMock, tokenMockAddress };
+    return { tokenMock };
   }
 
   async function deployTokenMockAndCardPaymentProcessor(): Promise<{
     cardPaymentProcessor: Contract;
     tokenMock: Contract;
-    cardPaymentProcessorAddress: string;
-    tokenMockAddress: string;
   }> {
-    const { tokenMock, tokenMockAddress } = await deployTokenMock();
+    const { tokenMock } = await deployTokenMock();
 
     const cardPaymentProcessor: Contract = await upgrades.deployProxy(
       cardPaymentProcessorFactory,
-      [tokenMockAddress]
+      [getAddress(tokenMock)]
     );
     await cardPaymentProcessor.waitForDeployment();
-    const cardPaymentProcessorAddress = await cardPaymentProcessor.getAddress();
 
     return {
       cardPaymentProcessor,
-      tokenMock,
-      cardPaymentProcessorAddress,
-      tokenMockAddress
+      tokenMock
     };
   }
 
   async function deployAndConfigureAllContracts(): Promise<Fixture> {
-    const {
-      cardPaymentProcessor,
-      tokenMock,
-      cardPaymentProcessorAddress,
-      tokenMockAddress
-    } = await deployTokenMockAndCardPaymentProcessor();
+    const { cardPaymentProcessor, tokenMock } = await deployTokenMockAndCardPaymentProcessor();
 
     await proveTx(cardPaymentProcessor.grantRole(executorRole, executor.address));
     await proveTx(cardPaymentProcessor.grantRole(pauserRole, deployer.address));
     await proveTx(cardPaymentProcessor.setCashbackTreasury(cashbackTreasury.address));
-    await proveTx(connect(tokenMock, cashbackTreasury).approve(cardPaymentProcessorAddress, MAX_UINT256));
+    await proveTx(connect(tokenMock, cashbackTreasury).approve(getAddress(cardPaymentProcessor), MAX_UINT256));
     await proveTx(cardPaymentProcessor.setCashbackRate(CASHBACK_RATE_DEFAULT));
 
     await proveTx(cardPaymentProcessor.setCashOutAccount(cashOutAccount.address));
-    await proveTx(connect(tokenMock, cashOutAccount).approve(cardPaymentProcessorAddress, MAX_UINT256));
+    await proveTx(connect(tokenMock, cashOutAccount).approve(getAddress(cardPaymentProcessor), MAX_UINT256));
 
     await proveTx(tokenMock.mint(cashbackTreasury.address, MAX_INT256));
     await proveTx(tokenMock.mint(sponsor.address, INITIAL_SPONSOR_BALANCE));
-    await proveTx(connect(tokenMock, sponsor).approve(cardPaymentProcessorAddress, MAX_UINT256));
+    await proveTx(connect(tokenMock, sponsor).approve(getAddress(cardPaymentProcessor), MAX_UINT256));
 
     await proveTx(cardPaymentProcessor.enableCashback());
 
     return {
       cardPaymentProcessor,
-      tokenMock,
-      cardPaymentProcessorAddress,
-      tokenMockAddress
+      tokenMock
     };
   }
 
@@ -1697,10 +1678,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
   describe("Function 'initialize()'", async () => {
     it("Configures the contract as expected", async () => {
-      const { cardPaymentProcessor, tokenMockAddress } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+      const { cardPaymentProcessor, tokenMock } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
 
       // The underlying contract address
-      expect(await cardPaymentProcessor.token()).to.equal(tokenMockAddress);
+      expect(await cardPaymentProcessor.token()).to.equal(getAddress(tokenMock));
 
       // The admins of roles
       expect(await cardPaymentProcessor.getRoleAdmin(ownerRole)).to.equal(ownerRole);
@@ -1738,9 +1719,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
 
     it("Is reverted if it is called a second time", async () => {
-      const { cardPaymentProcessor, tokenMockAddress } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+      const { cardPaymentProcessor, tokenMock } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
-        cardPaymentProcessor.initialize(tokenMockAddress)
+        cardPaymentProcessor.initialize(getAddress(tokenMock))
       ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID);
     });
 
@@ -1764,10 +1745,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       );
 
       // Use the 'upgradeTo()' function only to provide 100 % test coverage
-      const newImplementation = await cardPaymentProcessorFactory.deploy();
+      const newImplementation = await cardPaymentProcessorFactory.deploy() as Contract;
       await newImplementation.waitForDeployment();
-      const newImplementationAddress = await newImplementation.getAddress();
-      await proveTx(cardPaymentProcessor.upgradeTo(newImplementationAddress));
+      await proveTx(cardPaymentProcessor.upgradeTo(getAddress(newImplementation)));
     });
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
@@ -1840,13 +1820,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
   describe("Function 'setCashbackTreasury()'", async () => {
     it("Executes as expected and emits the correct event", async () => {
-      const {
-        cardPaymentProcessor,
-        tokenMock,
-        cardPaymentProcessorAddress
-      } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+      const { cardPaymentProcessor, tokenMock, } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       expect(
-        await tokenMock.allowance(cardPaymentProcessorAddress, CASHBACK_TREASURY_ADDRESS_STUB1)
+        await tokenMock.allowance(getAddress(cardPaymentProcessor), CASHBACK_TREASURY_ADDRESS_STUB1)
       ).to.equal(0);
 
       await expect(
