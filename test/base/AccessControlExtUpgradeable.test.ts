@@ -31,15 +31,19 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
   let userAddresses: string[];
 
   before(async () => {
-    accessControlExtMockFactory = await ethers.getContractFactory("AccessControlExtUpgradeableMock");
     [deployer, attacker, ...users] = await ethers.getSigners();
+    accessControlExtMockFactory = await ethers.getContractFactory("AccessControlExtUpgradeableMock");
+    // Explicitly specifying the deployer account
+    accessControlExtMockFactory = accessControlExtMockFactory.connect(deployer);
 
     userAddresses = [users[0].address, users[1].address, users[2].address];
   });
 
   async function deployAccessControlExtMock(): Promise<{ accessControlExtMock: Contract }> {
-    const accessControlExtMock: Contract = await upgrades.deployProxy(accessControlExtMockFactory);
+    let accessControlExtMock: Contract = await upgrades.deployProxy(accessControlExtMockFactory);
     await accessControlExtMock.waitForDeployment();
+    accessControlExtMock = connect(accessControlExtMock, deployer); // Explicitly specifying the initial account
+
     return { accessControlExtMock };
   }
 

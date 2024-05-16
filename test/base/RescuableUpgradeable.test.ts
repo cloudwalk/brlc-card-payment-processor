@@ -32,21 +32,28 @@ describe("Contract 'RescuableUpgradeable'", async () => {
   let rescuer: HardhatEthersSigner;
 
   before(async () => {
-    rescuableMockFactory = await ethers.getContractFactory("RescuableUpgradeableMock");
-    tokenMockFactory = await ethers.getContractFactory("ERC20TokenMock");
-
     [deployer, rescuer] = await ethers.getSigners();
+
+    // Contract factories with the explicitly specified deployer account
+    rescuableMockFactory = await ethers.getContractFactory("RescuableUpgradeableMock");
+    rescuableMockFactory = rescuableMockFactory.connect(deployer);
+    tokenMockFactory = await ethers.getContractFactory("ERC20TokenMock");
+    tokenMockFactory = tokenMockFactory.connect(deployer);
   });
 
   async function deployRescuableMock(): Promise<{ rescuableMock: Contract }> {
-    const rescuableMock: Contract = await upgrades.deployProxy(rescuableMockFactory);
+    let rescuableMock: Contract = await upgrades.deployProxy(rescuableMockFactory);
     await rescuableMock.waitForDeployment();
+    rescuableMock = connect(rescuableMock, deployer); // Explicitly specifying the initial account
+
     return { rescuableMock };
   }
 
   async function deployTokenMock(): Promise<{ tokenMock: Contract }> {
-    const tokenMock: Contract = await upgrades.deployProxy(tokenMockFactory, ["ERC20 Test", "TEST"]);
+    let tokenMock: Contract = await upgrades.deployProxy(tokenMockFactory, ["ERC20 Test", "TEST"]);
     await tokenMock.waitForDeployment();
+    tokenMock = connect(tokenMock, deployer); // Explicitly specifying the initial account
+
     return { tokenMock };
   }
 

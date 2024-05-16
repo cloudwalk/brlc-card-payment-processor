@@ -27,19 +27,22 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
   let pauser: HardhatEthersSigner;
 
   before(async () => {
-    pausableExtMockFactory = await ethers.getContractFactory("PausableExtUpgradeableMock");
     [deployer, pauser] = await ethers.getSigners();
+    pausableExtMockFactory = await ethers.getContractFactory("PausableExtUpgradeableMock");
+    pausableExtMockFactory = pausableExtMockFactory.connect(deployer); // Explicitly specifying the deployer account
   });
 
   async function deployPausableExtMock(): Promise<{ pausableExtMock: Contract }> {
-    const pausableExtMock: Contract = await upgrades.deployProxy(pausableExtMockFactory);
+    let pausableExtMock: Contract = await upgrades.deployProxy(pausableExtMockFactory);
     await pausableExtMock.waitForDeployment();
+    pausableExtMock = connect(pausableExtMock, deployer); // Explicitly specifying the initial account
     return { pausableExtMock };
   }
 
   async function deployAndConfigurePausableExtMock(): Promise<{ pausableExtMock: Contract }> {
     const { pausableExtMock } = await deployPausableExtMock();
     await proveTx(pausableExtMock.grantRole(pauserRole, pauser.address));
+
     return { pausableExtMock };
   }
 
