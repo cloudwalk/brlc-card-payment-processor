@@ -1,10 +1,10 @@
 import { ethers, network, upgrades } from "hardhat";
 import { expect } from "chai";
-import { Block, Contract, ContractFactory, TransactionReceipt, TransactionResponse } from "ethers";
+import { Contract, ContractFactory, TransactionReceipt, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
-import { connect, getAddress, proveTx } from "../test-utils/eth";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { connect, getAddress, getTxTimestamp, increaseBlockTimestamp, proveTx } from "../test-utils/eth";
 import { createBytesString } from "../test-utils/misc";
 import { checkEventField, checkEventFieldNotEqual, EventFieldCheckingOptions } from "../test-utils/checkers";
 
@@ -4803,8 +4803,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       // Check initial cashback state for the account after the first cashback transfer
       const operationResult1 = await cardPaymentProcessorShell.makePaymentFor(payment);
-      const block1: Block | null = await ethers.provider.getBlock(operationResult1.txReceipt.blockNumber);
-      const expectedCapPeriodStartTime1 = block1?.timestamp ?? 0;
+      const expectedCapPeriodStartTime1 = await getTxTimestamp(operationResult1.tx);
       await checkAccountCashbackState(context, expectedCapPeriodStartTime1);
 
       // Reach the cashback cap first time.
@@ -4820,12 +4819,12 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await checkAccountCashbackState(context, expectedCapPeriodStartTime1);
 
       // The following part of the test is executed only for Hardhat network because we need to shift block time
-      if (network.name !== "hardhat") {
+      if (network.name !== "hardhat" && network.name !== "stratus") {
         return;
       }
 
       // Shift next block time for a period of cap checking
-      await time.increase(CASHBACK_CAP_RESET_PERIOD);
+      await increaseBlockTimestamp(CASHBACK_CAP_RESET_PERIOD);
 
       // Set new start amount for the cashback cap checking in the model
       cardPaymentProcessorShell.model.capPeriodStartAmount =
@@ -4834,8 +4833,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       // Check that next cashback sending executes successfully due to the cap period resets
       payment.id = context.payments[1].id;
       const operationResult2 = await cardPaymentProcessorShell.makePaymentFor(payment);
-      const block2: Block | null = await ethers.provider.getBlock(operationResult2.txReceipt.blockNumber);
-      const expectedCapPeriodStartTime2 = block2?.timestamp ?? 0;
+      const expectedCapPeriodStartTime2 = await getTxTimestamp(operationResult2.tx);
       await checkAccountCashbackState(context, expectedCapPeriodStartTime2);
 
       // Revoke the very first cashback and check that the cap-related values are changed properly
