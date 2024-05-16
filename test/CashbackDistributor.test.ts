@@ -205,25 +205,30 @@ describe("Contract 'CashbackDistributor'", async () => {
   let user: HardhatEthersSigner;
 
   before(async () => {
-    cashbackDistributorFactory = await ethers.getContractFactory("CashbackDistributor");
-    tokenMockFactory = await ethers.getContractFactory("ERC20TokenMock");
-
     [deployer, distributor, user] = await ethers.getSigners();
+
+    // Contract factories with the explicitly specified deployer account
+    cashbackDistributorFactory = await ethers.getContractFactory("CashbackDistributor");
+    cashbackDistributorFactory = cashbackDistributorFactory.connect(deployer);
+    tokenMockFactory = await ethers.getContractFactory("ERC20TokenMock");
+    tokenMockFactory = tokenMockFactory.connect(deployer);
   });
 
   async function deployTokenMock(nameSuffix: string): Promise<Contract> {
     const name = "ERC20 Test" + nameSuffix;
     const symbol = "TEST" + nameSuffix;
 
-    const tokenMock: Contract = await upgrades.deployProxy(tokenMockFactory, [name, symbol]);
+    let tokenMock: Contract = await upgrades.deployProxy(tokenMockFactory, [name, symbol]);
     await tokenMock.waitForDeployment();
+    tokenMock = connect(tokenMock, deployer); // Explicitly specifying the initial account
 
     return tokenMock;
   }
 
   async function deployCashbackDistributor(): Promise<{ cashbackDistributor: Contract }> {
-    const cashbackDistributor: Contract = await upgrades.deployProxy(cashbackDistributorFactory);
+    let cashbackDistributor: Contract = await upgrades.deployProxy(cashbackDistributorFactory);
     await cashbackDistributor.waitForDeployment();
+    cashbackDistributor = connect(cashbackDistributor, deployer);
 
     return { cashbackDistributor };
   }

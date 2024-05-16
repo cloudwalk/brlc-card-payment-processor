@@ -1953,19 +1953,24 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   let user2: HardhatEthersSigner;
 
   before(async () => {
-    cardPaymentProcessorFactory = await ethers.getContractFactory("CardPaymentProcessor");
-    cashbackDistributorMockFactory = await ethers.getContractFactory("CashbackDistributorMock");
-    tokenMockFactory = await ethers.getContractFactory("ERC20TokenMock");
-
     [deployer, cashOutAccount, executor, sponsor, user1, user2] = await ethers.getSigners();
+
+    // Contract factories with the explicitly specified deployer account
+    cardPaymentProcessorFactory = await ethers.getContractFactory("CardPaymentProcessor");
+    cardPaymentProcessorFactory = cardPaymentProcessorFactory.connect(deployer);
+    cashbackDistributorMockFactory = await ethers.getContractFactory("CashbackDistributorMock");
+    cashbackDistributorMockFactory = cashbackDistributorMockFactory.connect(deployer);
+    tokenMockFactory = await ethers.getContractFactory("ERC20TokenMock");
+    tokenMockFactory = tokenMockFactory.connect(deployer);
   });
 
   async function deployTokenMock(): Promise<{ tokenMock: Contract }> {
     const name = "ERC20 Test";
     const symbol = "TEST";
 
-    const tokenMock: Contract = await upgrades.deployProxy(tokenMockFactory, [name, symbol]);
+    let tokenMock: Contract = await upgrades.deployProxy(tokenMockFactory, [name, symbol]);
     await tokenMock.waitForDeployment();
+    tokenMock = connect(tokenMock, deployer); // Explicitly specifying the initial account
 
     return { tokenMock };
   }
@@ -1976,9 +1981,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   }> {
     const { tokenMock } = await deployTokenMock();
 
-    const cardPaymentProcessor: Contract =
+    let cardPaymentProcessor: Contract =
       await upgrades.deployProxy(cardPaymentProcessorFactory, [getAddress(tokenMock)]);
     await cardPaymentProcessor.waitForDeployment();
+    cardPaymentProcessor = connect(cardPaymentProcessor, deployer); // Explicitly specifying the initial account
 
     return {
       cardPaymentProcessor,
@@ -1999,7 +2005,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       increaseCashbackAmountResult: -1
     };
 
-    const cashbackDistributorMock: Contract = await cashbackDistributorMockFactory.deploy(
+    let cashbackDistributorMock: Contract = await cashbackDistributorMockFactory.deploy(
       cashbackDistributorMockConfig.sendCashbackSuccessResult,
       cashbackDistributorMockConfig.sendCashbackAmountResult,
       cashbackDistributorMockConfig.sendCashbackNonceResult,
@@ -2008,6 +2014,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       cashbackDistributorMockConfig.increaseCashbackAmountResult
     ) as Contract;
     await cashbackDistributorMock.waitForDeployment();
+    cashbackDistributorMock = connect(cashbackDistributorMock, deployer); // Explicitly specifying the initial account
 
     return {
       cashbackDistributorMock,

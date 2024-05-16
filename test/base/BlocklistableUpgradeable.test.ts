@@ -37,11 +37,14 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
   before(async () => {
     [deployer, blocklister, user] = await ethers.getSigners();
     blocklistableMockFactory = await ethers.getContractFactory("BlocklistableUpgradeableMock");
+    // Explicitly specifying the deployer account
+    blocklistableMockFactory = blocklistableMockFactory.connect(deployer);
   });
 
   async function deployBlocklistableMock(): Promise<{ blocklistableMock: Contract }> {
-    const blocklistableMock: Contract = await upgrades.deployProxy(blocklistableMockFactory);
+    let blocklistableMock: Contract = await upgrades.deployProxy(blocklistableMockFactory);
     await blocklistableMock.waitForDeployment();
+    blocklistableMock = connect(blocklistableMock, deployer); // Explicitly specifying the initial account
 
     return { blocklistableMock };
   }
