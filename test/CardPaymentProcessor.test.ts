@@ -1823,7 +1823,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
   describe("Function 'setCashbackTreasury()'", async () => {
     it("Executes as expected and emits the correct event", async () => {
-      const { cardPaymentProcessor, tokenMock, } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+      const { cardPaymentProcessor, tokenMock } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       expect(
         await tokenMock.allowance(getAddress(cardPaymentProcessor), CASHBACK_TREASURY_ADDRESS_STUB1)
       ).to.equal(0);

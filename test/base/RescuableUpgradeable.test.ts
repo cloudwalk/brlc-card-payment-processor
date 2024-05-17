@@ -69,7 +69,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
 
     return {
       rescuableMock,
-      tokenMock,
+      tokenMock
     };
   }
 
