@@ -1,7 +1,30 @@
-import { ethers, network } from "hardhat";
-import { BaseContract, BlockTag, Contract, TransactionReceipt, TransactionResponse } from "ethers";
+import { ethers, upgrades, network } from "hardhat";
+import { BaseContract, BlockTag, Contract, ContractFactory, TransactionReceipt, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { expect } from "chai";
+
+export async function checkContractUupsUpgrading(
+  contract: Contract,
+  contractFactory: ContractFactory,
+  upgradeFunctionSignature: string = "upgradeToAndCall(address,bytes)"
+) {
+  const contractAddress = await contract.getAddress();
+  const oldImplementationAddress = await upgrades.erc1967.getImplementationAddress(contractAddress);
+  const newImplementation = await contractFactory.deploy();
+  await newImplementation.waitForDeployment();
+  const expectedNewImplementationAddress = await newImplementation.getAddress();
+
+  if (upgradeFunctionSignature === "upgradeToAndCall(address,bytes)") {
+    await proveTx(contract[upgradeFunctionSignature](expectedNewImplementationAddress, "0x"));
+  } else {
+    await proveTx(contract[upgradeFunctionSignature](expectedNewImplementationAddress));
+  }
+
+  const actualNewImplementationAddress = await upgrades.erc1967.getImplementationAddress(contractAddress);
+  expect(actualNewImplementationAddress).to.eq(expectedNewImplementationAddress);
+  expect(actualNewImplementationAddress).not.to.eq(oldImplementationAddress);
+}
 
 export function connect(contract: BaseContract, signer: HardhatEthersSigner): Contract {
   return contract.connect(signer) as Contract;

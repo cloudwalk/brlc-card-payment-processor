@@ -4,7 +4,14 @@ import { Contract, ContractFactory, TransactionReceipt, TransactionResponse } fr
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { connect, getAddress, getTxTimestamp, increaseBlockTimestamp, proveTx } from "../test-utils/eth";
+import {
+  checkContractUupsUpgrading,
+  connect,
+  getAddress,
+  getTxTimestamp,
+  increaseBlockTimestamp,
+  proveTx
+} from "../test-utils/eth";
 import { createBytesString } from "../test-utils/misc";
 import { checkEventField, checkEventFieldNotEqual, EventFieldCheckingOptions } from "../test-utils/checkers";
 
@@ -1738,32 +1745,31 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Upgrading", async () => {
-    it("Executes as expected if it is called by an owner", async () => {
+  describe("Function 'upgradeToAndCall()'", async () => {
+    it("Executes as expected", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
-      await upgrades.upgradeProxy(
-        cardPaymentProcessor,
-        cardPaymentProcessorFactory.connect(deployer),
-        { redeployImplementation: "always" }
-      );
-
-      // Use the 'upgradeTo()' function only to provide 100 % test coverage
-      const newImplementation = await cardPaymentProcessorFactory.deploy() as Contract;
-      await newImplementation.waitForDeployment();
-      await proveTx(cardPaymentProcessor.upgradeTo(getAddress(newImplementation)));
+      await checkContractUupsUpgrading(cardPaymentProcessor, cardPaymentProcessorFactory);
     });
-    it("Is reverted if the caller does not have the owner role", async () => {
+
+    it("Is reverted if the caller is not the owner", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
-      await expect(
-        upgrades.upgradeProxy(
-          cardPaymentProcessor,
-          cardPaymentProcessorFactory.connect(user1),
-          { redeployImplementation: "always" }
-        )
-      ).to.be.revertedWithCustomError(
-        cardPaymentProcessor,
-        REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
-      ).withArgs(user1.address, ownerRole);
+
+      await expect(connect(cardPaymentProcessor, user1).upgradeToAndCall(user1.address, "0x"))
+        .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
+    });
+  });
+
+  describe("Function 'upgradeTo()'", async () => {
+    it("Executes as expected", async () => {
+      const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+      await checkContractUupsUpgrading(cardPaymentProcessor, cardPaymentProcessorFactory, "upgradeTo(address)");
+    });
+
+    it("Is reverted if the caller is not the owner", async () => {
+      const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+
+      await expect(connect(cardPaymentProcessor, user1).upgradeTo(user1.address))
+        .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
     });
   });
 
