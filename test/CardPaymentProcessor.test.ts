@@ -1595,7 +1595,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     const name = "ERC20 Test";
     const symbol = "TEST";
 
-    let tokenMock: Contract = await upgrades.deployProxy(tokenMockFactory, [name, symbol]);
+    let tokenMock: Contract = await tokenMockFactory.deploy(name, symbol) as Contract;
     await tokenMock.waitForDeployment();
     tokenMock = connect(tokenMock, deployer); // Explicitly specifying the initial account
 

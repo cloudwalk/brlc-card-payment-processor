@@ -50,7 +50,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
   }
 
   async function deployTokenMock(): Promise<{ tokenMock: Contract }> {
-    let tokenMock: Contract = await upgrades.deployProxy(tokenMockFactory, ["ERC20 Test", "TEST"]);
+    let tokenMock: Contract = await tokenMockFactory.deploy("ERC20 Test", "TEST") as Contract;
     await tokenMock.waitForDeployment();
     tokenMock = connect(tokenMock, deployer); // Explicitly specifying the initial account
 
