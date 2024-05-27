@@ -1,9 +1,3 @@
-function countNumberArrayTotal(array: number[]) {
-  return array.reduce((sum: number, currentValue: number) => {
-    return sum + currentValue;
-  });
-}
-
 function createBytesString(baseString: string | number | undefined, byteLength: number) {
   baseString = !baseString ? "" : baseString.toString();
   if (baseString.length > byteLength * 2) {
@@ -29,4 +23,4 @@ function createRevertMessageDueToMissingRole(address: string, role: string) {
   return `AccessControl: account ${address.toLowerCase()} is missing role ${role.toLowerCase()}`;
 }
 
-export { countNumberArrayTotal, createBytesString, createRevertMessageDueToMissingRole };
+export { createBytesString, createRevertMessageDueToMissingRole };
