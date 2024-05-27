@@ -1,12 +1,18 @@
 import { ethers, network, upgrades } from "hardhat";
 import { expect } from "chai";
-import { Block, Contract, ContractFactory } from "ethers";
+import { Contract, ContractFactory, TransactionReceipt, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-import { loadFixture, time } from "@nomicfoundation/hardhat-network-helpers";
-import { proveTx } from "../test-utils/eth";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import {
+  checkContractUupsUpgrading,
+  connect,
+  getAddress,
+  getTxTimestamp,
+  increaseBlockTimestamp,
+  proveTx
+} from "../test-utils/eth";
 import { createBytesString } from "../test-utils/misc";
-import { TransactionReceipt, TransactionResponse } from "@ethersproject/abstract-provider";
 import { checkEventField, checkEventFieldNotEqual, EventFieldCheckingOptions } from "../test-utils/checkers";
 
 const MAX_UINT256 = ethers.MaxUint256;
@@ -175,8 +181,6 @@ interface PaymentOperation {
 interface Fixture {
   cardPaymentProcessor: Contract;
   tokenMock: Contract;
-  cardPaymentProcessorAddress: string;
-  tokenMockAddress: string;
 }
 
 interface AmountParts {
@@ -812,18 +816,15 @@ interface OperationConditions {
 
 class CardPaymentProcessorShell {
   contract: Contract;
-  contractAddress: string;
   model: CardPaymentProcessorModel;
   executor: HardhatEthersSigner;
 
   constructor(props: {
     cardPaymentProcessorContract: Contract;
-    cardPaymentProcessorContractAddress: string;
     cardPaymentProcessorModel: CardPaymentProcessorModel;
     executor: HardhatEthersSigner;
   }) {
     this.contract = props.cardPaymentProcessorContract;
-    this.contractAddress = props.cardPaymentProcessorContractAddress;
     this.model = props.cardPaymentProcessorModel;
     this.executor = props.executor;
   }
@@ -1026,7 +1027,6 @@ class TestContext {
     this.tokenMock = props.fixture.tokenMock;
     this.cardPaymentProcessorShell = new CardPaymentProcessorShell({
       cardPaymentProcessorContract: props.fixture.cardPaymentProcessor,
-      cardPaymentProcessorContractAddress: props.fixture.cardPaymentProcessorAddress,
       cardPaymentProcessorModel: new CardPaymentProcessorModel({
         cashbackRate: props.cashbackRateInPermil,
         cashbackEnabled: props.cashbackEnabled
@@ -1044,12 +1044,12 @@ class TestContext {
       await proveTx(this.tokenMock.mint(account.address, INITIAL_USER_BALANCE));
       const allowance: bigint = await this.tokenMock.allowance(
         account.address,
-        this.cardPaymentProcessorShell.contractAddress
+        getAddress(this.cardPaymentProcessorShell.contract)
       );
       if (allowance < MAX_UINT256) {
         await proveTx(
           (this.tokenMock.connect(account) as Contract).approve(
-            this.cardPaymentProcessorShell.contractAddress,
+            getAddress(this.cardPaymentProcessorShell.contract),
             MAX_UINT256
           )
         );
@@ -1480,7 +1480,7 @@ class TestContext {
 
   async #checkTokenBalances() {
     expect(
-      await this.tokenMock.balanceOf(this.cardPaymentProcessorShell.contractAddress)
+      await this.tokenMock.balanceOf(getAddress(this.cardPaymentProcessorShell.contract))
     ).to.equal(
       this.cardPaymentProcessorShell.model.totalBalance,
       `The card payment processor token balance is wrong`
@@ -1582,74 +1582,64 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   let user2: HardhatEthersSigner;
 
   before(async () => {
-    cardPaymentProcessorFactory = await ethers.getContractFactory("CardPaymentProcessor");
-    tokenMockFactory = await ethers.getContractFactory("ERC20TokenMock");
-
     [deployer, cashOutAccount, cashbackTreasury, executor, sponsor, user1, user2] = await ethers.getSigners();
+
+    // Contract factories with the explicitly specified deployer account
+    cardPaymentProcessorFactory = await ethers.getContractFactory("CardPaymentProcessor");
+    cardPaymentProcessorFactory = cardPaymentProcessorFactory.connect(deployer);
+    tokenMockFactory = await ethers.getContractFactory("ERC20TokenMock");
+    tokenMockFactory = tokenMockFactory.connect(deployer);
   });
 
-  async function deployTokenMock(): Promise<{ tokenMock: Contract; tokenMockAddress: string }> {
+  async function deployTokenMock(): Promise<{ tokenMock: Contract }> {
     const name = "ERC20 Test";
     const symbol = "TEST";
 
-    const tokenMock: Contract = await upgrades.deployProxy(tokenMockFactory, [name, symbol]);
+    let tokenMock: Contract = await tokenMockFactory.deploy(name, symbol) as Contract;
     await tokenMock.waitForDeployment();
-    const tokenMockAddress = await tokenMock.getAddress();
+    tokenMock = connect(tokenMock, deployer); // Explicitly specifying the initial account
 
-    return { tokenMock, tokenMockAddress };
+    return { tokenMock };
   }
 
   async function deployTokenMockAndCardPaymentProcessor(): Promise<{
     cardPaymentProcessor: Contract;
     tokenMock: Contract;
-    cardPaymentProcessorAddress: string;
-    tokenMockAddress: string;
   }> {
-    const { tokenMock, tokenMockAddress } = await deployTokenMock();
+    const { tokenMock } = await deployTokenMock();
 
-    const cardPaymentProcessor: Contract = await upgrades.deployProxy(
-      cardPaymentProcessorFactory,
-      [tokenMockAddress]
-    );
+    let cardPaymentProcessor: Contract =
+      await upgrades.deployProxy(cardPaymentProcessorFactory, [getAddress(tokenMock)]);
     await cardPaymentProcessor.waitForDeployment();
-    const cardPaymentProcessorAddress = await cardPaymentProcessor.getAddress();
+    cardPaymentProcessor = connect(cardPaymentProcessor, deployer); // Explicitly specifying the initial account
 
     return {
       cardPaymentProcessor,
-      tokenMock,
-      cardPaymentProcessorAddress,
-      tokenMockAddress
+      tokenMock
     };
   }
 
   async function deployAndConfigureAllContracts(): Promise<Fixture> {
-    const {
-      cardPaymentProcessor,
-      tokenMock,
-      cardPaymentProcessorAddress,
-      tokenMockAddress
-    } = await deployTokenMockAndCardPaymentProcessor();
+    const { cardPaymentProcessor, tokenMock } = await deployTokenMockAndCardPaymentProcessor();
 
     await proveTx(cardPaymentProcessor.grantRole(executorRole, executor.address));
     await proveTx(cardPaymentProcessor.grantRole(pauserRole, deployer.address));
     await proveTx(cardPaymentProcessor.setCashbackTreasury(cashbackTreasury.address));
-    await proveTx((tokenMock.connect(cashbackTreasury) as Contract).approve(cardPaymentProcessorAddress, MAX_UINT256));
+    await proveTx(connect(tokenMock, cashbackTreasury).approve(getAddress(cardPaymentProcessor), MAX_UINT256));
     await proveTx(cardPaymentProcessor.setCashbackRate(CASHBACK_RATE_DEFAULT));
 
     await proveTx(cardPaymentProcessor.setCashOutAccount(cashOutAccount.address));
-    await proveTx((tokenMock.connect(cashOutAccount) as Contract).approve(cardPaymentProcessorAddress, MAX_UINT256));
+    await proveTx(connect(tokenMock, cashOutAccount).approve(getAddress(cardPaymentProcessor), MAX_UINT256));
 
     await proveTx(tokenMock.mint(cashbackTreasury.address, MAX_INT256));
     await proveTx(tokenMock.mint(sponsor.address, INITIAL_SPONSOR_BALANCE));
-    await proveTx((tokenMock.connect(sponsor) as Contract).approve(cardPaymentProcessorAddress, MAX_UINT256));
+    await proveTx(connect(tokenMock, sponsor).approve(getAddress(cardPaymentProcessor), MAX_UINT256));
 
     await proveTx(cardPaymentProcessor.enableCashback());
 
     return {
       cardPaymentProcessor,
-      tokenMock,
-      cardPaymentProcessorAddress,
-      tokenMockAddress
+      tokenMock
     };
   }
 
@@ -1698,10 +1688,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
   describe("Function 'initialize()'", async () => {
     it("Configures the contract as expected", async () => {
-      const { cardPaymentProcessor, tokenMockAddress } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+      const { cardPaymentProcessor, tokenMock } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
 
       // The underlying contract address
-      expect(await cardPaymentProcessor.token()).to.equal(tokenMockAddress);
+      expect(await cardPaymentProcessor.token()).to.equal(getAddress(tokenMock));
 
       // The admins of roles
       expect(await cardPaymentProcessor.getRoleAdmin(ownerRole)).to.equal(ownerRole);
@@ -1739,9 +1729,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
 
     it("Is reverted if it is called a second time", async () => {
-      const { cardPaymentProcessor, tokenMockAddress } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+      const { cardPaymentProcessor, tokenMock } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
-        cardPaymentProcessor.initialize(tokenMockAddress)
+        cardPaymentProcessor.initialize(getAddress(tokenMock))
       ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID);
     });
 
@@ -1755,33 +1745,31 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Upgrading", async () => {
-    it("Executes as expected if it is called by an owner", async () => {
+  describe("Function 'upgradeToAndCall()'", async () => {
+    it("Executes as expected", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
-      await upgrades.upgradeProxy(
-        cardPaymentProcessor,
-        cardPaymentProcessorFactory.connect(deployer),
-        { redeployImplementation: "always" }
-      );
-
-      // Use the 'upgradeTo()' function only to provide 100 % test coverage
-      const newImplementation = await cardPaymentProcessorFactory.deploy();
-      await newImplementation.waitForDeployment();
-      const newImplementationAddress = await newImplementation.getAddress();
-      await proveTx(cardPaymentProcessor.upgradeTo(newImplementationAddress));
+      await checkContractUupsUpgrading(cardPaymentProcessor, cardPaymentProcessorFactory);
     });
-    it("Is reverted if the caller does not have the owner role", async () => {
+
+    it("Is reverted if the caller is not the owner", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
-      await expect(
-        upgrades.upgradeProxy(
-          cardPaymentProcessor,
-          cardPaymentProcessorFactory.connect(user1),
-          { redeployImplementation: "always" }
-        )
-      ).to.be.revertedWithCustomError(
-        cardPaymentProcessor,
-        REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
-      ).withArgs(user1.address, ownerRole);
+
+      await expect(connect(cardPaymentProcessor, user1).upgradeToAndCall(user1.address, "0x"))
+        .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
+    });
+  });
+
+  describe("Function 'upgradeTo()'", async () => {
+    it("Executes as expected", async () => {
+      const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+      await checkContractUupsUpgrading(cardPaymentProcessor, cardPaymentProcessorFactory, "upgradeTo(address)");
+    });
+
+    it("Is reverted if the caller is not the owner", async () => {
+      const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+
+      await expect(connect(cardPaymentProcessor, user1).upgradeTo(user1.address))
+        .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
     });
   });
 
@@ -1818,7 +1806,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
-        (cardPaymentProcessor.connect(user1) as Contract).setCashOutAccount(cashOutAccount.address)
+        connect(cardPaymentProcessor, user1).setCashOutAccount(cashOutAccount.address)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
@@ -1841,13 +1829,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
   describe("Function 'setCashbackTreasury()'", async () => {
     it("Executes as expected and emits the correct event", async () => {
-      const {
-        cardPaymentProcessor,
-        tokenMock,
-        cardPaymentProcessorAddress
-      } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+      const { cardPaymentProcessor, tokenMock } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       expect(
-        await tokenMock.allowance(cardPaymentProcessorAddress, CASHBACK_TREASURY_ADDRESS_STUB1)
+        await tokenMock.allowance(getAddress(cardPaymentProcessor), CASHBACK_TREASURY_ADDRESS_STUB1)
       ).to.equal(0);
 
       await expect(
@@ -1878,7 +1862,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
-        (cardPaymentProcessor.connect(user1) as Contract).setCashbackTreasury(CASHBACK_TREASURY_ADDRESS_STUB1)
+        connect(cardPaymentProcessor, user1).setCashbackTreasury(CASHBACK_TREASURY_ADDRESS_STUB1)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
@@ -1934,7 +1918,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
-        (cardPaymentProcessor.connect(user1) as Contract).setCashbackRate(CASHBACK_RATE_DEFAULT)
+        connect(cardPaymentProcessor, user1).setCashbackRate(CASHBACK_RATE_DEFAULT)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
@@ -1976,7 +1960,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
-        (cardPaymentProcessor.connect(user1) as Contract).enableCashback()
+        connect(cardPaymentProcessor, user1).enableCashback()
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
@@ -2021,7 +2005,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
-        (cardPaymentProcessor.connect(user1) as Contract).disableCashback()
+        connect(cardPaymentProcessor, user1).disableCashback()
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
@@ -4185,7 +4169,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const paymentIds = payments.map(payment => payment.id);
 
       await expect(
-        (cardPaymentProcessor.connect(executor) as Contract).revokePayment(paymentIds[0])
+        connect(cardPaymentProcessor, executor).revokePayment(paymentIds[0])
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS
@@ -4195,7 +4179,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       );
 
       await expect(
-        (cardPaymentProcessor.connect(executor) as Contract).reversePayment(paymentIds[0])
+        connect(cardPaymentProcessor, executor).reversePayment(paymentIds[0])
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS
@@ -4205,7 +4189,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       );
 
       await expect(
-        (cardPaymentProcessor.connect(executor) as Contract).confirmPayment(paymentIds[0], ZERO_CONFIRMATION_AMOUNT)
+        connect(cardPaymentProcessor, executor).confirmPayment(paymentIds[0], ZERO_CONFIRMATION_AMOUNT)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS
@@ -4222,7 +4206,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       });
 
       await expect(
-        (cardPaymentProcessor.connect(executor) as Contract).confirmPayments(paymentConfirmations)
+        connect(cardPaymentProcessor, executor).confirmPayments(paymentConfirmations)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
         REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS
@@ -4232,7 +4216,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       );
 
       await expect(
-        (cardPaymentProcessor.connect(executor) as Contract).updatePayment(
+        connect(cardPaymentProcessor, executor).updatePayment(
           paymentIds[0],
           payments[0].baseAmount,
           payments[0].extraAmount
@@ -4246,7 +4230,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       );
 
       await expect(
-        (cardPaymentProcessor.connect(executor) as Contract).updateLazyAndConfirmPayment(
+        connect(cardPaymentProcessor, executor).updateLazyAndConfirmPayment(
           paymentIds[0],
           payments[0].baseAmount,
           payments[0].extraAmount,
@@ -4261,7 +4245,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       );
 
       await expect(
-        (cardPaymentProcessor.connect(executor) as Contract).refundPayment(
+        connect(cardPaymentProcessor, executor).refundPayment(
           paymentIds[0],
           ZERO_REFUND_AMOUNT
         )
@@ -4828,8 +4812,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       // Check initial cashback state for the account after the first cashback transfer
       const operationResult1 = await cardPaymentProcessorShell.makePaymentFor(payment);
-      const block1: Block | null = await ethers.provider.getBlock(operationResult1.txReceipt.blockNumber);
-      const expectedCapPeriodStartTime1 = block1?.timestamp ?? 0;
+      const expectedCapPeriodStartTime1 = await getTxTimestamp(operationResult1.tx);
       await checkAccountCashbackState(context, expectedCapPeriodStartTime1);
 
       // Reach the cashback cap first time.
@@ -4845,12 +4828,12 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await checkAccountCashbackState(context, expectedCapPeriodStartTime1);
 
       // The following part of the test is executed only for Hardhat network because we need to shift block time
-      if (network.name !== "hardhat") {
+      if (network.name !== "hardhat" && network.name !== "stratus") {
         return;
       }
 
       // Shift next block time for a period of cap checking
-      await time.increase(CASHBACK_CAP_RESET_PERIOD);
+      await increaseBlockTimestamp(CASHBACK_CAP_RESET_PERIOD);
 
       // Set new start amount for the cashback cap checking in the model
       cardPaymentProcessorShell.model.capPeriodStartAmount =
@@ -4859,8 +4842,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       // Check that next cashback sending executes successfully due to the cap period resets
       payment.id = context.payments[1].id;
       const operationResult2 = await cardPaymentProcessorShell.makePaymentFor(payment);
-      const block2: Block | null = await ethers.provider.getBlock(operationResult2.txReceipt.blockNumber);
-      const expectedCapPeriodStartTime2 = block2?.timestamp ?? 0;
+      const expectedCapPeriodStartTime2 = await getTxTimestamp(operationResult2.tx);
       await checkAccountCashbackState(context, expectedCapPeriodStartTime2);
 
       // Revoke the very first cashback and check that the cap-related values are changed properly

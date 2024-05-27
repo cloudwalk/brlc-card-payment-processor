@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { Contract, ContractFactory } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { proveTx } from "../../test-utils/eth";
+import { connect, proveTx } from "../../test-utils/eth";
 
 async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
   if (network.name === "hardhat") {
@@ -27,19 +27,22 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
   let pauser: HardhatEthersSigner;
 
   before(async () => {
-    pausableExtMockFactory = await ethers.getContractFactory("PausableExtUpgradeableMock");
     [deployer, pauser] = await ethers.getSigners();
+    pausableExtMockFactory = await ethers.getContractFactory("PausableExtUpgradeableMock");
+    pausableExtMockFactory = pausableExtMockFactory.connect(deployer); // Explicitly specifying the deployer account
   });
 
   async function deployPausableExtMock(): Promise<{ pausableExtMock: Contract }> {
-    const pausableExtMock: Contract = await upgrades.deployProxy(pausableExtMockFactory);
+    let pausableExtMock: Contract = await upgrades.deployProxy(pausableExtMockFactory);
     await pausableExtMock.waitForDeployment();
+    pausableExtMock = connect(pausableExtMock, deployer); // Explicitly specifying the initial account
     return { pausableExtMock };
   }
 
   async function deployAndConfigurePausableExtMock(): Promise<{ pausableExtMock: Contract }> {
     const { pausableExtMock } = await deployPausableExtMock();
     await proveTx(pausableExtMock.grantRole(pauserRole, pauser.address));
+
     return { pausableExtMock };
   }
 
@@ -89,7 +92,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
     it("Executes successfully and emits the correct event", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
 
-      await expect((pausableExtMock.connect(pauser) as Contract).pause())
+      await expect(connect(pausableExtMock, pauser).pause())
         .to.emit(pausableExtMock, "Paused")
         .withArgs(pauser.address);
 
@@ -110,9 +113,9 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
   describe("Function 'unpause()'", async () => {
     it("Executes successfully and emits the correct event", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
-      await proveTx((pausableExtMock.connect(pauser) as Contract).pause());
+      await proveTx(connect(pausableExtMock, pauser).pause());
 
-      await expect((pausableExtMock.connect(pauser) as Contract).unpause())
+      await expect(connect(pausableExtMock, pauser).unpause())
         .to.emit(pausableExtMock, "Unpaused")
         .withArgs(pauser.address);
 

@@ -2,34 +2,29 @@
 
 pragma solidity ^0.8.20;
 
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /**
  * @title ERC20TokenMock contract
  * @dev An implementation of the {ERC20Upgradeable} contract for testing purposes
  */
-contract ERC20TokenMock is ERC20Upgradeable, UUPSUpgradeable {
+contract ERC20TokenMock is ERC20 {
     /// @dev A special amount when the transfer functions should return `false`.
     uint256 public specialAmountToReturnFalse;
 
     /// @dev A special amount when the transfer functions should revert.
     uint256 public specialAmountToRevert;
 
-    // ------------------ Initializers ---------------------------- //
+    // ------------------ Constructor ----------------------------- //
 
     /**
      * @dev The initialize function of the upgradable contract.
      * @param name_ The name of the token to set for this ERC20-comparable contract.
      * @param symbol_ The symbol of the token to set for this ERC20-comparable contract.
      */
-    function initialize(string memory name_, string memory symbol_) public initializer {
-        __ERC20_init(name_, symbol_);
+    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {
         specialAmountToReturnFalse = type(uint256).max;
         specialAmountToRevert = type(uint256).max;
-
-        // Only to provide the 100 % test coverage
-        _authorizeUpgrade(address(0));
     }
 
     // ------------------ Functions ------------------------------- //
@@ -73,12 +68,5 @@ contract ERC20TokenMock is ERC20Upgradeable, UUPSUpgradeable {
     /// @dev Configures the special amount when the transfer functions should revert.
     function setSpecialAmountToRevert(uint256 newSpecialAmount) external {
         specialAmountToRevert = newSpecialAmount;
-    }
-
-    // ------------------ Internal functions ---------------------- //
-
-    /// @dev The upgrade authorization function for UUPSProxy.
-    function _authorizeUpgrade(address newImplementation) internal pure override {
-        newImplementation; // Suppresses a compiler warning about the unused variable
     }
 }

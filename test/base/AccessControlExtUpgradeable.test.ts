@@ -1,10 +1,9 @@
 import { ethers, network, upgrades } from "hardhat";
 import { expect } from "chai";
-import { Contract, ContractFactory } from "ethers";
-import { TransactionResponse } from "@ethersproject/abstract-provider";
+import { Contract, ContractFactory, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { proveTx } from "../../test-utils/eth";
+import { connect, proveTx } from "../../test-utils/eth";
 
 async function setUpFixture<T>(func: () => Promise<T>): Promise<T> {
   if (network.name === "hardhat") {
@@ -32,15 +31,19 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
   let userAddresses: string[];
 
   before(async () => {
-    accessControlExtMockFactory = await ethers.getContractFactory("AccessControlExtUpgradeableMock");
     [deployer, attacker, ...users] = await ethers.getSigners();
+    accessControlExtMockFactory = await ethers.getContractFactory("AccessControlExtUpgradeableMock");
+    // Explicitly specifying the deployer account
+    accessControlExtMockFactory = accessControlExtMockFactory.connect(deployer);
 
     userAddresses = [users[0].address, users[1].address, users[2].address];
   });
 
   async function deployAccessControlExtMock(): Promise<{ accessControlExtMock: Contract }> {
-    const accessControlExtMock: Contract = await upgrades.deployProxy(accessControlExtMockFactory);
+    let accessControlExtMock: Contract = await upgrades.deployProxy(accessControlExtMockFactory);
     await accessControlExtMock.waitForDeployment();
+    accessControlExtMock = connect(accessControlExtMock, deployer); // Explicitly specifying the initial account
+
     return { accessControlExtMock };
   }
 
@@ -135,7 +138,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
 
         await expect(
-          (accessControlExtMock.connect(attacker) as Contract).grantRoleBatch(userRole, [])
+          connect(accessControlExtMock, attacker).grantRoleBatch(userRole, [])
         ).to.be.revertedWithCustomError(
           accessControlExtMock,
           REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
@@ -197,7 +200,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
           const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
 
           await expect(
-            (accessControlExtMock.connect(attacker) as Contract).revokeRoleBatch(userRole, [])
+            connect(accessControlExtMock, attacker).revokeRoleBatch(userRole, [])
           ).to.be.revertedWithCustomError(
             accessControlExtMock,
             REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT
