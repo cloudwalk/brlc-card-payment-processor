@@ -773,6 +773,8 @@ contract CardPaymentProcessor is
         bytes memory eventData = abi.encodePacked(
             EVENT_DEFAULT_VERSION,
             uint8(eventFlags),
+            uint64(payment.baseAmount),
+            uint64(payment.extraAmount),
             uint64(oldPaymentDetails.payerRemainder)
         );
         if (eventFlags & EVENT_FLAG_MASK_SPONSORED != 0) {

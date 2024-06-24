@@ -1339,6 +1339,8 @@ class TestContext {
     const expectedDataField: string = defineEventDataField(
       EVENT_DATA_FIELD_VERSION_DEFAULT_VALUE,
       !operation.sponsor ? EVENT_DATA_FIELD_FLAGS_NON_SUBSIDIZED : EVENT_DATA_FIELD_FLAGS_SUBSIDIZED,
+      encodeEventDataFieldForAmount(operation.oldBaseAmount),
+      encodeEventDataFieldForAmount(operation.oldExtraAmount),
       encodeEventDataFieldForAmount(operation.oldPayerRemainder),
       !operation.sponsor ? "" : encodeEventDataFieldForAddress(operation.sponsor?.address ?? ZERO_ADDRESS),
       !operation.sponsor ? "" : encodeEventDataFieldForAmount(operation.oldSponsorRemainder)
