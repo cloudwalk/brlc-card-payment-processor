@@ -94,11 +94,11 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Emitted when a payment is made.
      *
-     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
-     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
-     * with the following arguments:
+     * Some data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
+     * function as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments (addendum fields):
      *
-     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - uint8(version) -- the version of the event addendum, for now it equals `0x01`.
      * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
      * - uint64(baseAmount) -- the base amount of the payment.
      * - uint64(extraAmount) -- the extra amount of the payment.
@@ -108,22 +108,22 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
-     * @param data The main data of the event as described above.
+     * @param addendum The data of the event as described above.
      */
     event PaymentMade(
         bytes32 indexed paymentId,
         address indexed payer,
-        bytes data
+        bytes addendum
     );
 
     /**
      * @dev Emitted when a payment is updated inside a function whose name started with the `update` word.
      *
-     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
-     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
-     * with the following arguments:
+     * Some data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
+     * function as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments (addendum fields):
      *
-     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - uint8(version) -- the version of the event addendum, for now it equals `0x01`.
      * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
      * - uint64(oldBaseAmount) -- the old base amount of the payment.
      * - uint64(newBaseAmount) -- the new base amount of the payment.
@@ -137,68 +137,72 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
-     * @param data The main data of the event as described above.
+     * @param addendum The data of the event as described above.
      */
     event PaymentUpdated(
         bytes32 indexed paymentId,
         address indexed payer,
-        bytes data
+        bytes addendum
     );
 
     /**
      * @dev Emitted when a payment is revoked.
      *
-     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
-     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
-     * with the following arguments:
+     * Some data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
+     * function as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments (addendum fields):
      *
-     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - uint8(version) -- the version of the event addendum, for now it equals `0x01`.
      * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(baseAmount) -- the base amount of the payment.
+     * - uint64(extraAmount) -- the extra amount of the payment.
      * - uint64(payerRemainder) -- the payer remainder part of the payment.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
      * - uint64(sponsorRemainder) -- the sponsor remainder part or skipped if the payment is not subsidized.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
-     * @param data The main data of the event as described above.
+     * @param addendum The data of the event as described above.
      */
     event PaymentRevoked(
         bytes32 indexed paymentId,
         address indexed payer,
-        bytes data
+        bytes addendum
     );
 
     /**
      * @dev Emitted when a payment is reversed.
      *
-     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
-     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
-     * with the following arguments:
+     * Some data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
+     * function as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments (addendum fields):
      *
-     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - uint8(version) -- the version of the event addendum, for now it equals `0x01`.
      * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
+     * - uint64(baseAmount) -- the base amount of the payment.
+     * - uint64(extraAmount) -- the extra amount of the payment.
      * - uint64(payerRemainder) -- the payer remainder part of the payment.
      * - address(sponsor) -- the address of the sponsor or skipped if the payment is not subsidized.
      * - uint64(sponsorRemainder) -- the sponsor remainder part or skipped if the payment is not subsidized.
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
-     * @param data The main data of the event as described above.
+     * @param addendum The data of the event as described above.
      */
     event PaymentReversed(
         bytes32 indexed paymentId,
         address indexed payer,
-        bytes data
+        bytes addendum
     );
 
     /**
      * @dev Emitted when the confirmed amount of a payment is changed. It can be emitted during any operation.
      *
-     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
-     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
-     * with the following arguments:
+     * Some data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
+     * function as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments (addendum fields):
      *
-     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - uint8(version) -- the version of the event addendum, for now it equals `0x01`.
      * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
      * - uint64(oldConfirmedAmount) -- the old confirmed amount of the payment.
      * - uint64(newConfirmedAmount) -- the new confirmed amount of the payment.
@@ -206,22 +210,22 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
-     * @param data The main data of the event as described above.
+     * @param addendum The data of the event as described above.
      */
     event PaymentConfirmedAmountChanged(
         bytes32 indexed paymentId,
         address indexed payer,
-        bytes data
+        bytes addendum
     );
 
     /**
      * @dev Emitted when a payment is refunded inside a function whose name started with the `refund` word.
      *
-     * The main data is encoded in the `data` field as the result of calling of the `abi.encodePacked()` function
-     * as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
-     * with the following arguments:
+     * Some data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
+     * function as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
+     * with the following arguments (addendum fields):
      *
-     * - uint8(version) -- the version of the event data, for now it equals `0x01`.
+     * - uint8(version) -- the version of the event addendum, for now it equals `0x01`.
      * - uint8(flags) -- the flags that for now define whether the payment is subsidized (`0x01`) or not (`0x00`).
      * - uint64(oldPayerRefundAmount) -- the old payer refund amount of the payment.
      * - uint64(newPayerRefundAmount) -- the new payer refund amount of the payment.
@@ -231,12 +235,12 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
-     * @param data The main data of the event as described above.
+     * @param addendum The data of the event as described above.
      */
     event PaymentRefunded(
         bytes32 indexed paymentId,
         address indexed payer,
-        bytes data
+        bytes addendum
     );
 
     /**
