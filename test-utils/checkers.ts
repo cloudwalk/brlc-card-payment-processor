@@ -1,6 +1,6 @@
 import { expect } from "chai";
 
-export interface EventFieldCheckingOptions {
+export interface EventParameterCheckingOptions {
   showValuesInErrorMessage?: boolean;
   caseInsensitiveComparison?: boolean;
   convertToJson?: boolean;
@@ -10,10 +10,10 @@ interface Stringable {
   toString(): string;
 }
 
-function checkEventField<T extends Stringable>(
+function checkEventParameter<T extends Stringable>(
   fieldName: string,
   expectedValue: T | string | undefined | null,
-  options: EventFieldCheckingOptions = {}
+  options: EventParameterCheckingOptions = {}
 ): (value: T) => boolean {
   const f = function (value: T | string): boolean {
     if (options.convertToJson) {
@@ -35,10 +35,10 @@ function checkEventField<T extends Stringable>(
   return f;
 }
 
-function checkEventFieldNotEqual<T extends Stringable>(
+function checkEventParameterNotEqual<T extends Stringable>(
   fieldName: string,
   notExpectedValue: T | string | undefined | null,
-  options: EventFieldCheckingOptions = {}
+  options: EventParameterCheckingOptions = {}
 ): (value: T | string) => boolean {
   const f = function (value: T | string): boolean {
     if (options.convertToJson) {
@@ -62,6 +62,6 @@ function checkEventFieldNotEqual<T extends Stringable>(
 }
 
 export {
-  checkEventField,
-  checkEventFieldNotEqual
+  checkEventParameter,
+  checkEventParameterNotEqual
 };

@@ -13,7 +13,11 @@ import {
   proveTx
 } from "../test-utils/eth";
 import { createBytesString } from "../test-utils/misc";
-import { checkEventField, checkEventFieldNotEqual, EventFieldCheckingOptions } from "../test-utils/checkers";
+import {
+  checkEventParameter,
+  checkEventParameterNotEqual,
+  EventParameterCheckingOptions
+} from "../test-utils/checkers";
 
 const MAX_UINT256 = ethers.MaxUint256;
 const MAX_INT256 = ethers.MaxInt256;
@@ -35,12 +39,12 @@ const CASHBACK_FACTOR = 1000;
 const CASHBACK_CAP_RESET_PERIOD = 30 * 24 * 60 * 60;
 const MAX_CASHBACK_FOR_CAP_PERIOD = 300 * 10 ** TOKE_DECIMALS;
 
-const EVENT_DATA_FIELD_VERSION_DEFAULT_VALUE = "01";
-const EVENT_DATA_FIELD_FLAGS_NON_SUBSIDIZED = "00";
-const EVENT_DATA_FIELD_FLAGS_SUBSIDIZED = "01";
-const EVENT_DATA_FIELD_CHARS_FOR_AMOUNT = 16;
+const EVENT_ADDENDUM_VERSION_DEFAULT_VALUE = "01";
+const EVENT_ADDENDUM_FLAGS_NON_SUBSIDIZED = "00";
+const EVENT_ADDENDUM_FLAGS_SUBSIDIZED = "01";
+const EVENT_ADDENDUM_CHARS_FOR_AMOUNT = 16;
 
-const eventDataFieldCheckingOptions: EventFieldCheckingOptions = {
+const eventAddendumCheckingOptions: EventParameterCheckingOptions = {
   showValuesInErrorMessage: true,
   caseInsensitiveComparison: true
 };
@@ -980,31 +984,31 @@ class CardPaymentProcessorShell {
   }
 }
 
-function encodeEventDataFieldForAmount(amount: number): string {
+function encodeEventAddendumFieldForAmount(amount: number): string {
   if (!Number.isSafeInteger(amount)) {
-    throw new Error(`The provided amount is not valid for encoding as an event data field: ${amount}`);
+    throw new Error(`The provided amount is not valid for encoding as an addendum field of an event: ${amount}`);
   }
-  return amount.toString(16).padStart(EVENT_DATA_FIELD_CHARS_FOR_AMOUNT, "0");
+  return amount.toString(16).padStart(EVENT_ADDENDUM_CHARS_FOR_AMOUNT, "0");
 }
 
-function encodeEventDataFieldForAddress(address: string | undefined): string {
+function encodeEventAddendumFieldForAddress(address: string | undefined): string {
   if (!address) {
-    throw new Error(`The provided address is not valid for encoding as an event data field: ${address}`);
+    throw new Error(`The provided address is not valid for encoding as an addendum field of an event: ${address}`);
   }
   if (address.startsWith("0x")) {
     if (address.length != 42) {
-      throw new Error(`The provided address is not valid for encoding as an event data field: ${address}`);
+      throw new Error(`The provided address is not valid for encoding as an addendum field of an event: ${address}`);
     }
     return address.slice(2);
   } else {
     if (address.length != 40) {
-      throw new Error(`The provided address is not valid for encoding as an event data field: ${address}`);
+      throw new Error(`The provided address is not valid for encoding as an addendum field of an event: ${address}`);
     }
     return address;
   }
 }
 
-function defineEventDataField(...parts: string[]): string {
+function defineEventAddendum(...parts: string[]): string {
   return "0x" + parts.join("");
 }
 
@@ -1136,12 +1140,12 @@ class TestContext {
     operation: PaymentOperation,
     operationConditions: OperationConditions
   ) {
-    const expectedDataField: string = defineEventDataField(
-      EVENT_DATA_FIELD_VERSION_DEFAULT_VALUE,
-      !operation.sponsor ? EVENT_DATA_FIELD_FLAGS_NON_SUBSIDIZED : EVENT_DATA_FIELD_FLAGS_SUBSIDIZED,
-      encodeEventDataFieldForAmount(operation.oldConfirmationAmount),
-      encodeEventDataFieldForAmount(operation.newConfirmationAmount),
-      !operation.sponsor ? "" : encodeEventDataFieldForAddress(operation.sponsor?.address)
+    const expectedAddendum: string = defineEventAddendum(
+      EVENT_ADDENDUM_VERSION_DEFAULT_VALUE,
+      !operation.sponsor ? EVENT_ADDENDUM_FLAGS_NON_SUBSIDIZED : EVENT_ADDENDUM_FLAGS_SUBSIDIZED,
+      encodeEventAddendumFieldForAmount(operation.oldConfirmationAmount),
+      encodeEventAddendumFieldForAmount(operation.newConfirmationAmount),
+      !operation.sponsor ? "" : encodeEventAddendumFieldForAddress(operation.sponsor?.address)
     );
 
     if (operation.newConfirmationAmount != operation.oldConfirmationAmount) {
@@ -1149,18 +1153,18 @@ class TestContext {
         this.cardPaymentProcessorShell.contract,
         EVENT_NAME_PAYMENT_CONFIRMED_AMOUNT_CHANGED
       ).withArgs(
-        checkEventField("paymentId", operation.paymentId),
-        checkEventField("payer", operation.payer.address),
-        checkEventField("data", expectedDataField, eventDataFieldCheckingOptions)
+        checkEventParameter("paymentId", operation.paymentId),
+        checkEventParameter("payer", operation.payer.address),
+        checkEventParameter("addendum", expectedAddendum, eventAddendumCheckingOptions)
       );
     } else if (operationConditions.confirmationAmountChangedInAnyOperation) {
       await expect(tx).to.emit(
         this.cardPaymentProcessorShell.contract,
         EVENT_NAME_PAYMENT_CONFIRMED_AMOUNT_CHANGED
       ).withArgs(
-        checkEventField("paymentId", operation.paymentId),
-        checkEventField("payer", operation.payer.address),
-        checkEventFieldNotEqual("data", expectedDataField, eventDataFieldCheckingOptions)
+        checkEventParameter("paymentId", operation.paymentId),
+        checkEventParameter("payer", operation.payer.address),
+        checkEventParameterNotEqual("addendum", expectedAddendum, eventAddendumCheckingOptions)
       );
     } else {
       await expect(tx).not.to.emit(
@@ -1180,10 +1184,10 @@ class TestContext {
         this.cardPaymentProcessorShell.contract,
         EVENT_NAME_CASHBACK_SENT
       ).withArgs(
-        checkEventField("paymentId", operation.paymentId),
-        checkEventField("recipient", operation.payer.address),
-        checkEventField("status", operation.cashbackOperationStatus),
-        checkEventField("amount", operation.cashbackActualChange)
+        checkEventParameter("paymentId", operation.paymentId),
+        checkEventParameter("recipient", operation.payer.address),
+        checkEventParameter("status", operation.cashbackOperationStatus),
+        checkEventParameter("amount", operation.cashbackActualChange)
       );
     }
 
@@ -1192,11 +1196,11 @@ class TestContext {
         this.cardPaymentProcessorShell.contract,
         EVENT_NAME_CASHBACK_REVOKED
       ).withArgs(
-        checkEventField("paymentId", operation.paymentId),
-        checkEventField("recipient", operation.payer.address),
-        checkEventField("status", operation.cashbackOperationStatus),
-        checkEventField("oldCashbackAmount", operation.oldCashbackAmount),
-        checkEventField("oldCashbackAmount", operation.oldCashbackAmount + operation.cashbackActualChange)
+        checkEventParameter("paymentId", operation.paymentId),
+        checkEventParameter("recipient", operation.payer.address),
+        checkEventParameter("status", operation.cashbackOperationStatus),
+        checkEventParameter("oldCashbackAmount", operation.oldCashbackAmount),
+        checkEventParameter("oldCashbackAmount", operation.oldCashbackAmount + operation.cashbackActualChange)
       );
     }
 
@@ -1205,11 +1209,11 @@ class TestContext {
         this.cardPaymentProcessorShell.contract,
         EVENT_NAME_CASHBACK_INCREASED
       ).withArgs(
-        checkEventField("paymentId", operation.paymentId),
-        checkEventField("recipient", operation.payer.address),
-        checkEventField("status", operation.cashbackOperationStatus),
-        checkEventField("oldCashbackAmount", operation.oldCashbackAmount),
-        checkEventField("oldCashbackAmount", operation.oldCashbackAmount + operation.cashbackActualChange)
+        checkEventParameter("paymentId", operation.paymentId),
+        checkEventParameter("recipient", operation.payer.address),
+        checkEventParameter("status", operation.cashbackOperationStatus),
+        checkEventParameter("oldCashbackAmount", operation.oldCashbackAmount),
+        checkEventParameter("oldCashbackAmount", operation.oldCashbackAmount + operation.cashbackActualChange)
       );
     }
 
@@ -1272,23 +1276,23 @@ class TestContext {
   }
 
   async checkMakingEvents(tx: Promise<TransactionResponse>, operation: PaymentOperation) {
-    const expectedDataField: string = defineEventDataField(
-      EVENT_DATA_FIELD_VERSION_DEFAULT_VALUE,
-      !operation.sponsor ? EVENT_DATA_FIELD_FLAGS_NON_SUBSIDIZED : EVENT_DATA_FIELD_FLAGS_SUBSIDIZED,
-      encodeEventDataFieldForAmount(operation.newBaseAmount),
-      encodeEventDataFieldForAmount(operation.newExtraAmount),
-      encodeEventDataFieldForAmount(operation.newPayerSumAmount),
-      !operation.sponsor ? "" : encodeEventDataFieldForAddress(operation.sponsor?.address),
-      !operation.sponsor ? "" : encodeEventDataFieldForAmount(operation.newSponsorSumAmount)
+    const expectedAddendum: string = defineEventAddendum(
+      EVENT_ADDENDUM_VERSION_DEFAULT_VALUE,
+      !operation.sponsor ? EVENT_ADDENDUM_FLAGS_NON_SUBSIDIZED : EVENT_ADDENDUM_FLAGS_SUBSIDIZED,
+      encodeEventAddendumFieldForAmount(operation.newBaseAmount),
+      encodeEventAddendumFieldForAmount(operation.newExtraAmount),
+      encodeEventAddendumFieldForAmount(operation.newPayerSumAmount),
+      !operation.sponsor ? "" : encodeEventAddendumFieldForAddress(operation.sponsor?.address),
+      !operation.sponsor ? "" : encodeEventAddendumFieldForAmount(operation.newSponsorSumAmount)
     );
 
     await expect(tx).to.emit(
       this.cardPaymentProcessorShell.contract,
       EVENT_NAME_PAYMENT_MADE
     ).withArgs(
-      checkEventField("paymentId", operation.paymentId),
-      checkEventField("payer", operation.payer.address),
-      checkEventField("data", expectedDataField, eventDataFieldCheckingOptions)
+      checkEventParameter("paymentId", operation.paymentId),
+      checkEventParameter("payer", operation.payer.address),
+      checkEventParameter("addendum", expectedAddendum, eventAddendumCheckingOptions)
     );
   }
 
@@ -1298,27 +1302,27 @@ class TestContext {
       operation.newBaseAmount !== operation.oldBaseAmount ||
       operation.newExtraAmount !== operation.oldExtraAmount
     ) {
-      const expectedDataField: string = defineEventDataField(
-        EVENT_DATA_FIELD_VERSION_DEFAULT_VALUE,
-        !operation.sponsor ? EVENT_DATA_FIELD_FLAGS_NON_SUBSIDIZED : EVENT_DATA_FIELD_FLAGS_SUBSIDIZED,
-        encodeEventDataFieldForAmount(operation.oldBaseAmount),
-        encodeEventDataFieldForAmount(operation.newBaseAmount),
-        encodeEventDataFieldForAmount(operation.oldExtraAmount),
-        encodeEventDataFieldForAmount(operation.newExtraAmount),
-        encodeEventDataFieldForAmount(operation.oldPayerSumAmount),
-        encodeEventDataFieldForAmount(operation.newPayerSumAmount),
-        !operation.sponsor ? "" : encodeEventDataFieldForAddress(operation.sponsor?.address),
-        !operation.sponsor ? "" : encodeEventDataFieldForAmount(operation.oldSponsorSumAmount),
-        !operation.sponsor ? "" : encodeEventDataFieldForAmount(operation.newSponsorSumAmount)
+      const expectedAddendum: string = defineEventAddendum(
+        EVENT_ADDENDUM_VERSION_DEFAULT_VALUE,
+        !operation.sponsor ? EVENT_ADDENDUM_FLAGS_NON_SUBSIDIZED : EVENT_ADDENDUM_FLAGS_SUBSIDIZED,
+        encodeEventAddendumFieldForAmount(operation.oldBaseAmount),
+        encodeEventAddendumFieldForAmount(operation.newBaseAmount),
+        encodeEventAddendumFieldForAmount(operation.oldExtraAmount),
+        encodeEventAddendumFieldForAmount(operation.newExtraAmount),
+        encodeEventAddendumFieldForAmount(operation.oldPayerSumAmount),
+        encodeEventAddendumFieldForAmount(operation.newPayerSumAmount),
+        !operation.sponsor ? "" : encodeEventAddendumFieldForAddress(operation.sponsor?.address),
+        !operation.sponsor ? "" : encodeEventAddendumFieldForAmount(operation.oldSponsorSumAmount),
+        !operation.sponsor ? "" : encodeEventAddendumFieldForAmount(operation.newSponsorSumAmount)
       );
 
       await expect(tx).to.emit(
         this.cardPaymentProcessorShell.contract,
         EVENT_NAME_PAYMENT_UPDATED
       ).withArgs(
-        checkEventField("paymentId", operation.paymentId),
-        checkEventField("payer", operation.payer.address),
-        checkEventField("data", expectedDataField, eventDataFieldCheckingOptions)
+        checkEventParameter("paymentId", operation.paymentId),
+        checkEventParameter("payer", operation.payer.address),
+        checkEventParameter("addendum", expectedAddendum, eventAddendumCheckingOptions)
       );
     } else {
       await expect(tx).not.to.emit(
@@ -1336,44 +1340,44 @@ class TestContext {
       ? EVENT_NAME_PAYMENT_REVOKED
       : EVENT_NAME_PAYMENT_REVERSED;
 
-    const expectedDataField: string = defineEventDataField(
-      EVENT_DATA_FIELD_VERSION_DEFAULT_VALUE,
-      !operation.sponsor ? EVENT_DATA_FIELD_FLAGS_NON_SUBSIDIZED : EVENT_DATA_FIELD_FLAGS_SUBSIDIZED,
-      encodeEventDataFieldForAmount(operation.oldBaseAmount),
-      encodeEventDataFieldForAmount(operation.oldExtraAmount),
-      encodeEventDataFieldForAmount(operation.oldPayerRemainder),
-      !operation.sponsor ? "" : encodeEventDataFieldForAddress(operation.sponsor?.address ?? ZERO_ADDRESS),
-      !operation.sponsor ? "" : encodeEventDataFieldForAmount(operation.oldSponsorRemainder)
+    const expectedAddendum: string = defineEventAddendum(
+      EVENT_ADDENDUM_VERSION_DEFAULT_VALUE,
+      !operation.sponsor ? EVENT_ADDENDUM_FLAGS_NON_SUBSIDIZED : EVENT_ADDENDUM_FLAGS_SUBSIDIZED,
+      encodeEventAddendumFieldForAmount(operation.oldBaseAmount),
+      encodeEventAddendumFieldForAmount(operation.oldExtraAmount),
+      encodeEventAddendumFieldForAmount(operation.oldPayerRemainder),
+      !operation.sponsor ? "" : encodeEventAddendumFieldForAddress(operation.sponsor?.address ?? ZERO_ADDRESS),
+      !operation.sponsor ? "" : encodeEventAddendumFieldForAmount(operation.oldSponsorRemainder)
     );
 
     await expect(tx).to.emit(
       this.cardPaymentProcessorShell.contract,
       mainEventName
     ).withArgs(
-      checkEventField("paymentId", operation.paymentId),
-      checkEventField("payer", operation.payer.address),
-      checkEventField("data", expectedDataField, eventDataFieldCheckingOptions)
+      checkEventParameter("paymentId", operation.paymentId),
+      checkEventParameter("payer", operation.payer.address),
+      checkEventParameter("addendum", expectedAddendum, eventAddendumCheckingOptions)
     );
   }
 
   async checkRefundingEvents(tx: Promise<TransactionResponse>, operation: PaymentOperation) {
-    const expectedDataField: string = defineEventDataField(
-      EVENT_DATA_FIELD_VERSION_DEFAULT_VALUE,
-      !operation.sponsor ? EVENT_DATA_FIELD_FLAGS_NON_SUBSIDIZED : EVENT_DATA_FIELD_FLAGS_SUBSIDIZED,
-      encodeEventDataFieldForAmount(operation.oldPayerRefundAmount),
-      encodeEventDataFieldForAmount(operation.newPayerRefundAmount),
-      !operation.sponsor ? "" : encodeEventDataFieldForAddress(operation.sponsor?.address ?? ZERO_ADDRESS),
-      !operation.sponsor ? "" : encodeEventDataFieldForAmount(operation.oldSponsorRefundAmount),
-      !operation.sponsor ? "" : encodeEventDataFieldForAmount(operation.newSponsorRefundAmount)
+    const expectedAddendum: string = defineEventAddendum(
+      EVENT_ADDENDUM_VERSION_DEFAULT_VALUE,
+      !operation.sponsor ? EVENT_ADDENDUM_FLAGS_NON_SUBSIDIZED : EVENT_ADDENDUM_FLAGS_SUBSIDIZED,
+      encodeEventAddendumFieldForAmount(operation.oldPayerRefundAmount),
+      encodeEventAddendumFieldForAmount(operation.newPayerRefundAmount),
+      !operation.sponsor ? "" : encodeEventAddendumFieldForAddress(operation.sponsor?.address ?? ZERO_ADDRESS),
+      !operation.sponsor ? "" : encodeEventAddendumFieldForAmount(operation.oldSponsorRefundAmount),
+      !operation.sponsor ? "" : encodeEventAddendumFieldForAmount(operation.newSponsorRefundAmount)
     );
 
     await expect(tx).to.emit(
       this.cardPaymentProcessorShell.contract,
       EVENT_NAME_PAYMENT_REFUNDED
     ).withArgs(
-      checkEventField("paymentId", operation.paymentId),
-      checkEventField("payer", operation.payer.address),
-      checkEventField("data", expectedDataField, eventDataFieldCheckingOptions)
+      checkEventParameter("paymentId", operation.paymentId),
+      checkEventParameter("payer", operation.payer.address),
+      checkEventParameter("addendum", expectedAddendum, eventAddendumCheckingOptions)
     );
   }
 

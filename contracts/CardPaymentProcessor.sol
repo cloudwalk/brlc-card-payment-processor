@@ -66,11 +66,11 @@ contract CardPaymentProcessor is
     /// @dev The maximum cashback for a cap period.
     uint256 public constant MAX_CASHBACK_FOR_CAP_PERIOD = 300 * 10 ** TOKE_DECIMALS;
 
-    /// @dev Event data flag mask defining whether the payment is sponsored.
-    uint256 internal constant EVENT_FLAG_MASK_SPONSORED = 1;
+    /// @dev Event addendum flag mask defining whether the payment is sponsored.
+    uint256 internal constant EVENT_ADDENDUM_FLAG_MASK_SPONSORED = 1;
 
-    /// @dev Default version of the event data.
-    uint8 internal constant EVENT_DEFAULT_VERSION = 1;
+    /// @dev Default version of the event addendum.
+    uint8 internal constant EVENT_ADDENDUM_DEFAULT_VERSION = 1;
 
     // ------------------ Events ---------------------------------- //
 
@@ -656,16 +656,16 @@ contract CardPaymentProcessor is
 
         address sponsor = operation.sponsor;
         uint256 eventFlags = _defineEventFlags(sponsor);
-        bytes memory eventData = abi.encodePacked(
-            EVENT_DEFAULT_VERSION,
+        bytes memory addendum = abi.encodePacked(
+            EVENT_ADDENDUM_DEFAULT_VERSION,
             uint8(eventFlags),
             uint64(operation.baseAmount),
             uint64(operation.extraAmount),
             uint64(operation.payerSumAmount)
         );
-        if (eventFlags & EVENT_FLAG_MASK_SPONSORED != 0) {
-            eventData = abi.encodePacked(
-                eventData,
+        if (eventFlags & EVENT_ADDENDUM_FLAG_MASK_SPONSORED != 0) {
+            addendum = abi.encodePacked(
+                addendum,
                 sponsor,
                 uint64(operation.sponsorSumAmount)
             );
@@ -673,7 +673,7 @@ contract CardPaymentProcessor is
         emit PaymentMade(
             operation.paymentId,
             operation.payer,
-            eventData
+            addendum
         );
     }
 
@@ -721,8 +721,8 @@ contract CardPaymentProcessor is
 
         address sponsor = payment.sponsor;
         uint256 eventFlags = _defineEventFlags(sponsor);
-        bytes memory eventData = abi.encodePacked(
-            EVENT_DEFAULT_VERSION,
+        bytes memory addendum = abi.encodePacked(
+            EVENT_ADDENDUM_DEFAULT_VERSION,
             uint8(eventFlags),
             uint64(oldBaseAmount),
             uint64(newBaseAmount),
@@ -731,9 +731,9 @@ contract CardPaymentProcessor is
             uint64(oldPaymentDetails.payerSumAmount),
             uint64(newPaymentDetails.payerSumAmount)
         );
-        if (eventFlags & EVENT_FLAG_MASK_SPONSORED != 0) {
-            eventData = abi.encodePacked(
-                eventData,
+        if (eventFlags & EVENT_ADDENDUM_FLAG_MASK_SPONSORED != 0) {
+            addendum = abi.encodePacked(
+                addendum,
                 sponsor,
                 uint64(oldPaymentDetails.sponsorSumAmount),
                 uint64(newPaymentDetails.sponsorSumAmount)
@@ -742,7 +742,7 @@ contract CardPaymentProcessor is
         emit PaymentUpdated(
             paymentId,
             payment.payer,
-            eventData
+            addendum
         );
     }
 
@@ -770,16 +770,16 @@ contract CardPaymentProcessor is
 
         address sponsor = payment.sponsor;
         uint256 eventFlags = _defineEventFlags(sponsor);
-        bytes memory eventData = abi.encodePacked(
-            EVENT_DEFAULT_VERSION,
+        bytes memory addendum = abi.encodePacked(
+            EVENT_ADDENDUM_DEFAULT_VERSION,
             uint8(eventFlags),
             uint64(payment.baseAmount),
             uint64(payment.extraAmount),
             uint64(oldPaymentDetails.payerRemainder)
         );
-        if (eventFlags & EVENT_FLAG_MASK_SPONSORED != 0) {
-            eventData = abi.encodePacked(
-                eventData,
+        if (eventFlags & EVENT_ADDENDUM_FLAG_MASK_SPONSORED != 0) {
+            addendum = abi.encodePacked(
+                addendum,
                 sponsor,
                 uint64(oldPaymentDetails.sponsorRemainder)
             );
@@ -789,13 +789,13 @@ contract CardPaymentProcessor is
             emit PaymentRevoked(
                 paymentId,
                 payment.payer,
-                eventData
+                addendum
             );
         } else {
             emit PaymentReversed(
                 paymentId,
                 payment.payer,
-                eventData
+                addendum
             );
         }
     }
@@ -874,15 +874,15 @@ contract CardPaymentProcessor is
 
         address sponsor = payment.sponsor;
         uint256 eventFlags = _defineEventFlags(sponsor);
-        bytes memory eventData = abi.encodePacked(
-            EVENT_DEFAULT_VERSION,
+        bytes memory addendum = abi.encodePacked(
+            EVENT_ADDENDUM_DEFAULT_VERSION,
             uint8(eventFlags),
             uint64(oldPaymentDetails.payerSumAmount - oldPaymentDetails.payerRemainder), // oldPayerRefundAmount
             uint64(newPaymentDetails.payerSumAmount - newPaymentDetails.payerRemainder)  // newPayerRefundAmount
         );
-        if (eventFlags & EVENT_FLAG_MASK_SPONSORED != 0) {
-            eventData = abi.encodePacked(
-                eventData,
+        if (eventFlags & EVENT_ADDENDUM_FLAG_MASK_SPONSORED != 0) {
+            addendum = abi.encodePacked(
+                addendum,
                 sponsor,
                 uint64(oldPaymentDetails.sponsorSumAmount - oldPaymentDetails.sponsorRemainder),//oldSponsorRefundAmount
                 uint64(newPaymentDetails.sponsorSumAmount - newPaymentDetails.sponsorRemainder) //newSponsorRefundAmount
@@ -892,7 +892,7 @@ contract CardPaymentProcessor is
         emit PaymentRefunded(
             paymentId,
             payment.payer,
-            eventData
+            addendum
         );
     }
 
@@ -1027,15 +1027,15 @@ contract CardPaymentProcessor is
         uint256 newConfirmedAmount
     ) internal {
         uint256 eventFlags = _defineEventFlags(sponsor);
-        bytes memory eventData = abi.encodePacked(
-            EVENT_DEFAULT_VERSION,
+        bytes memory addendum = abi.encodePacked(
+            EVENT_ADDENDUM_DEFAULT_VERSION,
             uint8(eventFlags),
             uint64(oldConfirmedAmount),
             uint64(newConfirmedAmount)
         );
-        if (eventFlags & EVENT_FLAG_MASK_SPONSORED != 0) {
-            eventData = abi.encodePacked(
-                eventData,
+        if (eventFlags & EVENT_ADDENDUM_FLAG_MASK_SPONSORED != 0) {
+            addendum = abi.encodePacked(
+                addendum,
                 sponsor
             );
         }
@@ -1043,7 +1043,7 @@ contract CardPaymentProcessor is
         emit PaymentConfirmedAmountChanged(
             paymentId,
             payer,
-            eventData
+            addendum
         );
     }
 
@@ -1348,7 +1348,7 @@ contract CardPaymentProcessor is
     function _defineEventFlags(address sponsor) internal pure returns (uint256) {
         uint256 eventFlags = 0;
         if (sponsor != address(0)) {
-            eventFlags |= EVENT_FLAG_MASK_SPONSORED;
+            eventFlags |= EVENT_ADDENDUM_FLAG_MASK_SPONSORED;
         }
         return eventFlags;
     }
