@@ -94,7 +94,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Emitted when a payment is made.
      *
-     * The useful data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
+     * Some data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
      * function as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
      * with the following arguments (addendum fields):
      *
@@ -108,7 +108,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
-     * @param addendum The useful data of the event as described above.
+     * @param addendum The data of the event as described above.
      */
     event PaymentMade(
         bytes32 indexed paymentId,
@@ -119,7 +119,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Emitted when a payment is updated inside a function whose name started with the `update` word.
      *
-     * The useful data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
+     * Some data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
      * function as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
      * with the following arguments (addendum fields):
      *
@@ -137,7 +137,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
-     * @param addendum The useful data of the event as described above.
+     * @param addendum The data of the event as described above.
      */
     event PaymentUpdated(
         bytes32 indexed paymentId,
@@ -148,7 +148,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Emitted when a payment is revoked.
      *
-     * The useful data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
+     * Some data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
      * function as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
      * with the following arguments (addendum fields):
      *
@@ -162,7 +162,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
-     * @param addendum The useful data of the event as described above.
+     * @param addendum The data of the event as described above.
      */
     event PaymentRevoked(
         bytes32 indexed paymentId,
@@ -173,7 +173,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Emitted when a payment is reversed.
      *
-     * The useful data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
+     * Some data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
      * function as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
      * with the following arguments (addendum fields):
      *
@@ -187,7 +187,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
-     * @param addendum The useful data of the event as described above.
+     * @param addendum The data of the event as described above.
      */
     event PaymentReversed(
         bytes32 indexed paymentId,
@@ -198,7 +198,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Emitted when the confirmed amount of a payment is changed. It can be emitted during any operation.
      *
-     * The useful data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
+     * Some data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
      * function as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
      * with the following arguments (addendum fields):
      *
@@ -210,7 +210,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
-     * @param addendum The useful data of the event as described above.
+     * @param addendum The data of the event as described above.
      */
     event PaymentConfirmedAmountChanged(
         bytes32 indexed paymentId,
@@ -221,7 +221,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Emitted when a payment is refunded inside a function whose name started with the `refund` word.
      *
-     * The useful data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
+     * Some data is encoded in the `addendum` parameter as the result of calling of the `abi.encodePacked()`
      * function as described in https://docs.soliditylang.org/en/latest/abi-spec.html#non-standard-packed-mode
      * with the following arguments (addendum fields):
      *
@@ -235,7 +235,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      *
      * @param paymentId The card transaction payment ID from the off-chain card processing backend.
      * @param payer The account on that behalf the payment is made.
-     * @param addendum The useful data of the event as described above.
+     * @param addendum The data of the event as described above.
      */
     event PaymentRefunded(
         bytes32 indexed paymentId,
