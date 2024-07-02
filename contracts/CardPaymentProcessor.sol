@@ -39,7 +39,7 @@ contract CardPaymentProcessor is
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
 
     /// @dev The maximum allowable cashback rate in permil (1 permil = 0.1 %).
-    uint16 public constant MAX_CASHBACK_RATE_IN_PERMIL = 250;
+    uint16 public constant MAX_CASHBACK_RATE_IN_PERMIL = 500;
 
     /**
      * @dev The coefficient used to round the cashback according to the formula:
