@@ -50,7 +50,7 @@ contract CardPaymentProcessor is
     uint256 public constant CASHBACK_FACTOR = 1000;
 
     /// @dev The maximum allowable cashback rate in units of `CASHBACK_FACTOR`.
-    uint256 public constant MAX_CASHBACK_RATE = 250;
+    uint256 public constant MAX_CASHBACK_RATE = 500;
 
     /**
      * @dev The coefficient used to round the cashback according to the formula:
