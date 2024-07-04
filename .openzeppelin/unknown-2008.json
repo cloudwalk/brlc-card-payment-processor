@@ -816,8 +816,8 @@
       }
     },
     "fb76da266d4e9c21ec576d1267181a5b050f9b271c9419d75cf91927377f8a08": {
-      "address": "0x50b59381676e4Bc067d8D6E01b9555652F809a70",
-      "txHash": "0x88152d87155131681d3fc0843594ae4434744f8db6d043624b2f1d6c6c0c643b",
+      "address": "0x9b76677E6Ee4F198F89F815e7Af275076098192e",
+      "txHash": "0xcaa4fb8e80c9c03d0ab3967d66250c356ab6987c3c994ec390d7076ec14fcf34",
       "layout": {
         "solcVersion": "0.8.24",
         "storage": [
