@@ -1321,7 +1321,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       }
 
       // Shift next block time for a period of cap checking.
-      await increaseBlockTimestamp(CASHBACK_RESET_PERIOD);
+      await increaseBlockTimestamp(CASHBACK_RESET_PERIOD + 1);
 
       // Check that next cashback sending executes successfully due to the cap period resets
       cashbacks[4].sentAmount = cashbacks[4].requestedAmount;
