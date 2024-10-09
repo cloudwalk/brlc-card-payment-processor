@@ -4839,7 +4839,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       }
 
       // Shift next block time for a period of cap checking
-      await increaseBlockTimestamp(CASHBACK_CAP_RESET_PERIOD);
+      await increaseBlockTimestamp(CASHBACK_CAP_RESET_PERIOD + 1);
 
       // Set new start amount for the cashback cap checking in the model
       cardPaymentProcessorShell.model.capPeriodStartAmount =
