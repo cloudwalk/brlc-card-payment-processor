@@ -61,7 +61,22 @@ function checkEventParameterNotEqual<T extends Stringable>(
   return f;
 }
 
+function checkEquality<T extends Record<string, unknown>>(actualObject: T, expectedObject: T, index?: number) {
+  const indexString = !index ? "" : ` with index: ${index}`;
+  Object.keys(expectedObject).forEach(property => {
+    const value = actualObject[property];
+    if (typeof value === "undefined" || typeof value === "function" || typeof value === "object") {
+      throw Error(`Property "${property}" is not found in the actual object` + indexString);
+    }
+    expect(value).to.eq(
+      expectedObject[property],
+      `Mismatch in the "${property}" property between the actual object and expected one` + indexString
+    );
+  });
+}
+
 export {
   checkEventParameter,
-  checkEventParameterNotEqual
+  checkEventParameterNotEqual,
+  checkEquality
 };
