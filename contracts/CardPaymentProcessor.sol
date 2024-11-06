@@ -10,6 +10,7 @@ import { BlocklistableUpgradeable } from "./base/BlocklistableUpgradeable.sol";
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
 import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
+import { Versionable } from "./base/Versionable.sol";
 
 import { CardPaymentProcessorStorage } from "./CardPaymentProcessorStorage.sol";
 import { ICardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
@@ -27,7 +28,8 @@ contract CardPaymentProcessor is
     RescuableUpgradeable,
     UUPSUpgradeable,
     ICardPaymentProcessor,
-    ICardPaymentCashback
+    ICardPaymentCashback,
+    Versionable
 {
     using SafeERC20 for IERC20;
 
