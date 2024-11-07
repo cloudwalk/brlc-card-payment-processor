@@ -9,9 +9,9 @@ async function main() {
   // - unsafeSkipStorageCheck: true
 
   const factory = await ethers.getContractFactory(CONTRACT_NAME);
-  await upgrades.upgradeProxy(PROXY_ADDRESS, factory);
+  await upgrades.validateUpgrade(PROXY_ADDRESS, factory);
 
-  console.log("Proxy upgraded");
+  console.log("Successfully validated");
 }
 
 main().then().catch(err => {
