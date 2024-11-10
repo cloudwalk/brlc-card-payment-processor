@@ -8,7 +8,7 @@
 ![example branch parameter](https://github.com/cloudwalk/brlc-card-payment-processor/actions/workflows/build.yml/badge.svg?branch=main)
 ![example branch parameter](https://github.com/cloudwalk/brlc-card-payment-processor/actions/workflows/test.yml/badge.svg?branch=main)
 
-This repository contains Card Payment Processor smart contracts.
+This repository contains CardPaymentProcessor smart contracts.
 
 ## Project Setup
 1. Clone the repo.
@@ -21,7 +21,7 @@ This repository contains Card Payment Processor smart contracts.
     ```sh
     cp .env.example .env
     ```
-3. If necessary, update settings in the newly created `.env` file (e.g., Solidity version, number of optimization runs, network RPC URLs, private keys (PK) for networks, etc.).
+3. Optionally update the settings in the newly created `.env` file (e.g., Solidity version, number of optimization runs, network RPC URLs, private keys (PK) for networks, etc.).
 
 ## Build and test
 
