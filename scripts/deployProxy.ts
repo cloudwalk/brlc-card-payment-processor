@@ -7,7 +7,8 @@ async function main() {
   const factory = await ethers.getContractFactory(CONTRACT_NAME);
   const proxy = await upgrades.deployProxy(
     factory,
-    [TOKEN_ADDRESS]
+    [TOKEN_ADDRESS],
+    { kind: "transparent" }
   );
 
   await proxy.waitForDeployment();
