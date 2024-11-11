@@ -6,6 +6,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { connect, getAddress, increaseBlockTimestamp, proveTx } from "../test-utils/eth";
 import { createBytesString, createRevertMessageDueToMissingRole } from "../test-utils/misc";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
+import { checkEquality as checkInterfaceEquality } from "../test-utils/checkers";
 
 const MAX_UINT256 = ethers.MaxUint256;
 const MAX_INT256 = ethers.MaxInt256;
@@ -72,6 +73,14 @@ interface TestContext {
   fixture: Fixture;
   cashbacks: TestCashback[];
   cashbackDistributorInitialBalanceByToken: Map<Contract, number>;
+}
+
+interface Version {
+  major: number;
+  minor: number;
+  patch: number;
+
+  [key: string]: number; // Indexing signature to ensure that fields are iterated over in a key-value style
 }
 
 function checkNonexistentCashback(
@@ -175,6 +184,11 @@ describe("Contract 'CashbackDistributor'", async () => {
   const TOKEN_ADDRESS_STUB = "0x0000000000000000000000000000000000000001";
   const CASHBACK_RESET_PERIOD = 30 * 24 * 60 * 60;
   const MAX_CASHBACK_FOR_PERIOD = 300 * 10 ** 6;
+  const EXPECTED_VERSION: Version = {
+    major: 1,
+    minor: 0,
+    patch: 0
+  };
 
   const EVENT_NAME_ENABLE = "Enable";
   const EVENT_NAME_DISABLE = "Disable";
@@ -523,6 +537,14 @@ describe("Contract 'CashbackDistributor'", async () => {
       await expect(
         cashbackDistributor.initialize()
       ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+    });
+  });
+
+  describe("Function '$__VERSION()'", async () => {
+    it("Returns expected values", async () => {
+      const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
+      const cashbackDistributorVersion = await cashbackDistributor.$__VERSION();
+      checkInterfaceEquality(cashbackDistributorVersion, EXPECTED_VERSION);
     });
   });
 

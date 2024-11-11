@@ -11,6 +11,7 @@ import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
 import { RescuableUpgradeable } from "./base/RescuableUpgradeable.sol";
 import { StoragePlaceholder200 } from "./base/StoragePlaceholder200.sol";
 import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
+import { Versionable } from "./base/Versionable.sol";
 
 import { CashbackDistributorStorage } from "./CashbackDistributorStorage.sol";
 import { ICashbackDistributor } from "./interfaces/ICashbackDistributor.sol";
@@ -26,7 +27,8 @@ contract CashbackDistributor is
     RescuableUpgradeable,
     StoragePlaceholder200,
     CashbackDistributorStorage,
-    ICashbackDistributor
+    ICashbackDistributor,
+    Versionable
 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;

@@ -5,7 +5,7 @@ import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { connect, getAddress, proveTx } from "../test-utils/eth";
 import { createBytesString, createRevertMessageDueToMissingRole } from "../test-utils/misc";
-import { checkEventField, checkEventFieldNotEqual } from "../test-utils/checkers";
+import { checkEquality, checkEventField, checkEventFieldNotEqual } from "../test-utils/checkers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 
 const MAX_UINT256 = ethers.MaxUint256;
@@ -1876,6 +1876,14 @@ class TestContext {
   }
 }
 
+interface Version {
+  major: number;
+  minor: number;
+  patch: number;
+
+  [key: string]: number; // Indexing signature to ensure that fields are iterated over in a key-value style
+}
+
 function increaseBytesString(bytesString: string, targetLength: number) {
   return createBytesString(
     parseInt(bytesString.substring(2), 16) + 1,
@@ -1904,6 +1912,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const MAX_CASHBACK_RATE_IN_PERMIL = 500; // 500%
   const CASHBACK_RATE_IN_PERMIL = 100; // 10%
   const CASHBACK_NONCE = 111222333;
+  const EXPECTED_VERSION: Version = {
+    major: 1,
+    minor: 0,
+    patch: 0
+  };
 
   const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
@@ -2138,6 +2151,14 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(
         anotherCardPaymentProcessor.initialize(ZERO_ADDRESS)
       ).to.be.revertedWithCustomError(cardPaymentProcessorFactory, REVERT_ERROR_IF_TOKEN_ADDRESS_IZ_ZERO);
+    });
+  });
+
+  describe("Function '$__VERSION()'", async () => {
+    it("Returns expected values", async () => {
+      const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+      const cardPaymentProcessorVersion = await cardPaymentProcessor.$__VERSION();
+      checkEquality(cardPaymentProcessorVersion, EXPECTED_VERSION);
     });
   });
 
