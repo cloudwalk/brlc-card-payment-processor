@@ -14,6 +14,7 @@ import {
 } from "../test-utils/eth";
 import { createBytesString } from "../test-utils/misc";
 import {
+  checkEquality,
   checkEventParameter,
   checkEventParameterNotEqual,
   EventParameterCheckingOptions
@@ -818,6 +819,14 @@ interface OperationConditions {
   cashbackRevocationRequestedInAnyOperation: boolean;
 }
 
+interface Version {
+  major: number;
+  minor: number;
+  patch: number;
+
+  [key: string]: number; // Indexing signature to ensure that fields are iterated over in a key-value style
+}
+
 class CardPaymentProcessorShell {
   contract: Contract;
   model: CardPaymentProcessorModel;
@@ -1540,6 +1549,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const CASHBACK_RATE_MAX = 500; // 50%
   const CASHBACK_RATE_DEFAULT = 100; // 10%
   const CASHBACK_RATE_ZERO = 0;
+  const EXPECTED_VERSION: Version = {
+    major: 2,
+    minor: 0,
+    patch: 0
+  };
 
   const REVERT_ERROR_IF_CONTRACT_INITIALIZATION_IS_INVALID = "InvalidInitialization";
   const REVERT_ERROR_IF_CONTRACT_IS_PAUSED = "EnforcedPause";
@@ -1748,6 +1762,14 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(
         anotherCardPaymentProcessor.initialize(ZERO_ADDRESS)
       ).to.be.revertedWithCustomError(cardPaymentProcessorFactory, REVERT_ERROR_IF_TOKEN_ZERO_ADDRESS);
+    });
+  });
+
+  describe("Function '$__VERSION()'", async () => {
+    it("Returns expected values", async () => {
+      const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+      const cardPaymentProcessorVersion = await cardPaymentProcessor.$__VERSION();
+      checkEquality(cardPaymentProcessorVersion, EXPECTED_VERSION);
     });
   });
 
