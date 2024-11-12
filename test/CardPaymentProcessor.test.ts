@@ -1782,7 +1782,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the caller is not the owner", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
 
-      await expect(connect(cardPaymentProcessor, user1).upgradeToAndCall(user1.address, "0x"))
+      await expect(connect(cardPaymentProcessor, user1).upgradeToAndCall(cardPaymentProcessor, "0x"))
         .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
     });
   });
@@ -1796,7 +1796,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the caller is not the owner", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
 
-      await expect(connect(cardPaymentProcessor, user1).upgradeTo(user1.address))
+      await expect(connect(cardPaymentProcessor, user1).upgradeTo(cardPaymentProcessor))
         .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
     });
   });
