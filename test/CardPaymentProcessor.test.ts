@@ -1551,7 +1551,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const CASHBACK_RATE_ZERO = 0;
   const EXPECTED_VERSION: Version = {
     major: 2,
-    minor: 0,
+    minor: 1,
     patch: 0
   };
 
