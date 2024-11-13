@@ -88,7 +88,7 @@ contract CardPaymentProcessor is
     error AccountZeroAddress();
 
     /// @dev Thrown if the provided new implementation address is not of a card payment processor contract.
-    error CardPaymentProcessor_ImplementationAddressInvalid();
+    error ImplementationAddressInvalid();
 
     /// @dev The cashback operations are already enabled.
     error CashbackAlreadyEnabled();
@@ -1368,7 +1368,7 @@ contract CardPaymentProcessor is
      */
     function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
         try ICardPaymentProcessor(newImplementation).proveCardPaymentProcessor() {} catch {
-            revert CardPaymentProcessor_ImplementationAddressInvalid();
+            revert ImplementationAddressInvalid();
         }
     }
 

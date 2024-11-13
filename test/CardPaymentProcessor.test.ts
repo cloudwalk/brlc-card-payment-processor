@@ -1559,6 +1559,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const REVERT_ERROR_IF_CONTRACT_IS_PAUSED = "EnforcedPause";
   const REVERT_ERROR_IF_ERC20_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE = "ERC20InsufficientBalance";
   const REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT = "AccessControlUnauthorizedAccount";
+  const REVERT_ERROR_IF_IMPLEMENTATION_ADDRESS_INVALID = "ImplementationAddressInvalid";
 
   const REVERT_ERROR_IF_ACCOUNT_ZERO_ADDRESS = "AccountZeroAddress";
   const REVERT_ERROR_IF_CASHBACK_ALREADY_ENABLED = "CashbackAlreadyEnabled";
@@ -1785,6 +1786,13 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(connect(cardPaymentProcessor, user1).upgradeToAndCall(cardPaymentProcessor, "0x"))
         .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
     });
+
+    it("Is reverted if the provided implementation address is not a card payment processor contract", async () => {
+      const { cardPaymentProcessor, tokenMock } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+
+      await expect(cardPaymentProcessor.upgradeToAndCall(getAddress(tokenMock), "0x"))
+        .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_IMPLEMENTATION_ADDRESS_INVALID);
+    });
   });
 
   describe("Function 'upgradeTo()'", async () => {
@@ -1798,6 +1806,13 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(connect(cardPaymentProcessor, user1).upgradeTo(cardPaymentProcessor))
         .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
+    });
+
+    it("Is reverted if the provided implementation address is not a card payment processor contract", async () => {
+      const { cardPaymentProcessor, tokenMock } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+
+      await expect(cardPaymentProcessor.upgradeTo(getAddress(tokenMock)))
+        .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_IMPLEMENTATION_ADDRESS_INVALID);
     });
   });
 
