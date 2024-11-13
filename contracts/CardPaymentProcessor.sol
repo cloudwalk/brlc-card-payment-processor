@@ -87,9 +87,6 @@ contract CardPaymentProcessor is
     /// @dev The zero payer address has been passed as a function argument.
     error AccountZeroAddress();
 
-    /// @dev Thrown if the provided new implementation address is not of a card payment processor contract.
-    error ImplementationAddressInvalid();
-
     /// @dev The cashback operations are already enabled.
     error CashbackAlreadyEnabled();
 
@@ -116,6 +113,9 @@ contract CardPaymentProcessor is
 
     /// @dev A new cash-out account is the same as the previously set one.
     error CashOutAccountUnchanged();
+
+    /// @dev Thrown if the provided new implementation address is not of a card payment processor contract.
+    error ImplementationAddressInvalid();
 
     /// @dev The requested confirmation amount does not meet the requirements.
     error InappropriateConfirmationAmount();
