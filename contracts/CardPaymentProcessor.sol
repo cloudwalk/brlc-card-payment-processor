@@ -4,7 +4,7 @@ pragma solidity 0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { UUPSExtUpgradeable } from "./base/UUPSExtUpgradeable.sol";
 
 import { BlocklistableUpgradeable } from "./base/BlocklistableUpgradeable.sol";
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
@@ -26,7 +26,7 @@ contract CardPaymentProcessor is
     BlocklistableUpgradeable,
     PausableExtUpgradeable,
     RescuableUpgradeable,
-    UUPSUpgradeable,
+    UUPSExtUpgradeable,
     ICardPaymentProcessor,
     ICardPaymentCashback,
     Versionable
@@ -113,6 +113,9 @@ contract CardPaymentProcessor is
 
     /// @dev A new cash-out account is the same as the previously set one.
     error CashOutAccountUnchanged();
+
+    /// @dev Thrown if the provided new implementation address is not of a card payment processor contract.
+    error ImplementationAddressInvalid();
 
     /// @dev The requested confirmation amount does not meet the requirements.
     error InappropriateConfirmationAmount();
@@ -636,6 +639,10 @@ contract CardPaymentProcessor is
     function getAccountCashbackState(address account) external view returns (AccountCashbackState memory) {
         return _accountCashbackStates[account];
     }
+    // ------------------ Pure functions -------------------------- //
+
+     /// @inheritdoc ICardPaymentProcessor
+    function proveCardPaymentProcessor() external pure {}
 
     // ------------------ Internal functions ---------------------- //
 
@@ -1355,10 +1362,14 @@ contract CardPaymentProcessor is
         return eventFlags;
     }
 
-    /// @dev The upgrade authorization function for UUPSProxy.
-    function _authorizeUpgrade(address newImplementation) internal view override {
-        newImplementation; // Suppresses a compiler warning about the unused variable
-        _checkRole(OWNER_ROLE);
+    /**
+     * @dev The upgrade validation function for the UUPSExtUpgradeable contract.
+     * @param newImplementation The address of the new implementation.
+     */
+    function _validateUpgrade(address newImplementation) internal view override onlyRole(OWNER_ROLE) {
+        try ICardPaymentProcessor(newImplementation).proveCardPaymentProcessor() {} catch {
+            revert ImplementationAddressInvalid();
+        }
     }
 
     // ------------------ Service functions ----------------------- //
