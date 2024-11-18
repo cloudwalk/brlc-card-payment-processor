@@ -1551,7 +1551,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const CASHBACK_RATE_ZERO = 0;
   const EXPECTED_VERSION: Version = {
     major: 2,
-    minor: 0,
+    minor: 1,
     patch: 0
   };
 
@@ -1570,6 +1570,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const REVERT_ERROR_IF_CASHBACK_RATE_UNCHANGED = "CashbackRateUnchanged";
   const REVERT_ERROR_IF_CASH_OUT_ACCOUNT_NOT_CONFIGURED = "CashOutAccountNotConfigured";
   const REVERT_ERROR_IF_CASH_OUT_ACCOUNT_UNCHANGED = "CashOutAccountUnchanged";
+  const REVERT_ERROR_IF_IMPLEMENTATION_ADDRESS_INVALID = "ImplementationAddressInvalid";
   const REVERT_ERROR_IF_INAPPROPRIATE_CONFIRMATION_AMOUNT = "InappropriateConfirmationAmount";
   const REVERT_ERROR_IF_INAPPROPRIATE_REFUNDING_AMOUNT = "InappropriateRefundingAmount";
   const REVERT_ERROR_IF_INAPPROPRIATE_PAYMENT_STATUS = "InappropriatePaymentStatus";
@@ -1782,8 +1783,15 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the caller is not the owner", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
 
-      await expect(connect(cardPaymentProcessor, user1).upgradeToAndCall(user1.address, "0x"))
+      await expect(connect(cardPaymentProcessor, user1).upgradeToAndCall(cardPaymentProcessor, "0x"))
         .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
+    });
+
+    it("Is reverted if the provided implementation address is not a card payment processor contract", async () => {
+      const { cardPaymentProcessor, tokenMock } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+
+      await expect(cardPaymentProcessor.upgradeToAndCall(getAddress(tokenMock), "0x"))
+        .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_IMPLEMENTATION_ADDRESS_INVALID);
     });
   });
 
@@ -1796,8 +1804,15 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Is reverted if the caller is not the owner", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
 
-      await expect(connect(cardPaymentProcessor, user1).upgradeTo(user1.address))
+      await expect(connect(cardPaymentProcessor, user1).upgradeTo(cardPaymentProcessor))
         .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_UNAUTHORIZED_ACCOUNT);
+    });
+
+    it("Is reverted if the provided implementation address is not a card payment processor contract", async () => {
+      const { cardPaymentProcessor, tokenMock } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
+
+      await expect(cardPaymentProcessor.upgradeTo(getAddress(tokenMock)))
+        .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_IMPLEMENTATION_ADDRESS_INVALID);
     });
   });
 
