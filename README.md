@@ -10,6 +10,9 @@
 
 This repository contains CardPaymentProcessor smart contracts.
 
+⚠️ IMPORTANT ⚠️ This branch of the repository is to preserve the development history and no longer supported.
+The V2 of the contract has been moved to the separate repository: https://github.com/cloudwalk/brlc-card-payment-processor-v2/ 
+
 ## Project Setup
 1. Clone the repo.
 2. Create the `.env` file based on the `.env.example` one:
