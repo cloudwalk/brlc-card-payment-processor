@@ -2,7 +2,7 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: brlc-card-payment-processor
-  description: BRLC card payment processor smart contracts
+  description: Card payment processor V1 smart contracts
   annotations:
     github.com/project-slug: cloudwalk/brlc-card-payment-processor
     backstage.io/techdocs-ref: dir:.
@@ -16,6 +16,7 @@ metadata:
       title: Repository
       icon: github
 spec:
-  type: smart contract
+  type: smart-contract
+  system: Blockchain
   lifecycle: production
   owner: team-smart-contracts
