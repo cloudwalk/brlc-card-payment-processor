@@ -430,6 +430,7 @@ contract CashbackDistributor is
 
         if (block.timestamp - _cashbackLastTimeReset[token][recipient] > CASHBACK_RESET_PERIOD) {
             _cashbackLastTimeReset[token][recipient] = block.timestamp;
+            _cashbackSinceLastReset[token][recipient] = 0;
         } else {
             overallCashback = _cashbackSinceLastReset[token][recipient];
         }
