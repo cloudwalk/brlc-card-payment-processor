@@ -186,7 +186,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   const MAX_CASHBACK_FOR_PERIOD = 300 * 10 ** 6;
   const EXPECTED_VERSION: Version = {
     major: 1,
-    minor: 0,
+    minor: 1,
     patch: 0
   };
 
@@ -1276,17 +1276,17 @@ describe("Contract 'CashbackDistributor'", async () => {
         expectedLastTimeReset: number;
         expectedCashbackSum: number;
       }) {
-        expect(
-          await cashbackDistributor.getCashbackLastTimeReset(getAddress(tokenMock), recipient.address)
-        ).to.equal(
+        expect(await cashbackDistributor.getCashbackLastTimeReset(getAddress(tokenMock), recipient.address)).to.equal(
           props.expectedLastTimeReset
         );
 
-        expect(
-          await cashbackDistributor.getCashbackSinceLastReset(getAddress(tokenMock), recipient.address)
-        ).to.equal(
+        expect(await cashbackDistributor.getCashbackSinceLastReset(getAddress(tokenMock), recipient.address)).to.equal(
           props.expectedCashbackSum
         );
+
+        expect(
+          await cashbackDistributor.previewCashbackCap(getAddress(tokenMock), recipient.address)
+        ).to.deep.equal([props.expectedLastTimeReset, props.expectedCashbackSum]);
       }
 
       // Reset the cashback sum for period cashback cap control and check the cap-related values.
@@ -1344,6 +1344,13 @@ describe("Contract 'CashbackDistributor'", async () => {
 
       // Shift next block time for a period of cap checking.
       await increaseBlockTimestamp(CASHBACK_RESET_PERIOD + 1);
+
+      // Check that the cap state preview function returns expected values when a new cap period starts
+      const timestampBefore = (await ethers.provider.getBlock("latest"))?.timestamp ?? 0;
+      const actualPreview = await cashbackDistributor.previewCashbackCap(getAddress(tokenMock), recipient.address);
+      const timestampAfter = (await ethers.provider.getBlock("latest"))?.timestamp ?? 0;
+      expect(actualPreview[0]).to.be.within(timestampBefore, timestampAfter);
+      expect(actualPreview[1]).to.equal(0);
 
       // Check that next cashback sending executes successfully due to the cap period resets
       cashbacks[4].sentAmount = cashbacks[4].requestedAmount;

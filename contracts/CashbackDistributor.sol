@@ -413,12 +413,44 @@ contract CashbackDistributor is
         return _totalCashbackByTokenAndRecipient[token][recipient];
     }
 
+    /**
+     * @dev See {ICashbackDistributor-getCashbackSinceLastReset}.
+     */
     function getCashbackSinceLastReset(address token, address recipient) external view returns (uint256) {
         return _cashbackSinceLastReset[token][recipient];
     }
 
+    /**
+     * @dev See {ICashbackDistributor-getCashbackLastTimeReset}.
+     */
     function getCashbackLastTimeReset(address token, address recipient) external view returns (uint256) {
         return _cashbackLastTimeReset[token][recipient];
+    }
+
+    /**
+     * @dev See {ICashbackDistributor-previewCashbackCap}.
+     */
+    function previewCashbackCap(
+        address token,
+        address recipient
+    ) external view returns (uint256 cashbackPeriodStart, uint256 overallCashbackForPeriod) {
+        (cashbackPeriodStart, overallCashbackForPeriod, ) = _previewCashbackCap(token, recipient);
+    }
+
+    function _previewCashbackCap(
+        address token,
+        address recipient
+    ) internal view returns (uint256 cashbackPeriodStart, uint256 overallCashbackForPeriod, uint256 isPeriodReset) {
+        overallCashbackForPeriod = 0;
+        isPeriodReset = 0;
+        cashbackPeriodStart = _cashbackLastTimeReset[token][recipient];
+
+        if (block.timestamp - cashbackPeriodStart > CASHBACK_RESET_PERIOD) {
+            cashbackPeriodStart = block.timestamp;
+            isPeriodReset = 1;
+        } else {
+            overallCashbackForPeriod = _cashbackSinceLastReset[token][recipient];
+        }
     }
 
     function _updateCashbackCap(
@@ -426,18 +458,18 @@ contract CashbackDistributor is
         address recipient,
         uint256 amount
     ) internal returns (bool accepted, uint256 acceptedAmount) {
-        uint256 overallCashback = 0;
-
-        if (block.timestamp - _cashbackLastTimeReset[token][recipient] > CASHBACK_RESET_PERIOD) {
-            _cashbackLastTimeReset[token][recipient] = block.timestamp;
-        } else {
-            overallCashback = _cashbackSinceLastReset[token][recipient];
+        (uint256 cashbackPeriodStart, uint256 overallCashbackForPeriod, uint256 isPeriodReset) = _previewCashbackCap(
+            token,
+            recipient
+        );
+        if (isPeriodReset != 0) {
+            _cashbackLastTimeReset[token][recipient] = cashbackPeriodStart;
         }
 
-        if (overallCashback < MAX_CASHBACK_FOR_PERIOD) {
-            uint256 leftAmount = MAX_CASHBACK_FOR_PERIOD - overallCashback;
+        if (overallCashbackForPeriod < MAX_CASHBACK_FOR_PERIOD) {
+            uint256 leftAmount = MAX_CASHBACK_FOR_PERIOD - overallCashbackForPeriod;
             acceptedAmount = leftAmount >= amount ? amount : leftAmount;
-            _cashbackSinceLastReset[token][recipient] = overallCashback + acceptedAmount;
+            _cashbackSinceLastReset[token][recipient] = overallCashbackForPeriod + acceptedAmount;
             accepted = true;
         }
     }
