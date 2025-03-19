@@ -172,7 +172,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
         return 0;
     }
 
-   /**
+    /**
      * @dev See {ICashbackDistributor-getCashbackSinceLastReset}.
      *
      * Just a stub for testing. Always returns zero.

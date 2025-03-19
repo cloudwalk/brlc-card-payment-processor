@@ -458,8 +458,10 @@ contract CashbackDistributor is
         address recipient,
         uint256 amount
     ) internal returns (bool accepted, uint256 acceptedAmount) {
-        (uint256 cashbackPeriodStart, uint256 overallCashbackForPeriod, uint256 isPeriodReset) =
-                        _previewCashbackCap(token, recipient);
+        (uint256 cashbackPeriodStart, uint256 overallCashbackForPeriod, uint256 isPeriodReset) = _previewCashbackCap(
+            token,
+            recipient
+        );
         if (isPeriodReset != 0) {
             _cashbackLastTimeReset[token][recipient] = cashbackPeriodStart;
         }
