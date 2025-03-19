@@ -89,6 +89,9 @@ contract CashbackDistributorMock is ICashbackDistributor {
         getCashbackNonces(bytes32(0), 0, 0);
         getTotalCashbackByTokenAndExternalId(address(0), bytes32(0));
         getTotalCashbackByTokenAndRecipient(address(0), address(0));
+        getCashbackSinceLastReset(address(0), address(0));
+        getCashbackLastTimeReset(address(0), address(0));
+        previewCashbackCap(address(0), address(0));
         enable();
         disable();
     }
@@ -167,6 +170,43 @@ contract CashbackDistributorMock is ICashbackDistributor {
         token;
         recipient;
         return 0;
+    }
+
+   /**
+     * @dev See {ICashbackDistributor-getCashbackSinceLastReset}.
+     *
+     * Just a stub for testing. Always returns zero.
+     */
+    function getCashbackSinceLastReset(address token, address recipient) public pure returns (uint256) {
+        token;
+        recipient;
+        return 0;
+    }
+
+    /**
+     * @dev See {ICashbackDistributor-getCashbackLastTimeReset}.
+     *
+     * Just a stub for testing. Always returns zero.
+     */
+    function getCashbackLastTimeReset(address token, address recipient) public pure returns (uint256) {
+        token;
+        recipient;
+        return 0;
+    }
+
+    /**
+     * @dev See {ICashbackDistributor-previewCashbackCap}.
+     *
+     * Just a stub for testing. Always returns zeros.
+     */
+    function previewCashbackCap(
+        address token,
+        address recipient
+    ) public pure returns (uint256 cashbackPeriodStart, uint256 overallCashbackForPeriod) {
+        token;
+        recipient;
+        cashbackPeriodStart = 0;
+        overallCashbackForPeriod = 0;
     }
 
     /**

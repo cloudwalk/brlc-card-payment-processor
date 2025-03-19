@@ -38,12 +38,16 @@ abstract contract CashbackDistributorStorageV1 is ICashbackDistributorTypes {
  * @title CashbackDistributor storage version 2
  */
 abstract contract CashbackDistributorStorageV2 {
+    /// @dev The cashback periodical cap reset period.
     uint256 public constant CASHBACK_RESET_PERIOD = 30 days;
 
+    /// @dev The maximum amount of cashback for a period.
     uint256 public constant MAX_CASHBACK_FOR_PERIOD = 300 * 10 ** 6;
 
+    /// @dev The mapping of the last time the cashback periodical cap was reset for a token and a recipient.
     mapping(address => mapping(address => uint256)) internal _cashbackLastTimeReset;
 
+    /// @dev The mapping of the total amount of cashback within the current cap period for a token and a recipient.
     mapping(address => mapping(address => uint256)) internal _cashbackSinceLastReset;
 }
 

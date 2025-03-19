@@ -324,4 +324,30 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      * @param recipient The recipient address of the cashback operations to define the returned total amount.
      */
     function getTotalCashbackByTokenAndRecipient(address token, address recipient) external view returns (uint256);
+
+    /**
+     * @dev Returns the total amount of all the success cashback operations since the last reset of the periodical cap.
+     * @param token The token contract address of the cashback operations to define the returned total amount.
+     * @param recipient The recipient address of the cashback operations to define the returned total amount.
+     */
+    function getCashbackSinceLastReset(address token, address recipient) external view returns (uint256);
+
+    /**
+     * @dev Returns the last time the cashback periodical cap was reset for a token and a recipient.
+     * @param token The token contract address of the cashback operations to define the returned last time.
+     * @param recipient The recipient address of the cashback operations to define the returned last time.
+     */
+    function getCashbackLastTimeReset(address token, address recipient) external view returns (uint256);
+
+    /**
+     * @dev Determines a preview of the cashback cap state for a token and a recipient at the current block timestamp.
+     * @param token The token contract address of the cashback operations to define the returned cashback cap state.
+     * @param recipient The recipient address of the cashback operations to define the returned cashback cap state.
+     * @return cashbackPeriodStart The start time of the current cashback cap period.
+     * @return overallCashbackForPeriod The total amount of cashback within the current cashback cap period.
+     */
+    function previewCashbackCap(
+        address token,
+        address recipient
+    ) external view returns (uint256 cashbackPeriodStart, uint256 overallCashbackForPeriod);
 }

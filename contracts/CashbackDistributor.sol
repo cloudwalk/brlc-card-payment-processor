@@ -413,14 +413,23 @@ contract CashbackDistributor is
         return _totalCashbackByTokenAndRecipient[token][recipient];
     }
 
+    /**
+     * @dev See {ICashbackDistributor-getCashbackSinceLastReset}.
+     */
     function getCashbackSinceLastReset(address token, address recipient) external view returns (uint256) {
         return _cashbackSinceLastReset[token][recipient];
     }
 
+    /**
+     * @dev See {ICashbackDistributor-getCashbackLastTimeReset}.
+     */
     function getCashbackLastTimeReset(address token, address recipient) external view returns (uint256) {
         return _cashbackLastTimeReset[token][recipient];
     }
 
+    /**
+     * @dev See {ICashbackDistributor-previewCashbackCap}.
+     */
     function previewCashbackCap(
         address token,
         address recipient
