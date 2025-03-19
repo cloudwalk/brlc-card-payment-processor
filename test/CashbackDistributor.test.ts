@@ -186,7 +186,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   const MAX_CASHBACK_FOR_PERIOD = 300 * 10 ** 6;
   const EXPECTED_VERSION: Version = {
     major: 1,
-    minor: 0,
+    minor: 1,
     patch: 0
   };
 
