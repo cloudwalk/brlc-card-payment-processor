@@ -96,29 +96,6 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
     /// @dev Emitted when cashback operations are disabled.
     event DisableCashback();
 
-    // -------------------- View functions ------------------------ //
-
-    /**
-     * @dev Returns the address of the cashback distributor contract.
-     */
-    function cashbackDistributor() external view returns (address);
-
-    /**
-     * @dev Checks if the cashback operations are enabled.
-     */
-    function cashbackEnabled() external view returns (bool);
-
-    /**
-     * @dev Returns the current cashback rate in permil.
-     */
-    function cashbackRate() external view returns (uint256);
-
-    /**
-     * @dev Returns the cashback details for the transaction authorization ID.
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     */
-    function getCashback(bytes16 authorizationId) external view returns (Cashback memory);
-
     // -------------------- Transactional functions --------------- //
 
     /**
@@ -152,4 +129,27 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
      * Emits a {DisableCashback} event.
      */
     function disableCashback() external;
+
+    // -------------------- View functions ------------------------ //
+
+    /**
+     * @dev Returns the address of the cashback distributor contract.
+     */
+    function cashbackDistributor() external view returns (address);
+
+    /**
+     * @dev Checks if the cashback operations are enabled.
+     */
+    function cashbackEnabled() external view returns (bool);
+
+    /**
+     * @dev Returns the current cashback rate in permil.
+     */
+    function cashbackRate() external view returns (uint256);
+
+    /**
+     * @dev Returns the cashback details for the transaction authorization ID.
+     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     */
+    function getCashback(bytes16 authorizationId) external view returns (Cashback memory);
 }

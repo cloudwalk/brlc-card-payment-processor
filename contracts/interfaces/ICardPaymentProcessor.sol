@@ -402,64 +402,14 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         address newCashOutAccount
     );
 
-    // -------------------- View functions ------------------------ //
-
-    /**
-     * @dev Returns the address of the cash-out account.
-     */
-    function cashOutAccount() external view returns (address);
-
-    /**
-     * @dev Returns the address of the underlying token.
-     */
-    function underlyingToken() external view returns (address);
-
-    /**
-     * @dev Returns the total balance of uncleared tokens locked in the contract.
-     */
-    function totalUnclearedBalance() external view returns (uint256);
-
-    /**
-     * @dev Returns the total balance of cleared tokens locked in the contract.
-     */
-    function totalClearedBalance() external view returns (uint256);
-
-    /**
-     * @dev Returns the balance of uncleared tokens for an account.
-     * @param account The address of the account.
-     */
-    function unclearedBalanceOf(address account) external view returns (uint256);
-
-    /**
-     * @dev Returns the balance of cleared tokens for an account.
-     * @param account The address of the account.
-     */
-    function clearedBalanceOf(address account) external view returns (uint256);
-
-    /**
-     * @dev Returns payment data for a card transaction authorization ID.
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     */
-    function paymentFor(bytes16 authorizationId) external view returns (Payment memory);
-
-    /**
-     * @dev Checks if the payment associated with the hash of a parent transaction has been revoked.
-     * @param parentTxHash The hash of the parent transaction where the payment was made.
-     */
-    function isPaymentRevoked(bytes32 parentTxHash) external view returns (bool);
-
-    /**
-     * @dev Checks if the payment associated with the hash of a parent transaction has been reversed.
-     * @param parentTxHash The hash of the parent transaction where the payment was made.
-     */
-    function isPaymentReversed(bytes32 parentTxHash) external view returns (bool);
-
-    /**
-     * @dev Returns the configured limit of revocations for a single payment.
-     */
-    function revocationLimit() external view returns (uint8);
-
     // -------------------- Transactional functions --------------- //
+
+    /**
+     * @dev Sets the cash-out account.
+     *
+     * @param newCashOutAccount The new address of the cash-out account.
+     */
+    function setCashOutAccount(address newCashOutAccount) external;
 
     /**
      * @dev Makes a card payment.
@@ -746,4 +696,61 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint256 refundAmount,
         bytes16 correlationId
     ) external;
+
+    // -------------------- View functions ------------------------ //
+
+    /**
+     * @dev Returns the address of the cash-out account.
+     */
+    function cashOutAccount() external view returns (address);
+
+    /**
+     * @dev Returns the address of the underlying token.
+     */
+    function underlyingToken() external view returns (address);
+
+    /**
+     * @dev Returns the total balance of uncleared tokens locked in the contract.
+     */
+    function totalUnclearedBalance() external view returns (uint256);
+
+    /**
+     * @dev Returns the total balance of cleared tokens locked in the contract.
+     */
+    function totalClearedBalance() external view returns (uint256);
+
+    /**
+     * @dev Returns the balance of uncleared tokens for an account.
+     * @param account The address of the account.
+     */
+    function unclearedBalanceOf(address account) external view returns (uint256);
+
+    /**
+     * @dev Returns the balance of cleared tokens for an account.
+     * @param account The address of the account.
+     */
+    function clearedBalanceOf(address account) external view returns (uint256);
+
+    /**
+     * @dev Returns payment data for a card transaction authorization ID.
+     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     */
+    function paymentFor(bytes16 authorizationId) external view returns (Payment memory);
+
+    /**
+     * @dev Checks if the payment associated with the hash of a parent transaction has been revoked.
+     * @param parentTxHash The hash of the parent transaction where the payment was made.
+     */
+    function isPaymentRevoked(bytes32 parentTxHash) external view returns (bool);
+
+    /**
+     * @dev Checks if the payment associated with the hash of a parent transaction has been reversed.
+     * @param parentTxHash The hash of the parent transaction where the payment was made.
+     */
+    function isPaymentReversed(bytes32 parentTxHash) external view returns (bool);
+
+    /**
+     * @dev Returns the configured limit of revocations for a single payment.
+     */
+    function revocationLimit() external view returns (uint8);
 }

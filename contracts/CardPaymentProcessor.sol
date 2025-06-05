@@ -37,6 +37,74 @@ contract CardPaymentProcessor is
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    /**
+     * @dev Kind of a payment updating operation as an enum.
+     *
+     * The possible values:
+     * - Full = 0 -- The operation is executed fully regardless of the new values of the base amount and extra amount.
+     * - Lazy = 1 -- The operation is executed only if the new amounts differ from the current ones of the payment.
+     */
+    enum UpdatingOperationKind {
+        Full,
+        Lazy
+    }
+
+    /// @dev Contains parameters of a payment making operation.
+    struct MakingOperation {
+        address sender;
+        address account;
+        uint256 baseAmount;
+        uint256 extraAmount;
+        bytes16 authorizationId;
+        bytes16 correlationId;
+        address sponsor;
+        uint256 subsidyLimit;
+        int16 cashbackRateInPermil;
+    }
+
+    /// @dev Contains parameters for a payment updating operation.
+    struct UpdatingOperation {
+        uint256 oldPaymentSumAmount;
+        uint256 newPaymentSumAmount;
+        uint256 oldSponsorSumAmount;
+        uint256 newSponsorSumAmount;
+        uint256 oldPaymentBaseAmount;
+        uint256 newPaymentBaseAmount;
+        uint256 oldCompensationAmount;
+        uint256 paymentTotalAmountChange;
+        uint256 accountBalanceChange;
+        uint256 sponsorBalanceChange;
+        uint256 cashbackAmountChange;
+        bool paymentSumAmountDecreased;
+        bool cashbackDecreased;
+    }
+
+    /// @dev Contains parameters of a payment canceling operation.
+    struct CancelingOperation {
+        uint256 paymentTotalAmount;
+        uint256 accountSentAmount;
+        uint256 sponsorSentAmount;
+        uint256 totalSentAmount;
+        uint256 revokedCashbackAmount;
+    }
+
+    /// @dev Contains parameters of a payment refunding operation.
+    struct RefundingOperation {
+        uint256 paymentRefundAmount; // It is for local use only to avoid the "Stack too deep" error.
+        uint256 sponsorRefundAmount;
+        uint256 newPaymentRefundAmount;
+        uint256 newPaymentSumAmount;
+        uint256 paymentTotalAmountDiff;
+        uint256 oldCashbackAmount; // It is for local use only to avoid the "Stack too deep" error.
+        uint256 newCashbackAmount; // It is for local use only to avoid the "Stack too deep" error.
+        uint256 oldCompensationAmount; // It is for local use only to avoid the "Stack too deep" error.
+        uint256 newCompensationAmount;
+        uint256 accountSentAmount;
+        uint256 sponsorSentAmount;
+        uint256 totalSentAmount;
+        uint256 revokedCashbackAmount;
+    }
+
     // -------------------- Constants ----------------------------- //
 
     /// @dev The role of executor that is allowed to execute the card payment operations.
@@ -173,19 +241,6 @@ contract CardPaymentProcessor is
     }
 
     // ------------------ Transactional functions ----------------- //
-
-    /// @dev Contains parameters of a payment making operation.
-    struct MakingOperation {
-        address sender;
-        address account;
-        uint256 baseAmount;
-        uint256 extraAmount;
-        bytes16 authorizationId;
-        bytes16 correlationId;
-        address sponsor;
-        uint256 subsidyLimit;
-        int16 cashbackRateInPermil;
-    }
 
     /**
      * @inheritdoc ICardPaymentProcessor
@@ -612,6 +667,115 @@ contract CardPaymentProcessor is
         emit SetRevocationLimit(oldLimit, newLimit);
     }
 
+    /**
+     * @inheritdoc ICardPaymentCashback
+     *
+     * @dev Requirements:
+     *
+     * - The caller must have the {OWNER_ROLE} role.
+     * - The new cashback distributor address must not be zero.
+     * - The new cashback distributor can be set only once.
+     */
+    function setCashbackDistributor(address newCashbackDistributor) external onlyRole(OWNER_ROLE) {
+        address oldCashbackDistributor = _cashbackDistributor;
+
+        if (newCashbackDistributor == address(0)) {
+            revert CashbackDistributorZeroAddress();
+        }
+        if (oldCashbackDistributor != address(0)) {
+            revert CashbackDistributorAlreadyConfigured();
+        }
+
+        _cashbackDistributor = newCashbackDistributor;
+
+        emit SetCashbackDistributor(oldCashbackDistributor, newCashbackDistributor);
+
+        IERC20Upgradeable(_token).approve(newCashbackDistributor, type(uint256).max);
+    }
+
+    /**
+     * @inheritdoc ICardPaymentCashback
+     *
+     * @dev Requirements:
+     *
+     * - The caller must have the {OWNER_ROLE} role.
+     * - The new rate must differ from the previously set one.
+     * - The new rate must not exceed the allowable maximum specified in the {MAX_CASHBACK_RATE_IN_PERMIL} constant.
+     */
+    function setCashbackRate(uint16 newCashbackRateInPermil) external onlyRole(OWNER_ROLE) {
+        uint16 oldCashbackRateInPermil = _cashbackRateInPermil;
+        if (newCashbackRateInPermil == oldCashbackRateInPermil) {
+            revert CashbackRateUnchanged();
+        }
+        if (newCashbackRateInPermil > MAX_CASHBACK_RATE_IN_PERMIL) {
+            revert CashbackRateExcess();
+        }
+
+        _cashbackRateInPermil = newCashbackRateInPermil;
+
+        emit SetCashbackRate(oldCashbackRateInPermil, newCashbackRateInPermil);
+    }
+
+    /**
+     * @inheritdoc ICardPaymentCashback
+     *
+     * @dev Requirements:
+     *
+     * - The caller must have the {OWNER_ROLE} role.
+     * - The cashback operations must not be already enabled.
+     * - The address of the current cashback distributor must not be zero.
+     */
+    function enableCashback() external onlyRole(OWNER_ROLE) {
+        if (_cashbackEnabled) {
+            revert CashbackAlreadyEnabled();
+        }
+        if (_cashbackDistributor == address(0)) {
+            revert CashbackDistributorNotConfigured();
+        }
+
+        _cashbackEnabled = true;
+
+        emit EnableCashback();
+    }
+
+    /**
+     * @inheritdoc ICardPaymentCashback
+     *
+     * @dev Requirements:
+     *
+     * - The caller must have the {OWNER_ROLE} role.
+     * - The cashback operations must not be already disabled.
+     */
+    function disableCashback() external onlyRole(OWNER_ROLE) {
+        if (!_cashbackEnabled) {
+            revert CashbackAlreadyDisabled();
+        }
+
+        _cashbackEnabled = false;
+
+        emit DisableCashback();
+    }
+
+    /**
+     * @inheritdoc ICardPaymentProcessor
+     *
+     * @dev Requirements:
+     *
+     * - The caller must have the {OWNER_ROLE} role.
+     * - The new cash-out account must differ from the previously set one.
+     */
+    function setCashOutAccount(address newCashOutAccount) external onlyRole(OWNER_ROLE) {
+        address oldCashOutAccount = _cashOutAccount;
+
+        if (newCashOutAccount == oldCashOutAccount) {
+            revert CashOutAccountUnchanged();
+        }
+
+        _cashOutAccount = newCashOutAccount;
+
+        emit SetCashOutAccount(oldCashOutAccount, newCashOutAccount);
+    }
+
     // -------------------- View functions ------------------------ //
 
     /**
@@ -712,115 +876,6 @@ contract CardPaymentProcessor is
         return _cashbacks[authorizationId];
     }
 
-    /**
-     * @inheritdoc ICardPaymentCashback
-     *
-     * @dev Requirements:
-     *
-     * - The caller must have the {OWNER_ROLE} role.
-     * - The new cashback distributor address must not be zero.
-     * - The new cashback distributor can be set only once.
-     */
-    function setCashbackDistributor(address newCashbackDistributor) external onlyRole(OWNER_ROLE) {
-        address oldCashbackDistributor = _cashbackDistributor;
-
-        if (newCashbackDistributor == address(0)) {
-            revert CashbackDistributorZeroAddress();
-        }
-        if (oldCashbackDistributor != address(0)) {
-            revert CashbackDistributorAlreadyConfigured();
-        }
-
-        _cashbackDistributor = newCashbackDistributor;
-
-        emit SetCashbackDistributor(oldCashbackDistributor, newCashbackDistributor);
-
-        IERC20Upgradeable(_token).approve(newCashbackDistributor, type(uint256).max);
-    }
-
-    /**
-     * @inheritdoc ICardPaymentCashback
-     *
-     * @dev Requirements:
-     *
-     * - The caller must have the {OWNER_ROLE} role.
-     * - The new rate must differ from the previously set one.
-     * - The new rate must not exceed the allowable maximum specified in the {MAX_CASHBACK_RATE_IN_PERMIL} constant.
-     */
-    function setCashbackRate(uint16 newCashbackRateInPermil) external onlyRole(OWNER_ROLE) {
-        uint16 oldCashbackRateInPermil = _cashbackRateInPermil;
-        if (newCashbackRateInPermil == oldCashbackRateInPermil) {
-            revert CashbackRateUnchanged();
-        }
-        if (newCashbackRateInPermil > MAX_CASHBACK_RATE_IN_PERMIL) {
-            revert CashbackRateExcess();
-        }
-
-        _cashbackRateInPermil = newCashbackRateInPermil;
-
-        emit SetCashbackRate(oldCashbackRateInPermil, newCashbackRateInPermil);
-    }
-
-    /**
-     * @inheritdoc ICardPaymentCashback
-     *
-     * @dev Requirements:
-     *
-     * - The caller must have the {OWNER_ROLE} role.
-     * - The cashback operations must not be already enabled.
-     * - The address of the current cashback distributor must not be zero.
-     */
-    function enableCashback() external onlyRole(OWNER_ROLE) {
-        if (_cashbackEnabled) {
-            revert CashbackAlreadyEnabled();
-        }
-        if (_cashbackDistributor == address(0)) {
-            revert CashbackDistributorNotConfigured();
-        }
-
-        _cashbackEnabled = true;
-
-        emit EnableCashback();
-    }
-
-    /**
-     * @inheritdoc ICardPaymentCashback
-     *
-     * @dev Requirements:
-     *
-     * - The caller must have the {OWNER_ROLE} role.
-     * - The cashback operations must not be already disabled.
-     */
-    function disableCashback() external onlyRole(OWNER_ROLE) {
-        if (!_cashbackEnabled) {
-            revert CashbackAlreadyDisabled();
-        }
-
-        _cashbackEnabled = false;
-
-        emit DisableCashback();
-    }
-
-    /**
-     * inheritdoc ICardPaymentProcessor
-     *
-     * @dev Requirements:
-     *
-     * - The caller must have the {OWNER_ROLE} role.
-     * - The new cash-out account must differ from the previously set one.
-     */
-    function setCashOutAccount(address newCashOutAccount) external onlyRole(OWNER_ROLE) {
-        address oldCashOutAccount = _cashOutAccount;
-
-        if (newCashOutAccount == oldCashOutAccount) {
-            revert CashOutAccountUnchanged();
-        }
-
-        _cashOutAccount = newCashOutAccount;
-
-        emit SetCashOutAccount(oldCashOutAccount, newCashOutAccount);
-    }
-
     // -------------------- Internal functions -------------------- //
 
     /**
@@ -909,35 +964,6 @@ contract CardPaymentProcessor is
             operation.authorizationId,
             operation.cashbackRateInPermil
         );
-    }
-
-    /// @dev Contains parameters for a payment updating operation.
-    struct UpdatingOperation {
-        uint256 oldPaymentSumAmount;
-        uint256 newPaymentSumAmount;
-        uint256 oldSponsorSumAmount;
-        uint256 newSponsorSumAmount;
-        uint256 oldPaymentBaseAmount;
-        uint256 newPaymentBaseAmount;
-        uint256 oldCompensationAmount;
-        uint256 paymentTotalAmountChange;
-        uint256 accountBalanceChange;
-        uint256 sponsorBalanceChange;
-        uint256 cashbackAmountChange;
-        bool paymentSumAmountDecreased;
-        bool cashbackDecreased;
-    }
-
-    /**
-     * @dev Kind of a payment updating operation as an enum.
-     *
-     * The possible values:
-     * - Full = 0 -- The operation is executed fully regardless of the new values of the base amount and extra amount.
-     * - Lazy = 1 -- The operation is executed only if the new amounts differ from the current ones of the payment.
-     */
-    enum UpdatingOperationKind {
-        Full,
-        Lazy
     }
 
     /**
@@ -1276,15 +1302,6 @@ contract CardPaymentProcessor is
         IERC20Upgradeable(_token).safeTransfer(requireCashOutAccount(), confirmedAmount);
     }
 
-    /// @dev Contains parameters of a payment canceling operation.
-    struct CancelingOperation {
-        uint256 paymentTotalAmount;
-        uint256 accountSentAmount;
-        uint256 sponsorSentAmount;
-        uint256 totalSentAmount;
-        uint256 revokedCashbackAmount;
-    }
-
     /// @dev Cancels a payment. For parameters see {ICardPaymentCashback-revokePayment}.
     function cancelPaymentInternal(
         bytes16 authorizationId,
@@ -1410,23 +1427,6 @@ contract CardPaymentProcessor is
         });
 
         return operation;
-    }
-
-    /// @dev Contains parameters of a payment refunding operation.
-    struct RefundingOperation {
-        uint256 paymentRefundAmount; // It is for local use only to avoid the "Stack too deep" error.
-        uint256 sponsorRefundAmount;
-        uint256 newPaymentRefundAmount;
-        uint256 newPaymentSumAmount;
-        uint256 paymentTotalAmountDiff;
-        uint256 oldCashbackAmount; // It is for local use only to avoid the "Stack too deep" error.
-        uint256 newCashbackAmount; // It is for local use only to avoid the "Stack too deep" error.
-        uint256 oldCompensationAmount; // It is for local use only to avoid the "Stack too deep" error.
-        uint256 newCompensationAmount;
-        uint256 accountSentAmount;
-        uint256 sponsorSentAmount;
-        uint256 totalSentAmount;
-        uint256 revokedCashbackAmount;
     }
 
     /**

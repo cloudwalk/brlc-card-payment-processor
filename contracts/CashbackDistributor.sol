@@ -36,11 +36,6 @@ contract CashbackDistributor is
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
 
-    // -------------------- Constants ----------------------------- //
-
-    /// @dev The role of distributor that is allowed to execute the cashback operations.
-    bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
-
     /// @dev A helper structure to store context of function execution and avoid stack overflow error.
     struct ExecutionContext {
         address token;
@@ -51,6 +46,11 @@ contract CashbackDistributor is
         uint256 nonce;
         uint256 newAmount;
     }
+
+    // -------------------- Constants ----------------------------- //
+
+    /// @dev The role of distributor that is allowed to execute the cashback operations.
+    bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
 
     // -------------------- Errors -------------------------------- //
 
@@ -333,6 +333,8 @@ contract CashbackDistributor is
 
         emit Disable(_msgSender());
     }
+
+    // -------------------- View functions ------------------------ //
 
     /**
      * @inheritdoc ICashbackDistributor
