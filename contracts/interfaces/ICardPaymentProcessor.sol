@@ -414,6 +414,17 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     function setCashOutAccount(address newCashOutAccount) external;
 
     /**
+     * @dev Sets a new value for the revocation limit.
+     *
+     * If the limit equals 0 or 1 a payment with the same authorization ID cannot be repeated after the revocation.
+     *
+     * Emits a {SetRevocationLimit} event if the new limit differs from the old value.
+     *
+     * @param newLimit The new revocation limit value to be set.
+     */
+    function setRevocationLimit(uint8 newLimit) external;
+
+    /**
      * @dev Makes a card payment.
      *
      * Transfers the underlying tokens from the payer (who is the caller of the function) to this contract.

@@ -267,6 +267,23 @@ contract CardPaymentProcessor is
      *
      * @dev Requirements:
      *
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     */
+    function setRevocationLimit(uint8 newLimit) external onlyRole(OWNER_ROLE) {
+        uint8 oldLimit = _revocationLimit;
+        if (oldLimit == newLimit) {
+            return;
+        }
+
+        _revocationLimit = newLimit;
+        emit SetRevocationLimit(oldLimit, newLimit);
+    }
+
+    /**
+     * @inheritdoc ICardPaymentProcessor
+     *
+     * @dev Requirements:
+     *
      * - The contract must not be paused.
      * - The caller must must not be blocklisted.
      * - The authorization ID of the payment must not be zero.
@@ -663,28 +680,6 @@ contract CardPaymentProcessor is
         emit RefundAccount(correlationId, account, refundAmount);
 
         token.safeTransferFrom(cashOutAccount_, account, refundAmount);
-    }
-
-    /**
-     * @dev Sets a new value for the revocation limit.
-     * If the limit equals 0 or 1 a payment with the same authorization ID cannot be repeated after the revocation.
-     *
-     * Requirements:
-     *
-     * - The caller must have the {EXECUTOR_ROLE} role.
-     *
-     * Emits a {SetRevocationLimit} event if the new limit differs from the old value.
-     *
-     * @param newLimit The new revocation limit value to be set.
-     */
-    function setRevocationLimit(uint8 newLimit) external onlyRole(OWNER_ROLE) {
-        uint8 oldLimit = _revocationLimit;
-        if (oldLimit == newLimit) {
-            return;
-        }
-
-        _revocationLimit = newLimit;
-        emit SetRevocationLimit(oldLimit, newLimit);
     }
 
     /**
