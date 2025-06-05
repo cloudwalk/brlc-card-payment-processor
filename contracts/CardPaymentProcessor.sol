@@ -139,9 +139,9 @@ contract CardPaymentProcessor is
     // ------------------- Functions ---------------------------------
 
     /**
-     * @dev The initializer of the upgradable contract.
+     * @dev The initialize function of the upgradeable contract.
      *
-     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable .
+     * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
      *
      * Requirements:
      *
@@ -150,43 +150,21 @@ contract CardPaymentProcessor is
      * @param token_ The address of a token to set as the underlying one.
      */
     function initialize(address token_) external initializer {
-        __CardPaymentProcessor_init(token_);
-    }
+        if (token_ == address(0)) {
+            revert ZeroTokenAddress();
+        }
 
-    /**
-     * @dev The internal initializer of the upgradable contract.
-     *
-     * See {CardPaymentProcessor-initialize}.
-     */
-    function __CardPaymentProcessor_init(address token_) internal onlyInitializing {
-        __Context_init_unchained();
-        __ERC165_init_unchained();
-        __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
         __Blocklistable_init_unchained();
         __Pausable_init_unchained();
         __PausableExt_init_unchained();
         __Rescuable_init_unchained();
 
-        __CardPaymentProcessor_init_unchained(token_);
-    }
-
-    /**
-     * @dev The internal unchained initializer of the upgradable contract.
-     *
-     * See {CardPaymentProcessor-initialize}.
-     */
-    function __CardPaymentProcessor_init_unchained(address token_) internal onlyInitializing {
-        if (token_ == address(0)) {
-            revert ZeroTokenAddress();
-        }
-
         _token = token_;
         _revocationLimit = type(uint8).max;
 
         _setRoleAdmin(EXECUTOR_ROLE, GRANTOR_ROLE);
-
-        _setupRole(OWNER_ROLE, _msgSender());
+        _grantRole(OWNER_ROLE, _msgSender());
     }
 
     /// @dev Contains parameters of a payment making operation.

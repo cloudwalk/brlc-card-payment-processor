@@ -19,6 +19,7 @@ contract PausableExtUpgradeableMock is PausableExtUpgradeable {
      */
     function initialize() public initializer {
         __AccessControlExt_init_unchained();
+        __Pausable_init_unchained();
         __PausableExt_init_unchained();
 
         _grantRole(OWNER_ROLE, _msgSender());

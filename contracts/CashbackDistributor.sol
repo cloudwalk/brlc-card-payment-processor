@@ -67,32 +67,21 @@ contract CashbackDistributor is
     // ------------------- Functions ---------------------------------
 
     /**
-     * @dev The initialize function of the upgradable contract.
-     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
+     * @dev The initialize function of the upgradeable contract.
+     *
+     * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
      */
     function initialize() external initializer {
-        __CashbackDistributor_init();
-    }
-
-    function __CashbackDistributor_init() internal onlyInitializing {
-        __Context_init_unchained();
-        __ERC165_init_unchained();
-        __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
         __Blocklistable_init_unchained();
         __Pausable_init_unchained();
         __PausableExt_init_unchained();
         __Rescuable_init_unchained();
 
-        __CashbackDistributor_init_unchained();
-    }
-
-    function __CashbackDistributor_init_unchained() internal onlyInitializing {
         _nextNonce = 1;
 
         _setRoleAdmin(DISTRIBUTOR_ROLE, GRANTOR_ROLE);
-
-        _setupRole(OWNER_ROLE, _msgSender());
+        _grantRole(OWNER_ROLE, _msgSender());
     }
 
     /**
