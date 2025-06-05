@@ -375,7 +375,7 @@ contract CardPaymentProcessor is
         bytes16 correlationId
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         _updatePaymentAmount(
-            newBaseAmount,
+            newBaseAmount, // Tools: this comment prevents Prettier from formatting into a single line.
             newExtraAmount,
             authorizationId,
             correlationId,
@@ -587,7 +587,7 @@ contract CardPaymentProcessor is
         bytes16 correlationId
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         _updatePaymentAmount(
-            newBaseAmount,
+            newBaseAmount, // Tools: this comment prevents Prettier from formatting into a single line.
             newExtraAmount,
             authorizationId,
             correlationId,
@@ -1269,7 +1269,7 @@ contract CardPaymentProcessor is
         _clearedBalances[account] = newClearedBalance;
 
         emit ConfirmPayment(
-            authorizationId,
+            authorizationId, // Tools: this comment prevents Prettier from formatting into a single line.
             account,
             totalAmount,
             newClearedBalance,
@@ -1486,7 +1486,8 @@ contract CardPaymentProcessor is
             if (sponsor != address(0)) {
                 token.safeTransfer(sponsor, operation.sponsorSentAmount);
             }
-        } else { // status == PaymentStatus.ConfirmPayment
+        } else {
+            // status == PaymentStatus.ConfirmPayment
             address cashOutAccount_ = _requireCashOutAccount();
             token.safeTransferFrom(cashOutAccount_, account, operation.accountSentAmount);
             if (sponsor != address(0)) {
@@ -1498,7 +1499,7 @@ contract CardPaymentProcessor is
         _revokeCashback(authorizationId, operation.revokedCashbackAmount);
 
         emit RefundPayment(
-            authorizationId,
+            authorizationId, // Tools: this comment prevents Prettier from formatting into a single line.
             correlationId,
             account,
             refundAmount,

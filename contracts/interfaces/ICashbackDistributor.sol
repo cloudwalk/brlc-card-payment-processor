@@ -101,7 +101,7 @@ interface ICashbackDistributorTypes {
      * - sender --------- The account that initiated the cashback operation.
      * - revokedAmount -- The amount of cashback that has been revoked.
      *
-     * NOTES: 
+     * NOTES:
      *  1. The `amount` field of the structure contains the actual amount of sent cashback only if
      *     the operation was successful or partially successful according to the `status` field,
      *     otherwise the `amount` field contains the requested amount of cashback to send.

@@ -152,7 +152,7 @@ contract CashbackDistributor is
         _nonceCollectionByExternalId[externalId].push(nonce);
 
         emit SendCashback(
-            token,
+            token, // Tools: this comment prevents Prettier from formatting into a single line.
             kind,
             status,
             externalId,
@@ -490,7 +490,7 @@ contract CashbackDistributor is
      * @param amount The amount to reduce.
      */
     function _reduceOverallCashback(
-        address token,
+        address token, // Tools: this comment prevents Prettier from formatting into a single line.
         address recipient,
         uint256 amount
     ) internal {
