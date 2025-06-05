@@ -7,6 +7,7 @@ import { ICardPaymentCashbackTypes } from "./interfaces/ICardPaymentCashback.sol
 
 /**
  * @title CardPaymentProcessor storage version 1
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  */
 abstract contract CardPaymentProcessorStorageV1 is ICardPaymentProcessorTypes {
     /// @dev The address of the underlying token.
@@ -39,6 +40,7 @@ abstract contract CardPaymentProcessorStorageV1 is ICardPaymentProcessorTypes {
 
 /**
  * @title CardPaymentProcessor storage version 2
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  */
 abstract contract CardPaymentProcessorStorageV2 {
     /// @dev The account to transfer cleared tokens to.
@@ -47,6 +49,7 @@ abstract contract CardPaymentProcessorStorageV2 {
 
 /**
  * @title CardPaymentProcessor storage version 3
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  */
 abstract contract CardPaymentProcessorStorageV3 is ICardPaymentCashbackTypes {
     /// @dev The enable flag of the cashback operations.
@@ -63,7 +66,8 @@ abstract contract CardPaymentProcessorStorageV3 is ICardPaymentCashbackTypes {
 }
 
 /**
- * @title CardPaymentProcessor storage
+ * @title CardPaymentProcessor cumulative storage
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Contains storage variables of the {CardPaymentProcessor} contract.
  *
  * We are following Compound's approach of upgrading new contract implementations.

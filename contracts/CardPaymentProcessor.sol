@@ -19,7 +19,8 @@ import { ICashbackDistributor, ICashbackDistributorTypes } from "./interfaces/IC
 
 /**
  * @title CardPaymentProcessor contract
- * @dev Wrapper contract for the card payment operations.
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev The wrapper contract for the card payment operations.
  */
 contract CardPaymentProcessor is
     AccessControlExtUpgradeable,
@@ -32,7 +33,11 @@ contract CardPaymentProcessor is
     ICardPaymentCashback,
     Versionable
 {
+    // -------------------- Types --------------------------------- //
+
     using SafeERC20Upgradeable for IERC20Upgradeable;
+
+    // -------------------- Constants ----------------------------- //
 
     /// @dev The role of executor that is allowed to execute the card payment operations.
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
@@ -47,7 +52,7 @@ contract CardPaymentProcessor is
      */
     uint16 public constant CASHBACK_ROUNDING_COEF = 10000;
 
-    // -------------------- Events -----------------------------------
+    // -------------------- Events -------------------------------- //
 
     /**
      * @dev Emitted when the revocation limit is changed.
@@ -56,7 +61,7 @@ contract CardPaymentProcessor is
      */
     event SetRevocationLimit(uint8 oldLimit, uint8 newLimit);
 
-    // -------------------- Errors -----------------------------------
+    // -------------------- Errors -------------------------------- //
 
     /// @dev The zero token address has been passed as a function argument.
     error ZeroTokenAddress();
@@ -136,7 +141,7 @@ contract CardPaymentProcessor is
     /// @dev The function cannot be executed for a subsidized payment with the non-zero refund amount.
     error SubsidizedPaymentWithNonZeroRefundAmount();
 
-    // ------------------- Functions ---------------------------------
+    // ------------------ Initializers ---------------------------- //
 
     /**
      * @dev The initialize function of the upgradeable contract.
@@ -167,6 +172,8 @@ contract CardPaymentProcessor is
         _grantRole(OWNER_ROLE, _msgSender());
     }
 
+    // ------------------ Transactional functions ----------------- //
+
     /// @dev Contains parameters of a payment making operation.
     struct MakingOperation {
         address sender;
@@ -181,9 +188,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-makePayment}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must must not be blocklisted.
@@ -213,9 +220,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-makePaymentFor}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -256,9 +263,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-updatePaymentAmount}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -285,9 +292,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-clearPayment}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -302,9 +309,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-clearPayments}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -328,9 +335,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-unclearPayment}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -345,9 +352,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-unclearPayments}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -371,9 +378,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-reversePayment}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -389,9 +396,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-revokePayment}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -412,9 +419,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-confirmPayment}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -428,9 +435,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-confirmPayments}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -453,9 +460,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-clearAndConfirmPayment}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -467,9 +474,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-updateLazyClearConfirmPayment}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -498,9 +505,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-clearAndConfirmPayments}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -529,9 +536,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-refundPayment}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -548,7 +555,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev A version of the function without the `newExtraAmount` parameter for backward compatibility.
+     * @dev A version of the function above without the `newExtraAmount` parameter for backward compatibility.
      */
     function refundPayment(
         uint256 refundAmount,
@@ -559,9 +566,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-refundAccount}.
+     * @inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
@@ -605,108 +612,110 @@ contract CardPaymentProcessor is
         emit SetRevocationLimit(oldLimit, newLimit);
     }
 
+    // -------------------- View functions ------------------------ //
+
     /**
-     * @dev See {ICardPaymentProcessor-cashOutAccount}.
+     * @inheritdoc ICardPaymentProcessor
      */
     function cashOutAccount() external view returns (address) {
         return _cashOutAccount;
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-underlyingToken}.
+     * @inheritdoc ICardPaymentProcessor
      */
     function underlyingToken() external view returns (address) {
         return _token;
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-totalUnclearedBalance}.
+     * @inheritdoc ICardPaymentProcessor
      */
     function totalUnclearedBalance() external view returns (uint256) {
         return _totalUnclearedBalance;
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-totalClearedBalance}.
+     * @inheritdoc ICardPaymentProcessor
      */
     function totalClearedBalance() external view returns (uint256) {
         return _totalClearedBalance;
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-unclearedBalanceOf}.
+     * @inheritdoc ICardPaymentProcessor
      */
     function unclearedBalanceOf(address account) external view returns (uint256) {
         return _unclearedBalances[account];
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-clearedBalanceOf}.
+     * @inheritdoc ICardPaymentProcessor
      */
     function clearedBalanceOf(address account) external view returns (uint256) {
         return _clearedBalances[account];
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-paymentFor}.
+     * @inheritdoc ICardPaymentProcessor
      */
     function paymentFor(bytes16 authorizationId) external view returns (Payment memory) {
         return _payments[authorizationId];
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-isPaymentRevoked}.
+     * @inheritdoc ICardPaymentProcessor
      */
     function isPaymentRevoked(bytes32 parentTxHash) external view returns (bool) {
         return _paymentRevocationFlags[parentTxHash];
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-isPaymentReversed}.
+     * @inheritdoc ICardPaymentProcessor
      */
     function isPaymentReversed(bytes32 parentTxHash) external view returns (bool) {
         return _paymentReversionFlags[parentTxHash];
     }
 
     /**
-     * @dev See {ICardPaymentProcessor-revocationLimit}.
+     * @inheritdoc ICardPaymentProcessor
      */
     function revocationLimit() external view returns (uint8) {
         return _revocationLimit;
     }
 
     /**
-     * @dev See {ICardPaymentCashback-cashbackDistributor}.
+     * @inheritdoc ICardPaymentCashback
      */
     function cashbackDistributor() external view returns (address) {
         return _cashbackDistributor;
     }
 
     /**
-     * @dev See {ICardPaymentCashback-cashbackEnabled}.
+     * @inheritdoc ICardPaymentCashback
      */
     function cashbackEnabled() external view returns (bool) {
         return _cashbackEnabled;
     }
 
     /**
-     * @dev See {ICardPaymentCashback-cashbackRate}.
+     * @inheritdoc ICardPaymentCashback
      */
     function cashbackRate() external view returns (uint256) {
         return _cashbackRateInPermil;
     }
 
     /**
-     * @dev See {ICardPaymentCashback-getCashback}.
+     * @inheritdoc ICardPaymentCashback
      */
     function getCashback(bytes16 authorizationId) external view returns (Cashback memory) {
         return _cashbacks[authorizationId];
     }
 
     /**
-     * @dev See {ICardPaymentCashback-setCashbackDistributor}.
+     * @inheritdoc ICardPaymentCashback
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The caller must have the {OWNER_ROLE} role.
      * - The new cashback distributor address must not be zero.
@@ -730,9 +739,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentCashback-setCashbackRate}.
+     * @inheritdoc ICardPaymentCashback
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The caller must have the {OWNER_ROLE} role.
      * - The new rate must differ from the previously set one.
@@ -753,9 +762,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentCashback-enableCashback}.
+     * @inheritdoc ICardPaymentCashback
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The caller must have the {OWNER_ROLE} role.
      * - The cashback operations must not be already enabled.
@@ -775,9 +784,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentCashback-disableCashback}.
+     * @inheritdoc ICardPaymentCashback
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The caller must have the {OWNER_ROLE} role.
      * - The cashback operations must not be already disabled.
@@ -793,9 +802,9 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @dev See {ICardPaymentCashback-setCashOutAccount}.
+     * inheritdoc ICardPaymentProcessor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The caller must have the {OWNER_ROLE} role.
      * - The new cash-out account must differ from the previously set one.
@@ -812,7 +821,13 @@ contract CardPaymentProcessor is
         emit SetCashOutAccount(oldCashOutAccount, newCashOutAccount);
     }
 
-    /// @dev Making a payment. See {ICardPaymentCashback-makePaymentSubsidized}.
+    // -------------------- Internal functions -------------------- //
+
+    /**
+     * @dev Making a payment internally.
+     *
+     * @param operation The operation parameters.
+     */
     function makePaymentInternal(MakingOperation memory operation) internal {
         if (operation.authorizationId == 0) {
             revert ZeroAuthorizationId();
@@ -913,13 +928,27 @@ contract CardPaymentProcessor is
         bool cashbackDecreased;
     }
 
-    /// @dev Kind of a payment updating operation
+    /**
+     * @dev Kind of a payment updating operation as an enum.
+     *
+     * The possible values:
+     * - Full = 0 -- The operation is executed fully regardless of the new values of the base amount and extra amount.
+     * - Lazy = 1 -- The operation is executed only if the new amounts differ from the current ones of the payment.
+     */
     enum UpdatingOperationKind {
-        Full, // 0 The operation is executed fully regardless of the new values of the base amount and extra amount.
-        Lazy  // 1 The operation is executed only if the new amounts differ from the current ones of the payment.
+        Full,
+        Lazy
     }
 
-    /// @dev Updates the base amount and extra amount of a payment. See {ICardPaymentCashback-updatePaymentAmount}.
+    /**
+     * @dev Updates the base amount and extra amount of a payment internally.
+     *
+     * @param newBaseAmount The new base amount of the payment.
+     * @param newExtraAmount The new extra amount of the payment.
+     * @param authorizationId The authorization ID of the payment.
+     * @param correlationId The correlation ID of the payment.
+     * @param kind The kind of the payment updating operation.
+     */
     function updatePaymentAmountInternal(
         uint256 newBaseAmount,
         uint256 newExtraAmount,
@@ -1018,7 +1047,14 @@ contract CardPaymentProcessor is
         }
     }
 
-    /// @dev Returns a structure with parameters for a payment updating operation.
+    /**
+     * @dev Returns a structure with parameters for a payment updating operation.
+     *
+     * @param newPaymentBaseAmount The new base amount of the payment.
+     * @param newPaymentExtraAmount The new extra amount of the payment.
+     * @param paymentRefundAmount The refund amount of the payment.
+     * @param payment The payment to update.
+     */
     function defineUpdatePaymentOperation(
         uint256 newPaymentBaseAmount,
         uint256 newPaymentExtraAmount,
@@ -1091,7 +1127,11 @@ contract CardPaymentProcessor is
         return operation;
     }
 
-    /// @dev Clears a payment. See {ICardPaymentCashback-clearPayment}.
+    /**
+     * @dev Clears a payment internally.
+     *
+     * @param authorizationId The authorization ID of the payment.
+     */
     function clearPaymentInternal(bytes16 authorizationId) internal returns (uint256 totalAmount) {
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
@@ -1134,7 +1174,11 @@ contract CardPaymentProcessor is
         }
     }
 
-    /// @dev Unclears a payment. See {ICardPaymentCashback-unclearPayment}.
+    /**
+     * @dev Unclears a payment internally.
+     *
+     * @param authorizationId The authorization ID of the payment.
+     */
     function unclearPaymentInternal(bytes16 authorizationId) internal returns (uint256 totalAmount) {
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
@@ -1177,7 +1221,11 @@ contract CardPaymentProcessor is
         }
     }
 
-    /// @dev Confirms a payment. See {ICardPaymentCashback-confirmPayment}.
+    /**
+     * @dev Confirms a payment internally.
+     *
+     * @param authorizationId The authorization ID of the payment.
+     */
     function confirmPaymentInternal(bytes16 authorizationId) internal returns (uint256 totalAmount) {
         if (authorizationId == 0) {
             revert ZeroAuthorizationId();
@@ -1213,6 +1261,11 @@ contract CardPaymentProcessor is
         }
     }
 
+    /**
+     * @dev Clears and confirms a payment internally.
+     *
+     * @param authorizationId The authorization ID of the payment.
+     */
     function clearAndConfirmPaymentInternal(bytes16 authorizationId) internal {
         uint256 clearedAmount = clearPaymentInternal(authorizationId);
         uint256 confirmedAmount = confirmPaymentInternal(authorizationId);
@@ -1332,7 +1385,11 @@ contract CardPaymentProcessor is
         revokeCashbackInternal(authorizationId, operation.revokedCashbackAmount);
     }
 
-    /// @dev Returns a structure with parameters for a payment cancellation operation.
+    /**
+     * @dev Returns a structure with parameters for a payment cancellation operation.
+     *
+     * @param payment The payment to cancel.
+     */
     function defineCancellationOperation(Payment storage payment) internal view returns (CancelingOperation memory) {
         uint256 paymentBaseAmount = payment.baseAmount;
         uint256 paymentRefundAmount = payment.refundAmount;
@@ -1372,7 +1429,13 @@ contract CardPaymentProcessor is
         uint256 revokedCashbackAmount;
     }
 
-    /// @dev Makes a refund for a payment. See {ICardPaymentCashback-refundPayment}.
+    /**
+     * @dev Makes a refund for a payment internally.
+     *
+     * @param refundAmount The refund amount of the payment.
+     * @param newExtraAmount The new extra amount of the payment.
+     * @param authorizationId The authorization ID of the payment.
+     */
     function refundPaymentInternal(
         uint256 refundAmount,
         uint256 newExtraAmount,
@@ -1460,7 +1523,13 @@ contract CardPaymentProcessor is
         );
     }
 
-    /// @dev Returns a structure with parameters for a payment updating operation.
+    /**
+     * @dev Returns a structure with parameters for a payment updating operation.
+     *
+     * @param paymentRefundAmount The refund amount of the payment.
+     * @param newPaymentExtraAmount The new extra amount of the payment.
+     * @param payment The payment to update.
+     */
     function defineRefundingOperation(
         uint256 paymentRefundAmount,
         uint256 newPaymentExtraAmount,
@@ -1530,7 +1599,14 @@ contract CardPaymentProcessor is
         return operation;
     }
 
-    /// @dev Sends cashback related to a payment.
+    /**
+     * @dev Sends cashback related to a payment internally.
+     *
+     * @param account The account of the payment.
+     * @param basePaymentAmount The base amount of the payment.
+     * @param authorizationId The authorization ID of the payment.
+     * @param requestedCashbackRateInPermil The requested cashback rate in permil.
+     */
     function sendCashbackInternal(
         address account,
         uint256 basePaymentAmount,
@@ -1567,7 +1643,12 @@ contract CardPaymentProcessor is
         }
     }
 
-    /// @dev Revokes partially or fully cashback related to a payment.
+    /**
+     * @dev Revokes partially or fully cashback related to a payment internally.
+     *
+     * @param authorizationId The authorization ID of the payment.
+     * @param amount The amount of the cashback to revoke.
+     */
     function revokeCashbackInternal(bytes16 authorizationId, uint256 amount) internal {
         address distributor = _cashbackDistributor;
         uint256 cashbackNonce = _cashbacks[authorizationId].lastCashbackNonce;
@@ -1580,7 +1661,12 @@ contract CardPaymentProcessor is
         }
     }
 
-    /// @dev Increases cashback related to a payment.
+    /**
+     * @dev Increases cashback related to a payment internally.
+     *
+     * @param authorizationId The authorization ID of the payment.
+     * @param amount The amount of the cashback to increase.
+     */
     function increaseCashbackInternal(bytes16 authorizationId, uint256 amount) internal returns (uint256 sentAmount) {
         address distributor = _cashbackDistributor;
         uint256 cashbackNonce = _cashbacks[authorizationId].lastCashbackNonce;
@@ -1603,13 +1689,27 @@ contract CardPaymentProcessor is
         }
     }
 
-    /// @dev Calculates cashback according to the amount and the rate.
+    /**
+     * @dev Calculates cashback according to the amount and the rate.
+     *
+     * @param amount The amount of the cashback.
+     * @param cashbackRateInPermil The cashback rate in permil.
+     */
     function calculateCashback(uint256 amount, uint256 cashbackRateInPermil) internal pure returns (uint256) {
         uint256 cashback = (amount * cashbackRateInPermil) / 1000;
         return ((cashback + CASHBACK_ROUNDING_COEF / 2) / CASHBACK_ROUNDING_COEF) * CASHBACK_ROUNDING_COEF;
     }
 
-    /// @dev Update the extra amount of a payment and emits the related event.
+    /**
+     * @dev Update the extra amount of a payment and emits the related event.
+     *
+     * @param authorizationId The authorization ID of the payment.
+     * @param correlationId The correlation ID of the payment.
+     * @param account The account of the payment.
+     * @param sumAmount The sum amount of the payment.
+     * @param newExtraAmount The new extra amount of the payment.
+     * @param payment The payment to update.
+     */
     function updateExtraAmountInternal(
         bytes16 authorizationId,
         bytes16 correlationId,
@@ -1632,7 +1732,12 @@ contract CardPaymentProcessor is
         }
     }
 
-    /// @dev Defines the account part of a payment base amount according to a subsidy limit.
+    /**
+     * @dev Defines the account part of a payment base amount according to a subsidy limit.
+     *
+     * @param paymentBaseAmount The base amount of the payment.
+     * @param subsidyLimit The subsidy limit.
+     */
     function defineAccountBaseAmount(uint256 paymentBaseAmount, uint256 subsidyLimit) internal pure returns (uint256) {
         if (subsidyLimit >= paymentBaseAmount) {
             return 0;
@@ -1641,7 +1746,13 @@ contract CardPaymentProcessor is
         }
     }
 
-    /// @dev Defines the account part of a payment extra amount according to a subsidy limit.
+    /**
+     * @dev Defines the account part of a payment extra amount according to a subsidy limit.
+     *
+     * @param paymentBaseAmount The base amount of the payment.
+     * @param paymentExtraAmount The extra amount of the payment.
+     * @param subsidyLimit The subsidy limit.
+     */
     function defineAccountExtraAmount(
         uint256 paymentBaseAmount,
         uint256 paymentExtraAmount,
@@ -1659,7 +1770,12 @@ contract CardPaymentProcessor is
         }
     }
 
-    /// @dev Defines the account and sponsor parts of a payment sum amount according to a subsidy limit.
+    /**
+     * @dev Defines the account and sponsor parts of a payment sum amount according to a subsidy limit.
+     *
+     * @param paymentSumAmount The sum amount of the payment.
+     * @param subsidyLimit The subsidy limit.
+     */
     function defineSumAmountParts(
         uint256 paymentSumAmount,
         uint256 subsidyLimit
@@ -1673,6 +1789,13 @@ contract CardPaymentProcessor is
         }
     }
 
+    /**
+     * @dev Defines the sponsor part of a payment refund amount according to a subsidy limit.
+     *
+     * @param paymentRefundAmount The refund amount of the payment.
+     * @param paymentBaseAmount The base amount of the payment.
+     * @param subsidyLimit The subsidy limit.
+     */
     function defineSponsorRefundAmount(
         uint256 paymentRefundAmount,
         uint256 paymentBaseAmount,
@@ -1685,7 +1808,11 @@ contract CardPaymentProcessor is
         }
     }
 
-    /// @dev Resets the payment structure fields related to the subsidy part of a payment.
+    /**
+     * @dev Resets the payment structure fields related to the subsidy part of a payment.
+     *
+     * @param payment The payment to reset.
+     */
     function resetSubsidizedPaymentFields(Payment storage payment) internal {
         if (payment.sponsor != address(0)) {
             payment.sponsor = address(0);
@@ -1695,7 +1822,11 @@ contract CardPaymentProcessor is
         }
     }
 
-    /// @dev Resets the payment structure fields related to the compensation and refund of a payment.
+    /**
+     * @dev Resets the payment structure fields related to the compensation and refund of a payment.
+     *
+     * @param payment The payment to reset.
+     */
     function resetCompensationAndRefundFields(Payment storage payment) internal {
         payment.compensationAmount = 0;
         if (payment.refundAmount != 0) {

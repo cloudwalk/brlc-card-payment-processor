@@ -18,6 +18,7 @@ import { ICashbackDistributor } from "./interfaces/ICashbackDistributor.sol";
 
 /**
  * @title CashbackDistributor contract
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Wrapper contract for the cashback operations.
  */
 contract CashbackDistributor is
@@ -30,8 +31,12 @@ contract CashbackDistributor is
     ICashbackDistributor,
     Versionable
 {
+    // -------------------- Types --------------------------------- //
+
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
+
+    // -------------------- Constants ----------------------------- //
 
     /// @dev The role of distributor that is allowed to execute the cashback operations.
     bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
@@ -47,7 +52,7 @@ contract CashbackDistributor is
         uint256 newAmount;
     }
 
-    // -------------------- Errors -----------------------------------
+    // -------------------- Errors -------------------------------- //
 
     /// @dev The cashback operations are already enabled.
     error CashbackAlreadyEnabled();
@@ -64,7 +69,7 @@ contract CashbackDistributor is
     /// @dev The zero account address has been passed as a function argument.
     error ZeroRecipientAddress();
 
-    // ------------------- Functions ---------------------------------
+    // ------------------ Initializers ---------------------------- //
 
     /**
      * @dev The initialize function of the upgradeable contract.
@@ -84,10 +89,12 @@ contract CashbackDistributor is
         _grantRole(OWNER_ROLE, _msgSender());
     }
 
+    // ------------------ Transactional functions ----------------- //
+
     /**
-     * @dev See {ICashbackDistributor-sendCashback}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {DISTRIBUTOR_ROLE} role.
@@ -165,9 +172,9 @@ contract CashbackDistributor is
     }
 
     /**
-     * @dev See {ICashbackDistributor-revokeCashback}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {DISTRIBUTOR_ROLE} role.
@@ -225,9 +232,9 @@ contract CashbackDistributor is
     }
 
     /**
-     * @dev See {ICashbackDistributor-increaseCashback}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The contract must not be paused.
      * - The caller must have the {DISTRIBUTOR_ROLE} role.
@@ -294,9 +301,9 @@ contract CashbackDistributor is
     }
 
     /**
-     * @dev See {ICashbackDistributor-enable}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The caller must have the {OWNER_ROLE} role.
      */
@@ -311,9 +318,9 @@ contract CashbackDistributor is
     }
 
     /**
-     * @dev See {ICashbackDistributor-disable}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Requirements:
+     * @dev Requirements:
      *
      * - The caller must have the {OWNER_ROLE} role.
      */
@@ -328,28 +335,28 @@ contract CashbackDistributor is
     }
 
     /**
-     * @dev See {ICashbackDistributor-enabled}.
+     * @inheritdoc ICashbackDistributor
      */
     function enabled() external view returns (bool) {
         return _enabled;
     }
 
     /**
-     * @dev See {ICashbackDistributor-nextNonce}.
+     * @inheritdoc ICashbackDistributor
      */
     function nextNonce() external view returns (uint256) {
         return _nextNonce;
     }
 
     /**
-     * @dev See {ICashbackDistributor-getCashback}.
+     * @inheritdoc ICashbackDistributor
      */
     function getCashback(uint256 nonce) external view returns (Cashback memory cashback) {
         cashback = _cashbacks[nonce];
     }
 
     /**
-     * @dev See {ICashbackDistributor-getCashbacks}.
+     * @inheritdoc ICashbackDistributor
      */
     function getCashbacks(uint256[] calldata nonces) external view returns (Cashback[] memory cashbacks) {
         uint256 len = nonces.length;
@@ -360,7 +367,7 @@ contract CashbackDistributor is
     }
 
     /**
-     * @dev See {ICashbackDistributor-getCashbackNonces}.
+     * @inheritdoc ICashbackDistributor
      */
     function getCashbackNonces(
         bytes32 externalId,
@@ -385,35 +392,35 @@ contract CashbackDistributor is
     }
 
     /**
-     * @dev See {ICashbackDistributor-getTotalCashbackByTokenAndExternalId}.
+     * @inheritdoc ICashbackDistributor
      */
     function getTotalCashbackByTokenAndExternalId(address token, bytes32 externalId) external view returns (uint256) {
         return _totalCashbackByTokenAndExternalId[token][externalId];
     }
 
     /**
-     * @dev See {ICashbackDistributor-getTotalCashbackByTokenAndRecipient}.
+     * @inheritdoc ICashbackDistributor
      */
     function getTotalCashbackByTokenAndRecipient(address token, address recipient) external view returns (uint256) {
         return _totalCashbackByTokenAndRecipient[token][recipient];
     }
 
     /**
-     * @dev See {ICashbackDistributor-getCashbackSinceLastReset}.
+     * @inheritdoc ICashbackDistributor
      */
     function getCashbackSinceLastReset(address token, address recipient) external view returns (uint256) {
         return _cashbackSinceLastReset[token][recipient];
     }
 
     /**
-     * @dev See {ICashbackDistributor-getCashbackLastTimeReset}.
+     * @inheritdoc ICashbackDistributor
      */
     function getCashbackLastTimeReset(address token, address recipient) external view returns (uint256) {
         return _cashbackLastTimeReset[token][recipient];
     }
 
     /**
-     * @dev See {ICashbackDistributor-previewCashbackCap}.
+     * @inheritdoc ICashbackDistributor
      */
     function previewCashbackCap(
         address token,
@@ -422,6 +429,14 @@ contract CashbackDistributor is
         (cashbackPeriodStart, overallCashbackForPeriod, ) = _previewCashbackCap(token, recipient);
     }
 
+    // -------------------- Internal functions -------------------- //
+
+    /**
+     * @dev Previews the cashback cap.
+     *
+     * @param token The token address.
+     * @param recipient The recipient address.
+     */
     function _previewCashbackCap(
         address token,
         address recipient
@@ -438,6 +453,12 @@ contract CashbackDistributor is
         }
     }
 
+    /**
+     * @dev Updates the cashback cap.
+     *
+     * @param token The token address.
+     * @param recipient The recipient address.
+     */
     function _updateCashbackCap(
         address token,
         address recipient,
@@ -459,6 +480,13 @@ contract CashbackDistributor is
         }
     }
 
+    /**
+     * @dev Reduces the overall cashback.
+     *
+     * @param token The token address.
+     * @param recipient The recipient address.
+     * @param amount The amount to reduce.
+     */
     function _reduceOverallCashback(
         address token,
         address recipient,

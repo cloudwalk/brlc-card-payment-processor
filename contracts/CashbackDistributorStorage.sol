@@ -7,6 +7,7 @@ import { ICashbackDistributorTypes } from "./interfaces/ICashbackDistributor.sol
 
 /**
  * @title CashbackDistributor storage version 1
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  */
 abstract contract CashbackDistributorStorageV1 is ICashbackDistributorTypes {
     /// @dev The enable flag of the cashback operations.
@@ -36,6 +37,7 @@ abstract contract CashbackDistributorStorageV1 is ICashbackDistributorTypes {
 
 /**
  * @title CashbackDistributor storage version 2
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  */
 abstract contract CashbackDistributorStorageV2 {
     /// @dev The cashback periodical cap reset period.
@@ -53,6 +55,7 @@ abstract contract CashbackDistributorStorageV2 {
 
 /**
  * @title CashbackDistributor storage
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Contains storage variables of the {CashbackDistributor} contract.
  *
  * We are following Compound's approach of upgrading new contract implementations.
