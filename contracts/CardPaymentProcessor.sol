@@ -247,6 +247,26 @@ contract CardPaymentProcessor is
      *
      * @dev Requirements:
      *
+     * - The caller must have the {OWNER_ROLE} role.
+     * - The new cash-out account must differ from the previously set one.
+     */
+    function setCashOutAccount(address newCashOutAccount) external onlyRole(OWNER_ROLE) {
+        address oldCashOutAccount = _cashOutAccount;
+
+        if (newCashOutAccount == oldCashOutAccount) {
+            revert CashOutAccountUnchanged();
+        }
+
+        _cashOutAccount = newCashOutAccount;
+
+        emit SetCashOutAccount(oldCashOutAccount, newCashOutAccount);
+    }
+
+    /**
+     * @inheritdoc ICardPaymentProcessor
+     *
+     * @dev Requirements:
+     *
      * - The contract must not be paused.
      * - The caller must must not be blocklisted.
      * - The authorization ID of the payment must not be zero.
@@ -754,26 +774,6 @@ contract CardPaymentProcessor is
         _cashbackEnabled = false;
 
         emit DisableCashback();
-    }
-
-    /**
-     * @inheritdoc ICardPaymentProcessor
-     *
-     * @dev Requirements:
-     *
-     * - The caller must have the {OWNER_ROLE} role.
-     * - The new cash-out account must differ from the previously set one.
-     */
-    function setCashOutAccount(address newCashOutAccount) external onlyRole(OWNER_ROLE) {
-        address oldCashOutAccount = _cashOutAccount;
-
-        if (newCashOutAccount == oldCashOutAccount) {
-            revert CashOutAccountUnchanged();
-        }
-
-        _cashOutAccount = newCashOutAccount;
-
-        emit SetCashOutAccount(oldCashOutAccount, newCashOutAccount);
     }
 
     // -------------------- View functions ------------------------ //
