@@ -206,6 +206,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   const REVERT_ERROR_IF_EXTERNAL_ID_IS_ZERO = "ZeroExternalId";
 
   const ownerRole: string = ethers.id("OWNER_ROLE");
+  const grantorRole: string = ethers.id("GRANTOR_ROLE");
   const blocklisterRole: string = ethers.id("BLOCKLISTER_ROLE");
   const pauserRole: string = ethers.id("PAUSER_ROLE");
   const rescuerRole: string = ethers.id("RESCUER_ROLE");
@@ -252,6 +253,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     const tokenMock1 = await deployTokenMock("1");
     const tokenMock2 = await deployTokenMock("2");
 
+    await proveTx(cashbackDistributor.grantRole(grantorRole, deployer.address));
     await proveTx(cashbackDistributor.grantRole(blocklisterRole, deployer.address));
     await proveTx(cashbackDistributor.grantRole(distributorRole, distributor.address));
     await proveTx(cashbackDistributor.enable());
@@ -279,6 +281,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   }
 
   async function pauseContract(contract: Contract) {
+    await proveTx(contract.grantRole(grantorRole, deployer.address));
     await proveTx(contract.grantRole(pauserRole, deployer.address));
     await proveTx(contract.pause());
   }
@@ -505,15 +508,25 @@ describe("Contract 'CashbackDistributor'", async () => {
     it("Configures the contract as expected", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
 
+      // The role hashes
+      expect(await cashbackDistributor.OWNER_ROLE()).to.equal(ownerRole);
+      expect(await cashbackDistributor.GRANTOR_ROLE()).to.equal(grantorRole);
+      expect(await cashbackDistributor.BLOCKLISTER_ROLE()).to.equal(blocklisterRole);
+      expect(await cashbackDistributor.PAUSER_ROLE()).to.equal(pauserRole);
+      expect(await cashbackDistributor.RESCUER_ROLE()).to.equal(rescuerRole);
+      expect(await cashbackDistributor.DISTRIBUTOR_ROLE()).to.equal(distributorRole);
+
       // The admins of roles
       expect(await cashbackDistributor.getRoleAdmin(ownerRole)).to.equal(ownerRole);
-      expect(await cashbackDistributor.getRoleAdmin(blocklisterRole)).to.equal(ownerRole);
-      expect(await cashbackDistributor.getRoleAdmin(pauserRole)).to.equal(ownerRole);
-      expect(await cashbackDistributor.getRoleAdmin(rescuerRole)).to.equal(ownerRole);
-      expect(await cashbackDistributor.getRoleAdmin(distributorRole)).to.equal(ownerRole);
+      expect(await cashbackDistributor.getRoleAdmin(grantorRole)).to.equal(ownerRole);
+      expect(await cashbackDistributor.getRoleAdmin(blocklisterRole)).to.equal(grantorRole);
+      expect(await cashbackDistributor.getRoleAdmin(pauserRole)).to.equal(grantorRole);
+      expect(await cashbackDistributor.getRoleAdmin(rescuerRole)).to.equal(grantorRole);
+      expect(await cashbackDistributor.getRoleAdmin(distributorRole)).to.equal(grantorRole);
 
       // The deployer should have the owner role, but not the other roles
       expect(await cashbackDistributor.hasRole(ownerRole, deployer.address)).to.equal(true);
+      expect(await cashbackDistributor.hasRole(grantorRole, deployer.address)).to.equal(false);
       expect(await cashbackDistributor.hasRole(blocklisterRole, deployer.address)).to.equal(false);
       expect(await cashbackDistributor.hasRole(pauserRole, deployer.address)).to.equal(false);
       expect(await cashbackDistributor.hasRole(rescuerRole, deployer.address)).to.equal(false);

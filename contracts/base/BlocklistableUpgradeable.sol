@@ -13,13 +13,23 @@ import { AccessControlExtUpgradeable } from "./AccessControlExtUpgradeable.sol";
  * which can be applied to functions to restrict their usage to not blocklisted accounts only.
  */
 abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
+    // -------------------- Constants ----------------------------- //
+
     /// @dev The role of the blocklister that is allowed to blocklist and unblocklist accounts.
     bytes32 public constant BLOCKLISTER_ROLE = keccak256("BLOCKLISTER_ROLE");
+
+    // -------------------- Storage ------------------------------- //
 
     /// @dev Mapping of presence in the blocklist for a given address.
     mapping(address => bool) private _blocklisted;
 
-    // -------------------- Events -----------------------------------
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     */
+    uint256[49] private __gap;
+
+    // -------------------- Events -------------------------------- //
 
     /// @dev Emitted when an account is blocklisted.
     event Blocklisted(address indexed account);
@@ -30,12 +40,12 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
     /// @dev Emitted when an account is self blocklisted.
     event SelfBlocklisted(address indexed account);
 
-    // -------------------- Errors -----------------------------------
+    // -------------------- Errors -------------------------------- //
 
     /// @dev The account is blocklisted.
     error BlocklistedAccount(address account);
 
-    // -------------------- Modifiers --------------------------------
+    // -------------------- Modifiers ----------------------------- //
 
     /**
      * @dev Throws if called by a blocklisted account.
@@ -48,30 +58,20 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
         _;
     }
 
-    // -------------------- Functions --------------------------------
+    // ------------------ Initializers ---------------------------- //
 
     /**
-     * @dev The internal initializer of the upgradable contract.
+     * @dev The unchained internal initializer of the upgradeable contract
      *
-     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
+     * See details: https://docs.openzeppelin.com/contracts/5.x/upgradeable#multiple-inheritance
+     *
+     * Note: The `..._init()` initializer has not been provided as redundant.
      */
-    function __Blocklistable_init(bytes32 blocklisterRoleAdmin) internal onlyInitializing {
-        __Context_init_unchained();
-        __ERC165_init_unchained();
-        __AccessControl_init_unchained();
-        __AccessControlExt_init_unchained();
-
-        __Blocklistable_init_unchained(blocklisterRoleAdmin);
+    function __Blocklistable_init_unchained() internal onlyInitializing {
+        _setRoleAdmin(BLOCKLISTER_ROLE, GRANTOR_ROLE);
     }
 
-    /**
-     * @dev The unchained internal initializer of the upgradable contract.
-     *
-     * See {BlocklistableUpgradeable-__Blocklistable_init}.
-     */
-    function __Blocklistable_init_unchained(bytes32 blocklisterRoleAdmin) internal onlyInitializing {
-        _setRoleAdmin(BLOCKLISTER_ROLE, blocklisterRoleAdmin);
-    }
+    // ------------------ Transactional functions ----------------- //
 
     /**
      * @dev Adds an account to the blocklist.
@@ -134,6 +134,8 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
         emit Blocklisted(sender);
     }
 
+    // ------------------ View functions -------------------------- //
+
     /**
      * @dev Checks if an account is blocklisted.
      * @param account The address to check for presence in the blocklist.
@@ -142,10 +144,4 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
     function isBlocklisted(address account) public view returns (bool) {
         return _blocklisted[account];
     }
-
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     */
-    uint256[49] private __gap;
 }

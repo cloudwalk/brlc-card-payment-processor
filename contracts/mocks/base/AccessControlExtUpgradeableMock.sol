@@ -6,38 +6,31 @@ import { AccessControlExtUpgradeable } from "../../base/AccessControlExtUpgradea
 
 /**
  * @title AccessControlExtUpgradeableMock contract
- * @author CloudWalk Inc.
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev An implementation of the {AccessControlExtUpgradeable} contract for test purposes.
  */
 contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable {
-    /// @dev The role of this contract owner.
-    bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
+    /// @dev The role of a user of this contract.
     bytes32 public constant USER_ROLE = keccak256("USER_ROLE");
 
+    // ------------------ Initializers ---------------------------- //
+
     /**
-     * @dev The initialize function of the upgradable contract.
+     * @dev The initialize function of the upgradeable contract.
      *
-     * See details https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable.
+     * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
      */
     function initialize() public initializer {
-        _setupRole(OWNER_ROLE, _msgSender());
-        _setRoleAdmin(USER_ROLE, OWNER_ROLE);
-        __AccessControlExt_init();
+        __AccessControlExt_init_unchained();
+
+        _setRoleAdmin(USER_ROLE, GRANTOR_ROLE);
+        _grantRole(OWNER_ROLE, _msgSender());
     }
 
-    /**
-     * @dev Needed to check that the initialize function of the ancestor contract
-     * has the 'onlyInitializing' modifier.
-     */
-    function call_parent_initialize() public {
-        __AccessControlExt_init();
-    }
+    // ------------------ Transactional functions ----------------- //
 
-    /**
-     * @dev Needed to check that the unchained initialize function of the ancestor contract
-     * has the 'onlyInitializing' modifier.
-     */
-    function call_parent_initialize_unchained() public {
+    /// @dev Calls the parent internal unchained initializing function to verify the 'onlyInitializing' modifier.
+    function callParentInitializerUnchained() external {
         __AccessControlExt_init_unchained();
     }
 }

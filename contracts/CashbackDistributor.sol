@@ -33,9 +33,6 @@ contract CashbackDistributor is
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
 
-    /// @dev The role of this contract owner.
-    bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
-
     /// @dev The role of distributor that is allowed to execute the cashback operations.
     bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
 
@@ -82,10 +79,10 @@ contract CashbackDistributor is
         __ERC165_init_unchained();
         __AccessControl_init_unchained();
         __AccessControlExt_init_unchained();
-        __Blocklistable_init_unchained(OWNER_ROLE);
+        __Blocklistable_init_unchained();
         __Pausable_init_unchained();
-        __PausableExt_init_unchained(OWNER_ROLE);
-        __Rescuable_init_unchained(OWNER_ROLE);
+        __PausableExt_init_unchained();
+        __Rescuable_init_unchained();
 
         __CashbackDistributor_init_unchained();
     }
@@ -93,8 +90,7 @@ contract CashbackDistributor is
     function __CashbackDistributor_init_unchained() internal onlyInitializing {
         _nextNonce = 1;
 
-        _setRoleAdmin(OWNER_ROLE, OWNER_ROLE);
-        _setRoleAdmin(DISTRIBUTOR_ROLE, OWNER_ROLE);
+        _setRoleAdmin(DISTRIBUTOR_ROLE, GRANTOR_ROLE);
 
         _setupRole(OWNER_ROLE, _msgSender());
     }
