@@ -405,7 +405,9 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     // -------------------- Transactional functions --------------- //
 
     /**
-     * @dev Sets the cash-out account.
+     * @dev Sets the cash-out account that will receive cleared tokens of confirmed payments.
+     *
+     * Emits a {SetCashOutAccount} event if the new account differs from the old one.
      *
      * @param newCashOutAccount The new address of the cash-out account.
      */
@@ -700,7 +702,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     // -------------------- View functions ------------------------ //
 
     /**
-     * @dev Returns the address of the cash-out account.
+     * @dev Returns the address of the cash-out account that will receive cleared tokens of confirmed payments.
      */
     function cashOutAccount() external view returns (address);
 
