@@ -182,20 +182,23 @@ describe("Contract 'CashbackDistributor'", async () => {
     patch: 0
   };
 
+  // Events of the contract under test
   const EVENT_NAME_ENABLE = "Enable";
   const EVENT_NAME_DISABLE = "Disable";
   const EVENT_NAME_INCREASE_CASHBACK = "IncreaseCashback";
   const EVENT_NAME_REVOKE_CASHBACK = "RevokeCashback";
   const EVENT_NAME_SEND_CASHBACK = "SendCashback";
 
-  const ERROR_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
-  const ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
+  // Error messages of the lib contracts
+  const ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
+  const ERROR_MESSAGE_PAUSABLE_PAUSED = "Pausable: paused";
 
-  const ERROR_NAME_IF_CASHBACK_ALREADY_ENABLED = "CashbackAlreadyEnabled";
-  const ERROR_NAME_IF_CASHBACK_ALREADY_DISABLED = "CashbackAlreadyDisabled";
-  const ERROR_NAME_IF_TOKEN_ADDRESS_IS_ZERO = "ZeroTokenAddress";
-  const ERROR_NAME_IF_RECIPIENT_ADDRESS_IS_ZERO = "ZeroRecipientAddress";
-  const ERROR_NAME_IF_EXTERNAL_ID_IS_ZERO = "ZeroExternalId";
+  // Errors of the contract under test
+  const ERROR_NAME_CASHBACK_ALREADY_DISABLED = "CashbackAlreadyDisabled";
+  const ERROR_NAME_CASHBACK_ALREADY_ENABLED = "CashbackAlreadyEnabled";
+  const ERROR_NAME_ZERO_EXTERNAL_ID = "ZeroExternalId";
+  const ERROR_NAME_ZERO_RECIPIENT_ADDRESS = "ZeroRecipientAddress";
+  const ERROR_NAME_ZERO_TOKEN_ADDRESS = "ZeroTokenAddress";
 
   const ownerRole: string = ethers.id("OWNER_ROLE");
   const grantorRole: string = ethers.id("GRANTOR_ROLE");
@@ -541,7 +544,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
       await expect(
         cashbackDistributor.initialize()
-      ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+      ).to.be.revertedWith(ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_ALREADY_INITIALIZED);
     });
 
     it("Is reverted for the contract implementation if it is called even for the first time", async () => {
@@ -549,7 +552,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       await cashierImplementation.waitForDeployment();
 
       await expect(cashierImplementation.initialize())
-        .to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+        .to.be.revertedWith(ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_ALREADY_INITIALIZED);
     });
   });
 
@@ -583,7 +586,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       await proveTx(cashbackDistributor.enable());
       await expect(
         cashbackDistributor.enable()
-      ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_IF_CASHBACK_ALREADY_ENABLED);
+      ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_CASHBACK_ALREADY_ENABLED);
     });
   });
 
@@ -610,7 +613,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
       await expect(
         cashbackDistributor.disable()
-      ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_IF_CASHBACK_ALREADY_DISABLED);
+      ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_CASHBACK_ALREADY_DISABLED);
     });
   });
 
@@ -762,7 +765,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             cashback.recipient.address,
             cashback.requestedAmount
           )
-        ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
       });
 
       it("The caller does not have the distributor role", async () => {
@@ -788,7 +791,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             cashback.recipient.address,
             cashback.requestedAmount
           )
-        ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_IF_TOKEN_ADDRESS_IS_ZERO);
+        ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_ZERO_TOKEN_ADDRESS);
       });
 
       it("The recipient address is zero", async () => {
@@ -801,7 +804,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             ZERO_ADDRESS,
             cashback.requestedAmount
           )
-        ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_IF_RECIPIENT_ADDRESS_IS_ZERO);
+        ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_ZERO_RECIPIENT_ADDRESS);
       });
 
       it("The cashback external ID is zero", async () => {
@@ -815,7 +818,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             cashback.recipient.address,
             cashback.requestedAmount
           )
-        ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_IF_EXTERNAL_ID_IS_ZERO);
+        ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_ZERO_EXTERNAL_ID);
       });
     });
   });
@@ -972,7 +975,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         await pauseContract(cashbackDistributor);
         await expect(
           connect(cashbackDistributor, distributor).revokeCashback(cashback.nonce, cashback.revokedAmount)
-        ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
       });
 
       it("Is reverted if the caller does not have the distributor role", async () => {
@@ -1138,7 +1141,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         await pauseContract(cashbackDistributor);
         await expect(
           connect(cashbackDistributor, distributor).increaseCashback(cashback.nonce, cashback.revokedAmount)
-        ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
       });
 
       it("Is reverted if the caller does not have the distributor role", async () => {
