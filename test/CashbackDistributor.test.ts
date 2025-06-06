@@ -542,9 +542,8 @@ describe("Contract 'CashbackDistributor'", async () => {
 
     it("Is reverted if it is called a second time", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
-      await expect(
-        cashbackDistributor.initialize()
-      ).to.be.revertedWith(ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_ALREADY_INITIALIZED);
+      await expect(cashbackDistributor.initialize())
+        .to.be.revertedWith(ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_ALREADY_INITIALIZED);
     });
 
     it("Is reverted for the contract implementation if it is called even for the first time", async () => {
@@ -576,17 +575,15 @@ describe("Contract 'CashbackDistributor'", async () => {
 
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
-      await expect(
-        connect(cashbackDistributor, user).enable()
-      ).to.be.revertedWith(createRevertMessageDueToMissingRole(user.address, OWNER_ROLE));
+      await expect(connect(cashbackDistributor, user).enable())
+        .to.be.revertedWith(createRevertMessageDueToMissingRole(user.address, OWNER_ROLE));
     });
 
     it("Is reverted if cashback operations are already enabled", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
       await proveTx(cashbackDistributor.enable());
-      await expect(
-        cashbackDistributor.enable()
-      ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_CASHBACK_ALREADY_ENABLED);
+      await expect(cashbackDistributor.enable())
+        .to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_CASHBACK_ALREADY_ENABLED);
     });
   });
 
@@ -604,16 +601,14 @@ describe("Contract 'CashbackDistributor'", async () => {
 
     it("Is reverted if the caller does not have the owner role", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
-      await expect(
-        connect(cashbackDistributor, user).disable()
-      ).to.be.revertedWith(createRevertMessageDueToMissingRole(user.address, OWNER_ROLE));
+      await expect(connect(cashbackDistributor, user).disable())
+        .to.be.revertedWith(createRevertMessageDueToMissingRole(user.address, OWNER_ROLE));
     });
 
     it("Is reverted if cashback operations are already disabled", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
-      await expect(
-        cashbackDistributor.disable()
-      ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_CASHBACK_ALREADY_DISABLED);
+      await expect(cashbackDistributor.disable())
+        .to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_CASHBACK_ALREADY_DISABLED);
     });
   });
 
@@ -973,16 +968,14 @@ describe("Contract 'CashbackDistributor'", async () => {
       it("The contract is paused", async () => {
         const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
         await pauseContract(cashbackDistributor);
-        await expect(
-          connect(cashbackDistributor, distributor).revokeCashback(cashback.nonce, cashback.revokedAmount)
-        ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
+        await expect(connect(cashbackDistributor, distributor).revokeCashback(cashback.nonce, cashback.revokedAmount))
+          .to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
       });
 
       it("Is reverted if the caller does not have the distributor role", async () => {
         const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
-        await expect(
-          cashbackDistributor.revokeCashback(cashback.nonce, cashback.revokedAmount)
-        ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, DISTRIBUTOR_ROLE));
+        await expect(cashbackDistributor.revokeCashback(cashback.nonce, cashback.revokedAmount))
+          .to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, DISTRIBUTOR_ROLE));
       });
     });
   });
@@ -1139,16 +1132,14 @@ describe("Contract 'CashbackDistributor'", async () => {
       it("The contract is paused", async () => {
         const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
         await pauseContract(cashbackDistributor);
-        await expect(
-          connect(cashbackDistributor, distributor).increaseCashback(cashback.nonce, cashback.revokedAmount)
-        ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
+        await expect(connect(cashbackDistributor, distributor).increaseCashback(cashback.nonce, cashback.revokedAmount))
+          .to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
       });
 
       it("Is reverted if the caller does not have the distributor role", async () => {
         const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
-        await expect(
-          cashbackDistributor.increaseCashback(cashback.nonce, cashback.revokedAmount)
-        ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, DISTRIBUTOR_ROLE));
+        await expect(cashbackDistributor.increaseCashback(cashback.nonce, cashback.revokedAmount))
+          .to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, DISTRIBUTOR_ROLE));
       });
     });
   });
@@ -1292,13 +1283,11 @@ describe("Contract 'CashbackDistributor'", async () => {
         expectedLastTimeReset: number;
         expectedCashbackSum: number;
       }) {
-        expect(await cashbackDistributor.getCashbackLastTimeReset(getAddress(tokenMock), recipient.address)).to.equal(
-          props.expectedLastTimeReset
-        );
+        expect(await cashbackDistributor.getCashbackLastTimeReset(getAddress(tokenMock), recipient.address))
+          .to.equal(props.expectedLastTimeReset);
 
-        expect(await cashbackDistributor.getCashbackSinceLastReset(getAddress(tokenMock), recipient.address)).to.equal(
-          props.expectedCashbackSum
-        );
+        expect(await cashbackDistributor.getCashbackSinceLastReset(getAddress(tokenMock), recipient.address))
+          .to.equal(props.expectedCashbackSum);
 
         expect(
           await cashbackDistributor.previewCashbackCap(getAddress(tokenMock), recipient.address)
