@@ -191,11 +191,11 @@ describe("Contract 'CashbackDistributor'", async () => {
   const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
 
-  const REVERT_ERROR_IF_CASHBACK_ALREADY_ENABLED = "CashbackAlreadyEnabled";
-  const REVERT_ERROR_IF_CASHBACK_ALREADY_DISABLED = "CashbackAlreadyDisabled";
-  const REVERT_ERROR_IF_TOKEN_ADDRESS_IS_ZERO = "ZeroTokenAddress";
-  const REVERT_ERROR_IF_RECIPIENT_ADDRESS_IS_ZERO = "ZeroRecipientAddress";
-  const REVERT_ERROR_IF_EXTERNAL_ID_IS_ZERO = "ZeroExternalId";
+  const ERROR_NAME_IF_CASHBACK_ALREADY_ENABLED = "CashbackAlreadyEnabled";
+  const ERROR_NAME_IF_CASHBACK_ALREADY_DISABLED = "CashbackAlreadyDisabled";
+  const ERROR_NAME_IF_TOKEN_ADDRESS_IS_ZERO = "ZeroTokenAddress";
+  const ERROR_NAME_IF_RECIPIENT_ADDRESS_IS_ZERO = "ZeroRecipientAddress";
+  const ERROR_NAME_IF_EXTERNAL_ID_IS_ZERO = "ZeroExternalId";
 
   const ownerRole: string = ethers.id("OWNER_ROLE");
   const grantorRole: string = ethers.id("GRANTOR_ROLE");
@@ -583,7 +583,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       await proveTx(cashbackDistributor.enable());
       await expect(
         cashbackDistributor.enable()
-      ).to.be.revertedWithCustomError(cashbackDistributor, REVERT_ERROR_IF_CASHBACK_ALREADY_ENABLED);
+      ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_IF_CASHBACK_ALREADY_ENABLED);
     });
   });
 
@@ -610,7 +610,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
       await expect(
         cashbackDistributor.disable()
-      ).to.be.revertedWithCustomError(cashbackDistributor, REVERT_ERROR_IF_CASHBACK_ALREADY_DISABLED);
+      ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_IF_CASHBACK_ALREADY_DISABLED);
     });
   });
 
@@ -788,7 +788,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             cashback.recipient.address,
             cashback.requestedAmount
           )
-        ).to.be.revertedWithCustomError(cashbackDistributor, REVERT_ERROR_IF_TOKEN_ADDRESS_IS_ZERO);
+        ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_IF_TOKEN_ADDRESS_IS_ZERO);
       });
 
       it("The recipient address is zero", async () => {
@@ -801,7 +801,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             ZERO_ADDRESS,
             cashback.requestedAmount
           )
-        ).to.be.revertedWithCustomError(cashbackDistributor, REVERT_ERROR_IF_RECIPIENT_ADDRESS_IS_ZERO);
+        ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_IF_RECIPIENT_ADDRESS_IS_ZERO);
       });
 
       it("The cashback external ID is zero", async () => {
@@ -815,7 +815,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             cashback.recipient.address,
             cashback.requestedAmount
           )
-        ).to.be.revertedWithCustomError(cashbackDistributor, REVERT_ERROR_IF_EXTERNAL_ID_IS_ZERO);
+        ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_IF_EXTERNAL_ID_IS_ZERO);
       });
     });
   });

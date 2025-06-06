@@ -1914,31 +1914,31 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
   const REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE = "ERC20: transfer amount exceeds balance";
 
-  const REVERT_ERROR_IF_TOKEN_ADDRESS_IZ_ZERO = "ZeroTokenAddress";
-  const REVERT_ERROR_IF_ACCOUNT_IS_BLOCKLISTED = "BlocklistedAccount";
-  const REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST = "PaymentNotExist";
-  const REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS = "PaymentAlreadyExists";
-  const REVERT_ERROR_IF_PAYMENT_IS_ALREADY_CLEARED = "PaymentAlreadyCleared";
-  const REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED = "PaymentAlreadyUncleared";
-  const REVERT_ERROR_IF_PAYMENT_ACCOUNT_IS_ZERO = "ZeroAccount";
-  const REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO = "ZeroAuthorizationId";
-  const REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS = "InappropriatePaymentStatus";
-  const REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_LIMIT = "RevocationLimitReached";
-  const REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY = "EmptyAuthorizationIdsArray";
-  const REVERT_ERROR_IF_CASH_OUT_ACCOUNT_IS_UNCHANGED = "CashOutAccountUnchanged";
-  const REVERT_ERROR_IF_PARENT_TX_HASH_IS_ZERO = "ZeroParentTransactionHash";
-  const REVERT_ERROR_IF_CASHBACK_DISTRIBUTOR_IS_ZERO = "CashbackDistributorZeroAddress";
-  const REVERT_ERROR_IF_CASHBACK_DISTRIBUTOR_IS_ALREADY_CONFIGURED = "CashbackDistributorAlreadyConfigured";
-  const REVERT_ERROR_IF_CASHBACK_RATE_EXCESS = "CashbackRateExcess";
-  const REVERT_ERROR_IF_CASHBACK_RATE_UNCHANGED = "CashbackRateUnchanged";
-  const REVERT_ERROR_IF_CASHBACK_DISTRIBUTOR_NOT_CONFIGURED = "CashbackDistributorNotConfigured";
-  const REVERT_ERROR_IF_CASHBACK_ALREADY_ENABLED = "CashbackAlreadyEnabled";
-  const REVERT_ERROR_IF_CASHBACK_ALREADY_DISABLED = "CashbackAlreadyDisabled";
-  const REVERT_ERROR_IF_CASH_OUT_ACCOUNT_ADDRESS_IS_ZERO = "ZeroCashOutAccount";
-  const REVERT_ERROR_IF_REFUND_AMOUNT_IS_INAPPROPRIATE = "InappropriateRefundAmount";
-  const REVERT_ERROR_IF_NEW_BASE_PAYMENT_AMOUNT_IS_INAPPROPRIATE = "InappropriateNewBasePaymentAmount";
-  const REVERT_ERROR_IF_NEW_EXTRA_PAYMENT_AMOUNT_IS_INAPPROPRIATE = "InappropriateNewExtraPaymentAmount";
-  const REVERT_ERROR_IF_SUBSIDIZED_PAYMENT_WITH_NON_ZERO_REFUND_AMOUNT = "SubsidizedPaymentWithNonZeroRefundAmount";
+  const ERROR_NAME_IF_TOKEN_ADDRESS_IZ_ZERO = "ZeroTokenAddress";
+  const ERROR_NAME_IF_ACCOUNT_IS_BLOCKLISTED = "BlocklistedAccount";
+  const ERROR_NAME_IF_PAYMENT_DOES_NOT_EXIST = "PaymentNotExist";
+  const ERROR_NAME_IF_PAYMENT_ALREADY_EXISTS = "PaymentAlreadyExists";
+  const ERROR_NAME_IF_PAYMENT_IS_ALREADY_CLEARED = "PaymentAlreadyCleared";
+  const ERROR_NAME_IF_PAYMENT_IS_ALREADY_UNCLEARED = "PaymentAlreadyUncleared";
+  const ERROR_NAME_IF_PAYMENT_ACCOUNT_IS_ZERO = "ZeroAccount";
+  const ERROR_NAME_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO = "ZeroAuthorizationId";
+  const ERROR_NAME_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS = "InappropriatePaymentStatus";
+  const ERROR_NAME_IF_PAYMENT_REVOCATION_COUNTER_REACHED_LIMIT = "RevocationLimitReached";
+  const ERROR_NAME_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY = "EmptyAuthorizationIdsArray";
+  const ERROR_NAME_IF_CASH_OUT_ACCOUNT_IS_UNCHANGED = "CashOutAccountUnchanged";
+  const ERROR_NAME_IF_PARENT_TX_HASH_IS_ZERO = "ZeroParentTransactionHash";
+  const ERROR_NAME_IF_CASHBACK_DISTRIBUTOR_IS_ZERO = "CashbackDistributorZeroAddress";
+  const ERROR_NAME_IF_CASHBACK_DISTRIBUTOR_IS_ALREADY_CONFIGURED = "CashbackDistributorAlreadyConfigured";
+  const ERROR_NAME_IF_CASHBACK_RATE_EXCESS = "CashbackRateExcess";
+  const ERROR_NAME_IF_CASHBACK_RATE_UNCHANGED = "CashbackRateUnchanged";
+  const ERROR_NAME_IF_CASHBACK_DISTRIBUTOR_NOT_CONFIGURED = "CashbackDistributorNotConfigured";
+  const ERROR_NAME_IF_CASHBACK_ALREADY_ENABLED = "CashbackAlreadyEnabled";
+  const ERROR_NAME_IF_CASHBACK_ALREADY_DISABLED = "CashbackAlreadyDisabled";
+  const ERROR_NAME_IF_CASH_OUT_ACCOUNT_ADDRESS_IS_ZERO = "ZeroCashOutAccount";
+  const ERROR_NAME_IF_REFUND_AMOUNT_IS_INAPPROPRIATE = "InappropriateRefundAmount";
+  const ERROR_NAME_IF_NEW_BASE_PAYMENT_AMOUNT_IS_INAPPROPRIATE = "InappropriateNewBasePaymentAmount";
+  const ERROR_NAME_IF_NEW_EXTRA_PAYMENT_AMOUNT_IS_INAPPROPRIATE = "InappropriateNewExtraPaymentAmount";
+  const ERROR_NAME_IF_SUBSIDIZED_PAYMENT_WITH_NON_ZERO_REFUND_AMOUNT = "SubsidizedPaymentWithNonZeroRefundAmount";
 
   const ownerRole: string = ethers.id("OWNER_ROLE");
   const grantorRole: string = ethers.id("GRANTOR_ROLE");
@@ -2154,7 +2154,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         anotherCardPaymentProcessor.initialize(ZERO_ADDRESS)
-      ).to.be.revertedWithCustomError(cardPaymentProcessorFactory, REVERT_ERROR_IF_TOKEN_ADDRESS_IZ_ZERO);
+      ).to.be.revertedWithCustomError(cardPaymentProcessorFactory, ERROR_NAME_IF_TOKEN_ADDRESS_IZ_ZERO);
     });
 
     it("Is reverted for the contract implementation if it is called even for the first time", async () => {
@@ -2231,7 +2231,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
         cardPaymentProcessor.setCashbackDistributor(ZERO_ADDRESS)
-      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASHBACK_DISTRIBUTOR_IS_ZERO);
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, ERROR_NAME_IF_CASHBACK_DISTRIBUTOR_IS_ZERO);
     });
 
     it("Is reverted if the cashback distributor has been already configured", async () => {
@@ -2240,7 +2240,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         cardPaymentProcessor.setCashbackDistributor(CASHBACK_DISTRIBUTOR_ADDRESS_STUB2)
-      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASHBACK_DISTRIBUTOR_IS_ALREADY_CONFIGURED);
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, ERROR_NAME_IF_CASHBACK_DISTRIBUTOR_IS_ALREADY_CONFIGURED);
     });
   });
 
@@ -2266,7 +2266,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
         cardPaymentProcessor.setCashbackRate(MAX_CASHBACK_RATE_IN_PERMIL + 1)
-      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASHBACK_RATE_EXCESS);
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, ERROR_NAME_IF_CASHBACK_RATE_EXCESS);
     });
 
     it("Is reverted if called with the same argument twice", async () => {
@@ -2275,7 +2275,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         cardPaymentProcessor.setCashbackRate(CASHBACK_RATE_IN_PERMIL)
-      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASHBACK_RATE_UNCHANGED);
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, ERROR_NAME_IF_CASHBACK_RATE_UNCHANGED);
     });
   });
 
@@ -2302,7 +2302,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
         cardPaymentProcessor.enableCashback()
-      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASHBACK_DISTRIBUTOR_NOT_CONFIGURED);
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, ERROR_NAME_IF_CASHBACK_DISTRIBUTOR_NOT_CONFIGURED);
     });
 
     it("Is reverted if the cashback operations are already enabled", async () => {
@@ -2312,7 +2312,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         cardPaymentProcessor.enableCashback()
-      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASHBACK_ALREADY_ENABLED);
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, ERROR_NAME_IF_CASHBACK_ALREADY_ENABLED);
     });
   });
 
@@ -2339,7 +2339,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
         cardPaymentProcessor.disableCashback()
-      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASHBACK_ALREADY_DISABLED);
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, ERROR_NAME_IF_CASHBACK_ALREADY_DISABLED);
     });
   });
 
@@ -2372,13 +2372,13 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
         cardPaymentProcessor.setCashOutAccount(ZERO_ADDRESS)
-      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASH_OUT_ACCOUNT_IS_UNCHANGED);
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, ERROR_NAME_IF_CASH_OUT_ACCOUNT_IS_UNCHANGED);
 
       await proveTx(cardPaymentProcessor.setCashOutAccount(cashOutAccount.address));
 
       await expect(
         cardPaymentProcessor.setCashOutAccount(cashOutAccount.address)
-      ).to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_CASH_OUT_ACCOUNT_IS_UNCHANGED);
+      ).to.be.revertedWithCustomError(cardPaymentProcessor, ERROR_NAME_IF_CASH_OUT_ACCOUNT_IS_UNCHANGED);
     });
   });
 
@@ -2438,7 +2438,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.authorizationId,
             payment.correlationId
           )
-        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_ACCOUNT_IS_BLOCKLISTED);
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_ACCOUNT_IS_BLOCKLISTED);
       });
     });
   });
@@ -2727,7 +2727,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             subsidyLimit,
             CASHBACK_RATE_AS_IN_CONTRACT
           )
-        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_ACCOUNT_IS_ZERO);
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_ACCOUNT_IS_ZERO);
       });
 
       it("The payment authorization ID is zero", async () => {
@@ -2747,7 +2747,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
+          ERROR_NAME_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
         );
       });
 
@@ -2810,7 +2810,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             subsidyLimit,
             CASHBACK_RATE_AS_IN_CONTRACT
           )
-        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_ALREADY_EXISTS);
       });
 
       it("The requested cashback rate exceeds the maximum allowed value", async () => {
@@ -2828,7 +2828,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             subsidyLimit,
             MAX_CASHBACK_RATE_IN_PERMIL + 1
           )
-        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_CASHBACK_RATE_EXCESS);
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_CASHBACK_RATE_EXCESS);
       });
     });
   });
@@ -3331,7 +3331,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
+          ERROR_NAME_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
         );
       });
 
@@ -3346,7 +3346,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.authorizationId,
             PAYMENT_UPDATING_CORRELATION_ID_STUB
           )
-        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_DOES_NOT_EXIST);
       });
 
       it("The new base amount is less than the refund amount", async () => {
@@ -3366,7 +3366,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_NEW_BASE_PAYMENT_AMOUNT_IS_INAPPROPRIATE
+          ERROR_NAME_IF_NEW_BASE_PAYMENT_AMOUNT_IS_INAPPROPRIATE
         );
       });
 
@@ -3386,7 +3386,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
+          ERROR_NAME_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
         ).withArgs(PaymentStatus.Cleared);
       });
 
@@ -3408,7 +3408,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_SUBSIDIZED_PAYMENT_WITH_NON_ZERO_REFUND_AMOUNT
+          ERROR_NAME_IF_SUBSIDIZED_PAYMENT_WITH_NON_ZERO_REFUND_AMOUNT
         );
       });
     });
@@ -3492,7 +3492,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         connect(cardPaymentProcessorShell.contract, executor).clearPayment(ZERO_AUTHORIZATION_ID)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
+        ERROR_NAME_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
       );
     });
 
@@ -3502,7 +3502,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).clearPayment(payment.authorizationId)
-      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Is reverted if the payment has already been cleared", async () => {
@@ -3514,7 +3514,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).clearPayment(payment.authorizationId)
-      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_CLEARED);
+      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_IS_ALREADY_CLEARED);
     });
   });
 
@@ -3565,7 +3565,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         connect(cardPaymentProcessorShell.contract, executor).clearPayments([])
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY
+        ERROR_NAME_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY
       );
     });
 
@@ -3581,7 +3581,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         ])
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
+        ERROR_NAME_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
       );
     });
 
@@ -3595,7 +3595,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           payments[0].authorizationId,
           increaseBytesString(payments[1].authorizationId, BYTES16_LENGTH)
         ])
-      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Is reverted if one of the payments has been already cleared", async () => {
@@ -3610,7 +3610,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           payments[0].authorizationId,
           payments[1].authorizationId
         ])
-      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_CLEARED);
+      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_IS_ALREADY_CLEARED);
     });
   });
 
@@ -3702,7 +3702,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         connect(cardPaymentProcessorShell.contract, executor).unclearPayment(ZERO_AUTHORIZATION_ID)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
+        ERROR_NAME_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
       );
     });
 
@@ -3712,7 +3712,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).unclearPayment(payment.authorizationId)
-      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Is reverted if the payment is uncleared", async () => {
@@ -3726,7 +3726,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).unclearPayment(payment.authorizationId)
-      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
+      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_IS_ALREADY_UNCLEARED);
     });
   });
 
@@ -3778,7 +3778,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         connect(cardPaymentProcessorShell.contract, executor).unclearPayments([])
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY
+        ERROR_NAME_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY
       );
     });
 
@@ -3795,7 +3795,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         ])
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
+        ERROR_NAME_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
       );
     });
 
@@ -3810,7 +3810,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           payments[0].authorizationId,
           increaseBytesString(payments[1].authorizationId, BYTES16_LENGTH)
         ])
-      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Is reverted if one of the payments is uncleared", async () => {
@@ -3826,7 +3826,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           payments[0].authorizationId,
           payments[1].authorizationId
         ])
-      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_IS_ALREADY_UNCLEARED);
+      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_IS_ALREADY_UNCLEARED);
     });
   });
 
@@ -3982,7 +3982,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_LIMIT
+          ERROR_NAME_IF_PAYMENT_REVOCATION_COUNTER_REACHED_LIMIT
         );
       });
 
@@ -3998,7 +3998,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
+          ERROR_NAME_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
         );
       });
 
@@ -4012,7 +4012,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             PAYMENT_REVOKING_CORRELATION_ID_STUB,
             ZERO_TRANSACTION_HASH
           )
-        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PARENT_TX_HASH_IS_ZERO);
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PARENT_TX_HASH_IS_ZERO);
       });
 
       it("The payment with the provided authorization ID does not exist", async () => {
@@ -4025,7 +4025,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             PAYMENT_REVOKING_CORRELATION_ID_STUB,
             payment.parentTxHash
           )
-        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_DOES_NOT_EXIST);
       });
     });
   });
@@ -4162,7 +4162,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
+          ERROR_NAME_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
         );
       });
 
@@ -4176,7 +4176,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             PAYMENT_REVERSING_CORRELATION_ID_STUB,
             ZERO_TRANSACTION_HASH
           )
-        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PARENT_TX_HASH_IS_ZERO);
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PARENT_TX_HASH_IS_ZERO);
       });
 
       it("The payment with the provided authorization ID does not exist", async () => {
@@ -4189,7 +4189,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             PAYMENT_REVERSING_CORRELATION_ID_STUB,
             payment.parentTxHash
           )
-        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_DOES_NOT_EXIST);
       });
     });
   });
@@ -4275,7 +4275,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         connect(cardPaymentProcessorShell.contract, executor).confirmPayment(ZERO_AUTHORIZATION_ID)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
+        ERROR_NAME_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
       );
     });
 
@@ -4285,7 +4285,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).confirmPayment(payment.authorizationId)
-      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Is reverted if the payment is uncleared", async () => {
@@ -4297,7 +4297,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         connect(cardPaymentProcessorShell.contract, executor).confirmPayment(payment.authorizationId)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
+        ERROR_NAME_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
       ).withArgs(PaymentStatus.Uncleared);
     });
 
@@ -4313,7 +4313,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         connect(cardPaymentProcessorShell.contract, executor).confirmPayment(payment.authorizationId)
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        REVERT_ERROR_IF_CASH_OUT_ACCOUNT_ADDRESS_IS_ZERO
+        ERROR_NAME_IF_CASH_OUT_ACCOUNT_ADDRESS_IS_ZERO
       );
     });
   });
@@ -4366,7 +4366,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         connect(cardPaymentProcessorShell.contract, executor).confirmPayments([])
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY
+        ERROR_NAME_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY
       );
     });
 
@@ -4383,7 +4383,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         ])
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
+        ERROR_NAME_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
       );
     });
 
@@ -4398,7 +4398,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           payments[0].authorizationId,
           increaseBytesString(payments[1].authorizationId, BYTES16_LENGTH)
         ])
-      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_DOES_NOT_EXIST);
     });
 
     it("Is reverted if one of the payments is uncleared", async () => {
@@ -4416,7 +4416,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         ])
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
+        ERROR_NAME_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
       ).withArgs(PaymentStatus.Uncleared);
     });
 
@@ -4435,7 +4435,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         ])
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        REVERT_ERROR_IF_CASH_OUT_ACCOUNT_ADDRESS_IS_ZERO
+        ERROR_NAME_IF_CASH_OUT_ACCOUNT_ADDRESS_IS_ZERO
       );
     });
   });
@@ -4648,7 +4648,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         connect(cardPaymentProcessorShell.contract, executor).clearAndConfirmPayments([])
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        REVERT_ERROR_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY
+        ERROR_NAME_IF_INPUT_ARRAY_OF_AUTHORIZATION_IDS_IS_EMPTY
       );
     });
 
@@ -5062,7 +5062,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
+          ERROR_NAME_IF_PAYMENT_AUTHORIZATION_ID_IS_ZERO
         );
       });
 
@@ -5077,7 +5077,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.authorizationId,
             PAYMENT_REFUNDING_CORRELATION_ID_STUB
           )
-        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_DOES_NOT_EXIST);
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_DOES_NOT_EXIST);
       });
 
       it("The refund amount exceeds the base payment amount", async () => {
@@ -5095,7 +5095,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_REFUND_AMOUNT_IS_INAPPROPRIATE
+          ERROR_NAME_IF_REFUND_AMOUNT_IS_INAPPROPRIATE
         );
       });
 
@@ -5117,7 +5117,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_CASH_OUT_ACCOUNT_ADDRESS_IS_ZERO
+          ERROR_NAME_IF_CASH_OUT_ACCOUNT_ADDRESS_IS_ZERO
         );
       });
 
@@ -5136,7 +5136,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
+          ERROR_NAME_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
         ).withArgs(PaymentStatus.Revoked);
       });
 
@@ -5155,7 +5155,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
+          ERROR_NAME_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
         ).withArgs(PaymentStatus.Reversed);
       });
 
@@ -5174,7 +5174,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           )
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          REVERT_ERROR_IF_NEW_EXTRA_PAYMENT_AMOUNT_IS_INAPPROPRIATE
+          ERROR_NAME_IF_NEW_EXTRA_PAYMENT_AMOUNT_IS_INAPPROPRIATE
         );
       });
     });
@@ -5310,7 +5310,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             nonZeroTokenAmount,
             PAYMENT_REFUNDING_CORRELATION_ID_STUB
           )
-        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_ACCOUNT_IS_ZERO);
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_ACCOUNT_IS_ZERO);
       });
 
       it("The cash-out account does not have enough token balance", async () => {
@@ -5337,19 +5337,19 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     ) {
       const authorizationIds = payments.map(payment => payment.authorizationId);
       await expect(connect(cardPaymentProcessor, executor).clearPayment(authorizationIds[0]))
-        .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS)
+        .to.be.revertedWithCustomError(cardPaymentProcessor, ERROR_NAME_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS)
         .withArgs(status);
 
       await expect(connect(cardPaymentProcessor, executor).clearPayments(authorizationIds))
-        .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS)
+        .to.be.revertedWithCustomError(cardPaymentProcessor, ERROR_NAME_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS)
         .withArgs(status);
 
       await expect(connect(cardPaymentProcessor, executor).unclearPayment(authorizationIds[0]))
-        .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS)
+        .to.be.revertedWithCustomError(cardPaymentProcessor, ERROR_NAME_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS)
         .withArgs(status);
 
       await expect(connect(cardPaymentProcessor, executor).unclearPayments(authorizationIds))
-        .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS)
+        .to.be.revertedWithCustomError(cardPaymentProcessor, ERROR_NAME_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS)
         .withArgs(status);
 
       await expect(
@@ -5360,7 +5360,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         )
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
-        REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
+        ERROR_NAME_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
       ).withArgs(status);
 
       await expect(
@@ -5371,15 +5371,15 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         )
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
-        REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
+        ERROR_NAME_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
       ).withArgs(status);
 
       await expect(connect(cardPaymentProcessor, executor).confirmPayment(authorizationIds[0]))
-        .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS)
+        .to.be.revertedWithCustomError(cardPaymentProcessor, ERROR_NAME_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS)
         .withArgs(status);
 
       await expect(connect(cardPaymentProcessor, executor).confirmPayments(authorizationIds))
-        .to.be.revertedWithCustomError(cardPaymentProcessor, REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS)
+        .to.be.revertedWithCustomError(cardPaymentProcessor, ERROR_NAME_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS)
         .withArgs(status);
 
       await expect(
@@ -5391,7 +5391,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         )
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
-        REVERT_ERROR_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
+        ERROR_NAME_IF_PAYMENT_HAS_INAPPROPRIATE_STATUS
       ).withArgs(status);
     }
 
@@ -5442,7 +5442,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           ZERO_SUBSIDY_LIMIT,
           CASHBACK_RATE_AS_IN_CONTRACT
         )
-      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
+      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_ALREADY_EXISTS);
 
       await checkRevertingOfAllPaymentProcessingFunctionsExceptMaking(
         cardPaymentProcessorShell.contract,
@@ -5471,7 +5471,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           ZERO_SUBSIDY_LIMIT,
           CASHBACK_RATE_AS_IN_CONTRACT
         )
-      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
+      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_ALREADY_EXISTS);
 
       await checkRevertingOfAllPaymentProcessingFunctionsExceptMaking(
         cardPaymentProcessorShell.contract,
@@ -5499,7 +5499,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           ZERO_SUBSIDY_LIMIT,
           CASHBACK_RATE_AS_IN_CONTRACT
         )
-      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, REVERT_ERROR_IF_PAYMENT_ALREADY_EXISTS);
+      ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_IF_PAYMENT_ALREADY_EXISTS);
     });
 
     it("Making payment function is reverted if the revocation counter has reached the limit", async () => {
@@ -5529,7 +5529,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         )
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        REVERT_ERROR_IF_PAYMENT_REVOCATION_COUNTER_REACHED_LIMIT
+        ERROR_NAME_IF_PAYMENT_REVOCATION_COUNTER_REACHED_LIMIT
       );
     });
 

@@ -18,7 +18,7 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
   const ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_NOT_INITIALIZING = "Initializable: contract is not initializing";
 
   // Errors of the contract under test
-  const REVERT_ERROR_IF_ACCOUNT_IS_BLOCKLISTED = "BlocklistedAccount";
+  const ERROR_NAME_IF_ACCOUNT_IS_BLOCKLISTED = "BlocklistedAccount";
 
   const OWNER_ROLE: string = ethers.id("OWNER_ROLE");
   const GRANTOR_ROLE: string = ethers.id("GRANTOR_ROLE");
@@ -152,7 +152,7 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
 
       await proveTx(connect(blocklistableMock, blocklister).blocklist(deployer.address));
       await expect(blocklistableMock.testNotBlocklistedModifier())
-        .to.be.revertedWithCustomError(blocklistableMock, REVERT_ERROR_IF_ACCOUNT_IS_BLOCKLISTED);
+        .to.be.revertedWithCustomError(blocklistableMock, ERROR_NAME_IF_ACCOUNT_IS_BLOCKLISTED);
     });
 
     it("Does not revert the target function if the caller is not blocklisted", async () => {
