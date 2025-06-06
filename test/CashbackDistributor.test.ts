@@ -200,12 +200,12 @@ describe("Contract 'CashbackDistributor'", async () => {
   const ERROR_NAME_ZERO_RECIPIENT_ADDRESS = "ZeroRecipientAddress";
   const ERROR_NAME_ZERO_TOKEN_ADDRESS = "ZeroTokenAddress";
 
-  const ownerRole: string = ethers.id("OWNER_ROLE");
-  const grantorRole: string = ethers.id("GRANTOR_ROLE");
-  const blocklisterRole: string = ethers.id("BLOCKLISTER_ROLE");
-  const pauserRole: string = ethers.id("PAUSER_ROLE");
-  const rescuerRole: string = ethers.id("RESCUER_ROLE");
-  const distributorRole: string = ethers.id("DISTRIBUTOR_ROLE");
+  const OWNER_ROLE: string = ethers.id("OWNER_ROLE");
+  const GRANTOR_ROLE: string = ethers.id("GRANTOR_ROLE");
+  const BLOCKLISTER_ROLE: string = ethers.id("BLOCKLISTER_ROLE");
+  const PAUSER_ROLE: string = ethers.id("PAUSER_ROLE");
+  const RESCUER_ROLE: string = ethers.id("RESCUER_ROLE");
+  const DISTRIBUTOR_ROLE: string = ethers.id("DISTRIBUTOR_ROLE");
 
   let cashbackDistributorFactory: ContractFactory;
   let tokenMockFactory: ContractFactory;
@@ -248,9 +248,9 @@ describe("Contract 'CashbackDistributor'", async () => {
     const tokenMock1 = await deployTokenMock("1");
     const tokenMock2 = await deployTokenMock("2");
 
-    await proveTx(cashbackDistributor.grantRole(grantorRole, deployer.address));
-    await proveTx(cashbackDistributor.grantRole(blocklisterRole, deployer.address));
-    await proveTx(cashbackDistributor.grantRole(distributorRole, distributor.address));
+    await proveTx(cashbackDistributor.grantRole(GRANTOR_ROLE, deployer.address));
+    await proveTx(cashbackDistributor.grantRole(BLOCKLISTER_ROLE, deployer.address));
+    await proveTx(cashbackDistributor.grantRole(DISTRIBUTOR_ROLE, distributor.address));
     await proveTx(cashbackDistributor.enable());
 
     return {
@@ -276,8 +276,8 @@ describe("Contract 'CashbackDistributor'", async () => {
   }
 
   async function pauseContract(contract: Contract) {
-    await proveTx(contract.grantRole(grantorRole, deployer.address));
-    await proveTx(contract.grantRole(pauserRole, deployer.address));
+    await proveTx(contract.grantRole(GRANTOR_ROLE, deployer.address));
+    await proveTx(contract.grantRole(PAUSER_ROLE, deployer.address));
     await proveTx(contract.pause());
   }
 
@@ -504,28 +504,28 @@ describe("Contract 'CashbackDistributor'", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
 
       // The role hashes
-      expect(await cashbackDistributor.OWNER_ROLE()).to.equal(ownerRole);
-      expect(await cashbackDistributor.GRANTOR_ROLE()).to.equal(grantorRole);
-      expect(await cashbackDistributor.BLOCKLISTER_ROLE()).to.equal(blocklisterRole);
-      expect(await cashbackDistributor.PAUSER_ROLE()).to.equal(pauserRole);
-      expect(await cashbackDistributor.RESCUER_ROLE()).to.equal(rescuerRole);
-      expect(await cashbackDistributor.DISTRIBUTOR_ROLE()).to.equal(distributorRole);
+      expect(await cashbackDistributor.OWNER_ROLE()).to.equal(OWNER_ROLE);
+      expect(await cashbackDistributor.GRANTOR_ROLE()).to.equal(GRANTOR_ROLE);
+      expect(await cashbackDistributor.BLOCKLISTER_ROLE()).to.equal(BLOCKLISTER_ROLE);
+      expect(await cashbackDistributor.PAUSER_ROLE()).to.equal(PAUSER_ROLE);
+      expect(await cashbackDistributor.RESCUER_ROLE()).to.equal(RESCUER_ROLE);
+      expect(await cashbackDistributor.DISTRIBUTOR_ROLE()).to.equal(DISTRIBUTOR_ROLE);
 
       // The admins of roles
-      expect(await cashbackDistributor.getRoleAdmin(ownerRole)).to.equal(ownerRole);
-      expect(await cashbackDistributor.getRoleAdmin(grantorRole)).to.equal(ownerRole);
-      expect(await cashbackDistributor.getRoleAdmin(blocklisterRole)).to.equal(grantorRole);
-      expect(await cashbackDistributor.getRoleAdmin(pauserRole)).to.equal(grantorRole);
-      expect(await cashbackDistributor.getRoleAdmin(rescuerRole)).to.equal(grantorRole);
-      expect(await cashbackDistributor.getRoleAdmin(distributorRole)).to.equal(grantorRole);
+      expect(await cashbackDistributor.getRoleAdmin(OWNER_ROLE)).to.equal(OWNER_ROLE);
+      expect(await cashbackDistributor.getRoleAdmin(GRANTOR_ROLE)).to.equal(OWNER_ROLE);
+      expect(await cashbackDistributor.getRoleAdmin(BLOCKLISTER_ROLE)).to.equal(GRANTOR_ROLE);
+      expect(await cashbackDistributor.getRoleAdmin(PAUSER_ROLE)).to.equal(GRANTOR_ROLE);
+      expect(await cashbackDistributor.getRoleAdmin(RESCUER_ROLE)).to.equal(GRANTOR_ROLE);
+      expect(await cashbackDistributor.getRoleAdmin(DISTRIBUTOR_ROLE)).to.equal(GRANTOR_ROLE);
 
       // The deployer should have the owner role, but not the other roles
-      expect(await cashbackDistributor.hasRole(ownerRole, deployer.address)).to.equal(true);
-      expect(await cashbackDistributor.hasRole(grantorRole, deployer.address)).to.equal(false);
-      expect(await cashbackDistributor.hasRole(blocklisterRole, deployer.address)).to.equal(false);
-      expect(await cashbackDistributor.hasRole(pauserRole, deployer.address)).to.equal(false);
-      expect(await cashbackDistributor.hasRole(rescuerRole, deployer.address)).to.equal(false);
-      expect(await cashbackDistributor.hasRole(distributorRole, deployer.address)).to.equal(false);
+      expect(await cashbackDistributor.hasRole(OWNER_ROLE, deployer.address)).to.equal(true);
+      expect(await cashbackDistributor.hasRole(GRANTOR_ROLE, deployer.address)).to.equal(false);
+      expect(await cashbackDistributor.hasRole(BLOCKLISTER_ROLE, deployer.address)).to.equal(false);
+      expect(await cashbackDistributor.hasRole(PAUSER_ROLE, deployer.address)).to.equal(false);
+      expect(await cashbackDistributor.hasRole(RESCUER_ROLE, deployer.address)).to.equal(false);
+      expect(await cashbackDistributor.hasRole(DISTRIBUTOR_ROLE, deployer.address)).to.equal(false);
 
       // The initial contract state is unpaused
       expect(await cashbackDistributor.paused()).to.equal(false);
@@ -578,7 +578,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
       await expect(
         connect(cashbackDistributor, user).enable()
-      ).to.be.revertedWith(createRevertMessageDueToMissingRole(user.address, ownerRole));
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(user.address, OWNER_ROLE));
     });
 
     it("Is reverted if cashback operations are already enabled", async () => {
@@ -606,7 +606,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
       await expect(
         connect(cashbackDistributor, user).disable()
-      ).to.be.revertedWith(createRevertMessageDueToMissingRole(user.address, ownerRole));
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(user.address, OWNER_ROLE));
     });
 
     it("Is reverted if cashback operations are already disabled", async () => {
@@ -778,7 +778,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             cashback.recipient.address,
             cashback.requestedAmount
           )
-        ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, distributorRole));
+        ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, DISTRIBUTOR_ROLE));
       });
 
       it("The token address is zero", async () => {
@@ -982,7 +982,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
         await expect(
           cashbackDistributor.revokeCashback(cashback.nonce, cashback.revokedAmount)
-        ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, distributorRole));
+        ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, DISTRIBUTOR_ROLE));
       });
     });
   });
@@ -1148,7 +1148,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
         await expect(
           cashbackDistributor.increaseCashback(cashback.nonce, cashback.revokedAmount)
-        ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, distributorRole));
+        ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, DISTRIBUTOR_ROLE));
       });
     });
   });
