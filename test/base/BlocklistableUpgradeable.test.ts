@@ -3,8 +3,7 @@ import { expect } from "chai";
 import { Contract } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { connect, proveTx } from "../../test-utils/eth";
-import { createRevertMessageDueToMissingRole } from "../../test-utils/misc";
-import { setUpFixture } from "../../test-utils/common";
+import { createRevertMessageDueToMissingRole, setUpFixture } from "../../test-utils/common";
 
 describe("Contract 'BlocklistableUpgradeable'", async () => {
   // Events of the contract under test

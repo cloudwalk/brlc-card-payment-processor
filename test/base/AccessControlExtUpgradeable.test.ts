@@ -3,8 +3,7 @@ import { expect } from "chai";
 import { Contract, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { connect, proveTx } from "../../test-utils/eth";
-import { setUpFixture } from "../../test-utils/common";
-import { createRevertMessageDueToMissingRole } from "../../test-utils/misc";
+import { createRevertMessageDueToMissingRole, setUpFixture } from "../../test-utils/common";
 
 describe("Contract 'AccessControlExtUpgradeable'", async () => {
   // Events of the lib contracts

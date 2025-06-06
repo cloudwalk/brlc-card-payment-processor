@@ -3,10 +3,9 @@ import { expect } from "chai";
 import { Contract, ContractFactory, TransactionReceipt, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { connect, getAddress, proveTx } from "../test-utils/eth";
-import { createRevertMessageDueToMissingRole } from "../test-utils/misc";
 import { checkEquality, checkEventField, checkEventFieldNotEqual } from "../test-utils/checkers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-import { setUpFixture } from "../test-utils/common";
+import { createRevertMessageDueToMissingRole, setUpFixture } from "../test-utils/common";
 
 const MAX_UINT256 = ethers.MaxUint256;
 const MAX_INT256 = ethers.MaxInt256;
@@ -240,6 +239,18 @@ class CardPaymentProcessorModel {
     this.#cashbackRateInPermil = props.cashbackRateInPermil;
   }
 
+  get totalUnclearedBalance(): number {
+    return this.#totalUnclearedBalance;
+  }
+
+  get totalClearedBalance(): number {
+    return this.#totalClearedBalance;
+  }
+
+  get totalBalance(): number {
+    return this.#totalBalance;
+  }
+
   makePayment(
     payment: TestPayment,
     props: {
@@ -389,18 +400,6 @@ class CardPaymentProcessorModel {
 
   getAccountClearedBalance(account: string): number {
     return this.#clearedBalancePerAccount.get(account) ?? 0;
-  }
-
-  get totalUnclearedBalance(): number {
-    return this.#totalUnclearedBalance;
-  }
-
-  get totalClearedBalance(): number {
-    return this.#totalClearedBalance;
-  }
-
-  get totalBalance(): number {
-    return this.#totalBalance;
   }
 
   getPaymentOperation(operationIndex: number): PaymentOperation {
@@ -1400,37 +1399,6 @@ class TestContext {
     await this.checkBalanceChanges(tx, operations);
   }
 
-  private async checkBalanceChanges(tx: Promise<TransactionResponse>, operations: PaymentOperation[]) {
-    const cardPaymentProcessorBalanceChange = operations
-      .map(operation => operation.cardPaymentProcessorBalanceChange)
-      .reduce((sum: number, currentValue: number) => sum + currentValue);
-    const cashbackDistributorBalanceChange = operations
-      .map(operation => -operation.cashbackActualChange)
-      .reduce((sum: number, currentValue: number) => sum + currentValue);
-    const cashOutAccountBalanceChange = operations
-      .map(operation => operation.cashOutAccountBalanceChange)
-      .reduce((sum: number, currentValue: number) => sum + currentValue);
-    const balanceChangePerAccount: Map<HardhatEthersSigner, number> = this.#getBalanceChangePerAccount(operations);
-    const accounts: HardhatEthersSigner[] = Array.from(balanceChangePerAccount.keys());
-    const accountBalanceChanges: number[] = accounts.map(user => balanceChangePerAccount.get(user) ?? 0);
-
-    await expect(tx).to.changeTokenBalances(
-      this.tokenMock,
-      [
-        this.cardPaymentProcessorShell.contract,
-        this.cashbackDistributorMockShell.contract,
-        this.cashOutAccount,
-        ...accounts
-      ],
-      [
-        cardPaymentProcessorBalanceChange,
-        cashbackDistributorBalanceChange,
-        cashOutAccountBalanceChange,
-        ...accountBalanceChanges
-      ]
-    );
-  }
-
   async checkCardPaymentProcessorState() {
     await this.#checkPaymentStructures();
     await this.#checkCashbacks();
@@ -1708,6 +1676,37 @@ class TestContext {
     } else {
       await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_REFUND_PAYMENT_SUBSIDIZED);
     }
+  }
+
+  private async checkBalanceChanges(tx: Promise<TransactionResponse>, operations: PaymentOperation[]) {
+    const cardPaymentProcessorBalanceChange = operations
+      .map(operation => operation.cardPaymentProcessorBalanceChange)
+      .reduce((sum: number, currentValue: number) => sum + currentValue);
+    const cashbackDistributorBalanceChange = operations
+      .map(operation => -operation.cashbackActualChange)
+      .reduce((sum: number, currentValue: number) => sum + currentValue);
+    const cashOutAccountBalanceChange = operations
+      .map(operation => operation.cashOutAccountBalanceChange)
+      .reduce((sum: number, currentValue: number) => sum + currentValue);
+    const balanceChangePerAccount: Map<HardhatEthersSigner, number> = this.#getBalanceChangePerAccount(operations);
+    const accounts: HardhatEthersSigner[] = Array.from(balanceChangePerAccount.keys());
+    const accountBalanceChanges: number[] = accounts.map(user => balanceChangePerAccount.get(user) ?? 0);
+
+    await expect(tx).to.changeTokenBalances(
+      this.tokenMock,
+      [
+        this.cardPaymentProcessorShell.contract,
+        this.cashbackDistributorMockShell.contract,
+        this.cashOutAccount,
+        ...accounts
+      ],
+      [
+        cardPaymentProcessorBalanceChange,
+        cashbackDistributorBalanceChange,
+        cashOutAccountBalanceChange,
+        ...accountBalanceChanges
+      ]
+    );
   }
 
   async #checkPaymentStructures() {

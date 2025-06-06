@@ -3,10 +3,9 @@ import { expect } from "chai";
 import { Block, Contract, ContractFactory, TransactionReceipt } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { connect, getAddress, increaseBlockTimestamp, proveTx } from "../test-utils/eth";
-import { createRevertMessageDueToMissingRole } from "../test-utils/misc";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { checkEquality as checkInterfaceEquality } from "../test-utils/checkers";
-import { setUpFixture } from "../test-utils/common";
+import { createRevertMessageDueToMissingRole, setUpFixture } from "../test-utils/common";
 
 const MAX_UINT256 = ethers.MaxUint256;
 const MAX_INT256 = ethers.MaxInt256;
