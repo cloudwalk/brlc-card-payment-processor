@@ -233,7 +233,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     const name = "ERC20 Test" + nameSuffix;
     const symbol = "TEST" + nameSuffix;
 
-    let tokenMock: Contract = await upgrades.deployProxy(tokenMockFactory, [name, symbol]);
+    let tokenMock = await upgrades.deployProxy(tokenMockFactory, [name, symbol]) as Contract;
     await tokenMock.waitForDeployment();
     tokenMock = connect(tokenMock, deployer); // Explicitly specifying the initial account
 
@@ -241,7 +241,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   }
 
   async function deployCashbackDistributor(): Promise<{ cashbackDistributor: Contract }> {
-    let cashbackDistributor: Contract = await upgrades.deployProxy(cashbackDistributorFactory);
+    let cashbackDistributor = await upgrades.deployProxy(cashbackDistributorFactory) as Contract;
     await cashbackDistributor.waitForDeployment();
     cashbackDistributor = connect(cashbackDistributor, deployer);
 

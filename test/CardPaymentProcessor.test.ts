@@ -1982,7 +1982,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     const name = "ERC20 Test";
     const symbol = "TEST";
 
-    let tokenMock: Contract = await upgrades.deployProxy(tokenMockFactory, [name, symbol]);
+    let tokenMock = await upgrades.deployProxy(tokenMockFactory, [name, symbol]) as Contract;
     await tokenMock.waitForDeployment();
     tokenMock = connect(tokenMock, deployer); // Explicitly specifying the initial account
 
@@ -1995,8 +1995,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   }> {
     const { tokenMock } = await deployTokenMock();
 
-    let cardPaymentProcessor: Contract =
-      await upgrades.deployProxy(cardPaymentProcessorFactory, [getAddress(tokenMock)]);
+    let cardPaymentProcessor =
+      await upgrades.deployProxy(cardPaymentProcessorFactory, [getAddress(tokenMock)]) as Contract;
     await cardPaymentProcessor.waitForDeployment();
     cardPaymentProcessor = connect(cardPaymentProcessor, deployer); // Explicitly specifying the initial account
 
@@ -2157,9 +2157,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
 
     it("Is reverted if the passed token address is zero", async () => {
-      const anotherCardPaymentProcessor: Contract = await upgrades.deployProxy(cardPaymentProcessorFactory, [], {
-        initializer: false
-      });
+      const anotherCardPaymentProcessor =
+        await upgrades.deployProxy(cardPaymentProcessorFactory, [], { initializer: false }) as Contract;
 
       await expect(
         anotherCardPaymentProcessor.initialize(ZERO_ADDRESS)
