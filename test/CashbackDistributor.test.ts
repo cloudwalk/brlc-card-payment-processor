@@ -188,8 +188,8 @@ describe("Contract 'CashbackDistributor'", async () => {
   const EVENT_NAME_REVOKE_CASHBACK = "RevokeCashback";
   const EVENT_NAME_SEND_CASHBACK = "SendCashback";
 
-  const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
-  const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
+  const ERROR_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
+  const ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
 
   const ERROR_NAME_IF_CASHBACK_ALREADY_ENABLED = "CashbackAlreadyEnabled";
   const ERROR_NAME_IF_CASHBACK_ALREADY_DISABLED = "CashbackAlreadyDisabled";
@@ -541,7 +541,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
       await expect(
         cashbackDistributor.initialize()
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+      ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
     });
 
     it("Is reverted for the contract implementation if it is called even for the first time", async () => {
@@ -549,7 +549,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       await cashierImplementation.waitForDeployment();
 
       await expect(cashierImplementation.initialize())
-        .to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+        .to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
     });
   });
 
@@ -762,7 +762,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             cashback.recipient.address,
             cashback.requestedAmount
           )
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
 
       it("The caller does not have the distributor role", async () => {
@@ -972,7 +972,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         await pauseContract(cashbackDistributor);
         await expect(
           connect(cashbackDistributor, distributor).revokeCashback(cashback.nonce, cashback.revokedAmount)
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
 
       it("Is reverted if the caller does not have the distributor role", async () => {
@@ -1138,7 +1138,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         await pauseContract(cashbackDistributor);
         await expect(
           connect(cashbackDistributor, distributor).increaseCashback(cashback.nonce, cashback.revokedAmount)
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
 
       it("Is reverted if the caller does not have the distributor role", async () => {

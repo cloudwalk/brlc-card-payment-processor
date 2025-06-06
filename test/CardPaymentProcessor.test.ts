@@ -1910,9 +1910,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     patch: 0
   };
 
-  const REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
-  const REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
-  const REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE = "ERC20: transfer amount exceeds balance";
+  const ERROR_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
+  const ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED = "Pausable: paused";
+  const ERROR_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE = "ERC20: transfer amount exceeds balance";
 
   const ERROR_NAME_IF_TOKEN_ADDRESS_IZ_ZERO = "ZeroTokenAddress";
   const ERROR_NAME_IF_ACCOUNT_IS_BLOCKLISTED = "BlocklistedAccount";
@@ -2145,7 +2145,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const { cardPaymentProcessor, tokenMock } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await expect(
         cardPaymentProcessor.initialize(getAddress(tokenMock))
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+      ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
     });
 
     it("Is reverted if the passed token address is zero", async () => {
@@ -2163,7 +2163,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await cashierImplementation.waitForDeployment();
 
       await expect(cashierImplementation.initialize(tokenAddress))
-        .to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+        .to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
     });
   });
 
@@ -2421,7 +2421,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.authorizationId,
             payment.correlationId
           )
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
 
       it("The caller is blocklisted", async () => {
@@ -2691,7 +2691,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             subsidyLimit,
             CASHBACK_RATE_AS_IN_CONTRACT
           )
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
 
       it("The caller does not have the executor role", async () => {
@@ -2768,7 +2768,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             subsidyLimit,
             CASHBACK_RATE_AS_IN_CONTRACT
           )
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
+        ).to.be.revertedWith(ERROR_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
       });
 
       it("The sponsor has not enough token balance", async () => {
@@ -2789,7 +2789,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             subsidyLimitLocal,
             CASHBACK_RATE_AS_IN_CONTRACT
           )
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
+        ).to.be.revertedWith(ERROR_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
       });
 
       it("The payment with the provided authorization ID already exists", async () => {
@@ -3301,7 +3301,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.authorizationId,
             PAYMENT_UPDATING_CORRELATION_ID_STUB
           )
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
 
       it("The caller does not have the executor role", async () => {
@@ -3482,7 +3482,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).clearPayment(payment.authorizationId)
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the payment authorization ID is zero", async () => {
@@ -3545,7 +3545,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).clearPayments([payment.authorizationId])
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the executor role", async () => {
@@ -3682,7 +3682,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).unclearPayment(payment.authorizationId)
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the executor role", async () => {
@@ -3758,7 +3758,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).unclearPayments([payment.authorizationId])
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the executor role", async () => {
@@ -3952,7 +3952,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             PAYMENT_REVOKING_CORRELATION_ID_STUB,
             payment.parentTxHash
           )
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
 
       it("The caller does not have the executor role", async () => {
@@ -4134,7 +4134,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             PAYMENT_REVERSING_CORRELATION_ID_STUB,
             payment.parentTxHash
           )
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
 
       it("The caller does not have the executor role", async () => {
@@ -4255,7 +4255,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).confirmPayment(payment.authorizationId)
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the executor role", async () => {
@@ -4346,7 +4346,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).confirmPayments([payment.authorizationId])
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the executor role", async () => {
@@ -4465,7 +4465,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).clearAndConfirmPayment(payment.authorizationId)
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the executor role", async () => {
@@ -4573,7 +4573,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.authorizationId,
             PAYMENT_UPDATING_CORRELATION_ID_STUB
           )
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
 
       it("The caller does not have the executor role", async () => {
@@ -4628,7 +4628,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).clearAndConfirmPayments([payment.authorizationId])
-      ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+      ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
     });
 
     it("Is reverted if the caller does not have the executor role", async () => {
@@ -5032,7 +5032,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.authorizationId,
             PAYMENT_REFUNDING_CORRELATION_ID_STUB
           )
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
 
       it("The caller does not have the executor role", async () => {
@@ -5222,7 +5222,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.authorizationId,
             PAYMENT_REFUNDING_CORRELATION_ID_STUB
           )
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
 
       it("The caller does not have the executor role", async () => {
@@ -5286,7 +5286,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             nonZeroTokenAmount,
             PAYMENT_REFUNDING_CORRELATION_ID_STUB
           )
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_PAUSED);
+        ).to.be.revertedWith(ERROR_MESSAGE_IF_CONTRACT_IS_PAUSED);
       });
 
       it("The caller does not have the executor role", async () => {
@@ -5324,7 +5324,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             tokenAmount,
             PAYMENT_REFUNDING_CORRELATION_ID_STUB
           )
-        ).to.be.revertedWith(REVERT_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
+        ).to.be.revertedWith(ERROR_MESSAGE_IF_TOKEN_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
       });
     });
   });
