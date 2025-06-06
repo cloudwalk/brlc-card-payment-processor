@@ -551,6 +551,14 @@ describe("Contract 'CashbackDistributor'", async () => {
         cashbackDistributor.initialize()
       ).to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
     });
+
+    it("Is reverted for the contract implementation if it is called even for the first time", async () => {
+      const cashierImplementation = await cashbackDistributorFactory.deploy() as Contract;
+      await cashierImplementation.waitForDeployment();
+
+      await expect(cashierImplementation.initialize())
+        .to.be.revertedWith(REVERT_MESSAGE_IF_CONTRACT_IS_ALREADY_INITIALIZED);
+    });
   });
 
   describe("Function '$__VERSION()'", async () => {

@@ -69,6 +69,20 @@ contract CashbackDistributor is
     /// @dev The zero account address has been passed as a function argument.
     error ZeroRecipientAddress();
 
+    // ------------------ Constructor ----------------------------- //
+
+    /**
+     * @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
+     *
+     * See details
+     * https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
+     *
+     * @custom:oz-upgrades-unsafe-allow constructor
+     */
+    constructor() {
+        _disableInitializers();
+    }
+
     // ------------------ Initializers ---------------------------- //
 
     /**
