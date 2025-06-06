@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { Block, Contract, ContractFactory, TransactionReceipt } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { connect, getAddress, increaseBlockTimestamp, proveTx } from "../test-utils/eth";
-import { createBytesString, createRevertMessageDueToMissingRole } from "../test-utils/misc";
+import { createRevertMessageDueToMissingRole } from "../test-utils/misc";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { checkEquality as checkInterfaceEquality } from "../test-utils/checkers";
 import { setUpFixture } from "../test-utils/common";
@@ -171,8 +171,8 @@ function checkEquality(
 }
 
 describe("Contract 'CashbackDistributor'", async () => {
-  const CASHBACK_EXTERNAL_ID_STUB1 = createBytesString("01", BYTES32_LENGTH);
-  const CASHBACK_EXTERNAL_ID_STUB2 = createBytesString("02", BYTES32_LENGTH);
+  const CASHBACK_EXTERNAL_ID_STUB1 = ethers.toBeHex(1, BYTES32_LENGTH);
+  const CASHBACK_EXTERNAL_ID_STUB2 = ethers.toBeHex(2, BYTES32_LENGTH);
   const TOKEN_ADDRESS_STUB = "0x0000000000000000000000000000000000000001";
   const CASHBACK_RESET_PERIOD = 30 * 24 * 60 * 60;
   const MAX_CASHBACK_FOR_PERIOD = 300 * 10 ** 6;

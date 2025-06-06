@@ -3,7 +3,7 @@ import { expect } from "chai";
 import { Contract, ContractFactory, TransactionReceipt, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { connect, getAddress, proveTx } from "../test-utils/eth";
-import { createBytesString, createRevertMessageDueToMissingRole } from "../test-utils/misc";
+import { createRevertMessageDueToMissingRole } from "../test-utils/misc";
 import { checkEquality, checkEventField, checkEventFieldNotEqual } from "../test-utils/checkers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { setUpFixture } from "../test-utils/common";
@@ -1886,7 +1886,7 @@ interface Version {
 }
 
 function increaseBytesString(bytesString: string, targetLength: number) {
-  return createBytesString(
+  return ethers.toBeHex(
     parseInt(bytesString.substring(2), 16) + 1,
     targetLength
   );
@@ -1895,11 +1895,11 @@ function increaseBytesString(bytesString: string, targetLength: number) {
 describe("Contract 'CardPaymentProcessor'", async () => {
   const REVOCATION_LIMIT = 123;
   const REVOCATION_LIMIT_DEFAULT_VALUE = 255;
-  const ZERO_AUTHORIZATION_ID: string = createBytesString("00", BYTES16_LENGTH);
-  const PAYMENT_REFUNDING_CORRELATION_ID_STUB: string = createBytesString("C01", BYTES16_LENGTH);
-  const PAYMENT_REVERSING_CORRELATION_ID_STUB: string = createBytesString("C02", BYTES16_LENGTH);
-  const PAYMENT_REVOKING_CORRELATION_ID_STUB: string = createBytesString("C03", BYTES16_LENGTH);
-  const PAYMENT_UPDATING_CORRELATION_ID_STUB: string = createBytesString("C04", BYTES16_LENGTH);
+  const ZERO_AUTHORIZATION_ID: string = ethers.toBeHex(0, BYTES16_LENGTH);
+  const PAYMENT_REFUNDING_CORRELATION_ID_STUB: string = ethers.toBeHex("0x0C01", BYTES16_LENGTH);
+  const PAYMENT_REVERSING_CORRELATION_ID_STUB: string = ethers.toBeHex("0x0C02", BYTES16_LENGTH);
+  const PAYMENT_REVOKING_CORRELATION_ID_STUB: string = ethers.toBeHex("0x0C03", BYTES16_LENGTH);
+  const PAYMENT_UPDATING_CORRELATION_ID_STUB: string = ethers.toBeHex("0x0C04", BYTES16_LENGTH);
   const CASHBACK_DISTRIBUTOR_ADDRESS_STUB1 = "0x0000000000000000000000000000000000000001";
   const CASHBACK_DISTRIBUTOR_ADDRESS_STUB2 = "0x0000000000000000000000000000000000000002";
   const MAX_CASHBACK_RATE_IN_PERMIL = 500; // 500%
@@ -2068,9 +2068,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         account: i % 2 > 0 ? user1 : user2,
         baseAmount: Math.floor(123.456789 * DIGITS_COEF + i * 123.456789 * DIGITS_COEF),
         extraAmount: Math.floor(123.456789 * DIGITS_COEF + i * 123.456789 * DIGITS_COEF),
-        authorizationId: createBytesString(123 + i * 123, BYTES16_LENGTH),
-        correlationId: createBytesString(345 + i * 345, BYTES16_LENGTH),
-        parentTxHash: createBytesString(1 + i, BYTES32_LENGTH)
+        authorizationId: ethers.toBeHex(123 + i * 123, BYTES16_LENGTH),
+        correlationId: ethers.toBeHex(345 + i * 345, BYTES16_LENGTH),
+        parentTxHash: ethers.toBeHex(1 + i, BYTES32_LENGTH)
       };
       expect(payment.baseAmount).greaterThan(10 * DIGITS_COEF);
       expect(payment.extraAmount).greaterThan(10 * DIGITS_COEF);
