@@ -31,7 +31,7 @@ contract CashbackDistributor is
     ICashbackDistributor,
     Versionable
 {
-    // -------------------- Types --------------------------------- //
+    // ------------------ Types ----------------------------------- //
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
@@ -47,12 +47,12 @@ contract CashbackDistributor is
         uint256 newAmount;
     }
 
-    // -------------------- Constants ----------------------------- //
+    // ------------------ Constants ------------------------------- //
 
     /// @dev The role of a distributor that is allowed to execute the cashback operations.
     bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
 
-    // -------------------- Errors -------------------------------- //
+    // ------------------ Errors ---------------------------------- //
 
     /// @dev The cashback operations are already enabled.
     error CashbackAlreadyEnabled();
@@ -348,7 +348,7 @@ contract CashbackDistributor is
         emit Disable(_msgSender());
     }
 
-    // -------------------- View functions ------------------------ //
+    // ------------------ View functions -------------------------- //
 
     /**
      * @inheritdoc ICashbackDistributor
@@ -445,7 +445,7 @@ contract CashbackDistributor is
         (cashbackPeriodStart, overallCashbackForPeriod, ) = _previewCashbackCap(token, recipient);
     }
 
-    // -------------------- Internal functions -------------------- //
+    // ------------------ Internal functions ---------------------- //
 
     /**
      * @dev Previews the cashback cap.

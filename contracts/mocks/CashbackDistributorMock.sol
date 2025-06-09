@@ -12,7 +12,7 @@ import { ICashbackDistributor } from "../interfaces/ICashbackDistributor.sol";
  * @dev An implementation of the {ICashbackDistributor} interface for test purposes.
  */
 contract CashbackDistributorMock is ICashbackDistributor {
-    // -------------------- Storage ------------------------------- //
+    // ------------------ Storage --------------------------------- //
 
     /// @dev The success part of the `sendCashback()` function result to return next time.
     bool public sendCashbackSuccessResult;
@@ -44,7 +44,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
     /// @dev The token address of the last call of the {sendCashback} function.
     address public lastCashbackToken;
 
-    // -------------------- Events -------------------------------- //
+    // ------------------ Events -------------------------------- //
 
     /**
      * @dev Emitted when the 'sendCashback()' function is called
@@ -68,7 +68,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
      */
     event IncreaseCashbackMock(address sender, uint256 nonce, uint256 amount);
 
-    // -------------------- Constructor --------------------------- //
+    // ------------------ Constructor --------------------------- //
 
     /**
      * @dev Constructor that simply sets values of all storage variables.
@@ -103,7 +103,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
         disable();
     }
 
-    // -------------------- Pure functions ------------------------ //
+    // ------------------ Pure functions ------------------------ //
 
     /**
      * @inheritdoc ICashbackDistributor

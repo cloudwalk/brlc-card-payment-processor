@@ -126,7 +126,7 @@ interface ICashbackDistributorTypes {
  * @dev Defines the interface of the wrapper contract for the cashback operations.
  */
 interface ICashbackDistributor is ICashbackDistributorTypes {
-    // -------------------- Events -------------------------------- //
+    // ------------------ Events ---------------------------------- //
 
     /**
      * @dev Emitted when a cashback operation is executed.
@@ -224,7 +224,7 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      */
     event Disable(address sender);
 
-    // -------------------- Transactional functions --------------- //
+    // ------------------ Transactional functions --------------- //
 
     /**
      * @dev Sends a cashback to a recipient.
@@ -303,7 +303,7 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      */
     function disable() external;
 
-    // -------------------- View functions ------------------------ //
+    // ------------------ View functions ------------------------ //
 
     /**
      * @dev Checks if the cashback operations are enabled.

@@ -82,7 +82,7 @@ interface ICardPaymentProcessorTypes {
  * @dev Defines the interface of the wrapper contract for the card payment operations.
  */
 interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
-    // -------------------- Events -------------------------------- //
+    // ------------------ Events ---------------------------------- //
 
     /**
      * @dev Emitted when a payment is made.
@@ -402,7 +402,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         address newCashOutAccount
     );
 
-    // -------------------- Transactional functions --------------- //
+    // ------------------ Transactional functions --------------- //
 
     /**
      * @dev Sets the cash-out account that will receive cleared tokens of confirmed payments.
@@ -710,7 +710,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         bytes16 correlationId
     ) external;
 
-    // -------------------- View functions ------------------------ //
+    // ------------------ View functions ------------------------ //
 
     /**
      * @dev Returns the address of the cash-out account that will receive cleared tokens of confirmed payments.

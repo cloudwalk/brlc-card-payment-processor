@@ -26,7 +26,7 @@ interface ICardPaymentCashbackTypes {
  * @dev Defines the interface of the wrapper contract for the card payment cashback operations.
  */
 interface ICardPaymentCashback is ICardPaymentCashbackTypes {
-    // -------------------- Events -------------------------------- //
+    // ------------------ Events ---------------------------------- //
 
     /**
      * @dev Emitted when the cashback distributor is changed.
@@ -96,7 +96,7 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
     /// @dev Emitted when cashback operations are disabled.
     event DisableCashback();
 
-    // -------------------- Transactional functions --------------- //
+    // ------------------ Transactional functions --------------- //
 
     /**
      * @dev Sets a new address of the cashback distributor contract.
@@ -130,7 +130,7 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
      */
     function disableCashback() external;
 
-    // -------------------- View functions ------------------------ //
+    // ------------------ View functions ------------------------ //
 
     /**
      * @dev Returns the address of the cashback distributor contract.

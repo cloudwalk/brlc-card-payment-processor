@@ -33,7 +33,7 @@ contract CardPaymentProcessor is
     ICardPaymentCashback,
     Versionable
 {
-    // -------------------- Types --------------------------------- //
+    // ------------------ Types ----------------------------------- //
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -105,7 +105,7 @@ contract CardPaymentProcessor is
         uint256 revokedCashbackAmount;
     }
 
-    // -------------------- Constants ----------------------------- //
+    // ------------------ Constants ------------------------------- //
 
     /// @dev The role of an executor that is allowed to execute the card payment operations.
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
@@ -120,7 +120,7 @@ contract CardPaymentProcessor is
      */
     uint16 public constant CASHBACK_ROUNDING_COEF = 10000;
 
-    // -------------------- Events -------------------------------- //
+    // ------------------ Events ---------------------------------- //
 
     /**
      * @dev Emitted when the revocation limit is changed.
@@ -129,7 +129,7 @@ contract CardPaymentProcessor is
      */
     event SetRevocationLimit(uint8 oldLimit, uint8 newLimit);
 
-    // -------------------- Errors -------------------------------- //
+    // ------------------ Errors ---------------------------------- //
 
     /// @dev The zero token address has been passed as a function argument.
     error ZeroTokenAddress();
@@ -785,7 +785,7 @@ contract CardPaymentProcessor is
         emit DisableCashback();
     }
 
-    // -------------------- View functions ------------------------ //
+    // ------------------ View functions -------------------------- //
 
     /**
      * @inheritdoc ICardPaymentProcessor
@@ -885,7 +885,7 @@ contract CardPaymentProcessor is
         return _cashbacks[authorizationId];
     }
 
-    // -------------------- Internal functions -------------------- //
+    // ------------------ Internal functions ---------------------- //
 
     /**
      * @dev Making a payment internally.
