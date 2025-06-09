@@ -28,10 +28,10 @@ abstract contract CashbackDistributorStorageV1 is ICashbackDistributorTypes {
     // Obsolete
     mapping(address => uint256) private _totalAmountByRecipient;
 
-    /// @dev Mapping of a total amount of success cashback operations for a given token and an external identifier.
+    /// @dev Mapping of a total amount of successful cashback operations for a given token and an external identifier.
     mapping(address => mapping(bytes32 => uint256)) internal _totalCashbackByTokenAndExternalId;
 
-    /// @dev Mapping of a total amount of success cashback operations for a given token and an recipient address.
+    /// @dev Mapping of a total amount of successful cashback operations for a given token and a recipient address.
     mapping(address => mapping(address => uint256)) internal _totalCashbackByTokenAndRecipient;
 }
 
@@ -40,13 +40,13 @@ abstract contract CashbackDistributorStorageV1 is ICashbackDistributorTypes {
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  */
 abstract contract CashbackDistributorStorageV2 {
-    /// @dev The cashback periodical cap reset period.
+    /// @dev The cashback periodic cap reset period.
     uint256 public constant CASHBACK_RESET_PERIOD = 30 days;
 
     /// @dev The maximum amount of cashback for a period.
     uint256 public constant MAX_CASHBACK_FOR_PERIOD = 300 * 10 ** 6;
 
-    /// @dev The mapping of the last time the cashback periodical cap was reset for a token and a recipient.
+    /// @dev The mapping of the last time the cashback periodic cap was reset for a token and a recipient.
     mapping(address => mapping(address => uint256)) internal _cashbackLastTimeReset;
 
     /// @dev The mapping of the total amount of cashback within the current cap period for a token and a recipient.

@@ -214,7 +214,7 @@ contract CardPaymentProcessor is
     /**
      * @dev Constructor that prohibits the initialization of the implementation of the upgradeable contract.
      *
-     * See details
+     * See details:
      * https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable#initializing_the_implementation_contract
      *
      * @custom:oz-upgrades-unsafe-allow constructor
@@ -281,7 +281,7 @@ contract CardPaymentProcessor is
      *
      * @dev Requirements:
      *
-     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The caller must have the {OWNER_ROLE} role.
      */
     function setRevocationLimit(uint8 newLimit) external onlyRole(OWNER_ROLE) {
         uint8 oldLimit = _revocationLimit;
@@ -299,7 +299,7 @@ contract CardPaymentProcessor is
      * @dev Requirements:
      *
      * - The contract must not be paused.
-     * - The caller must must not be blocklisted.
+     * - The caller must not be blocklisted.
      * - The authorization ID of the payment must not be zero.
      * - The payment linked with the authorization ID must not exist or be revoked.
      * - The payment's revocation counter must be equal to zero or less than the configured revocation limit.
@@ -649,7 +649,7 @@ contract CardPaymentProcessor is
      * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
      * - The input authorization ID of the payment must not be zero.
-     * - The new extra amount must not be greater that the current one.
+     * - The new extra amount must not be greater than the current one.
      */
     function refundPayment(
         uint256 refundAmount,
@@ -1046,7 +1046,7 @@ contract CardPaymentProcessor is
             );
         }
 
-        // Increase cashback ahead any other token transfers to avoid conner cases with lack of customer balance
+        // Increase cashback ahead any other token transfers to avoid corner cases with lack of customer balance
         if (!operation.cashbackDecreased) {
             uint256 cashbackIncreaseAmount = _increaseCashback(authorizationId, operation.cashbackAmountChange);
             payment.compensationAmount = operation.oldCompensationAmount + cashbackIncreaseAmount;
@@ -1133,7 +1133,7 @@ contract CardPaymentProcessor is
 
         if (operation.newPaymentBaseAmount <= operation.oldPaymentBaseAmount) {
             operation.cashbackDecreased = true;
-            // If payment base amount decreases than the cashback amount can only be decreased or is not changed.
+            // If payment base amount decreases then the cashback amount can only be decreased or is not changed.
             if (newCompensationAmount <= oldCompensationAmount) {
                 operation.cashbackAmountChange = oldCompensationAmount - newCompensationAmount;
             }
@@ -1501,7 +1501,7 @@ contract CardPaymentProcessor is
                 token.safeTransfer(sponsor, operation.sponsorSentAmount);
             }
         } else {
-            // status == PaymentStatus.ConfirmPayment
+            // status == PaymentStatus.Confirmed
             address cashOutAccount_ = _requireCashOutAccount();
             token.safeTransferFrom(cashOutAccount_, account, operation.accountSentAmount);
             if (sponsor != address(0)) {

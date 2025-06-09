@@ -27,7 +27,7 @@ interface ICashbackDistributorTypes {
      * - Nonexistent = 0 -- The cashback operation does not exist (the default value).
      * - Success = 1 ------ The operation has been successfully executed (cashback sent fully).
      * - Blocklisted = 2 -- The cashback operation has been refused because the target account is blocklisted.
-     * - OutOfFunds = 3 --- The cashback operation has been refused because the contract has not enough tokens.
+     * - OutOfFunds = 3 --- The cashback operation has been refused because the contract does not have enough tokens.
      * - Disabled = 4 ----- The cashback operation has been refused because cashback operations are disabled.
      * - Revoked = 5 ------ Obsolete and not in use anymore.
      * - Capped = 6 ------- The cashback operation has been refused because the cap for the period has been reached.
@@ -50,9 +50,10 @@ interface ICashbackDistributorTypes {
      * The possible values:
      * - Unknown = 0 --------- The operation has not been initiated (the default value).
      * - Success = 1 --------- The operation has been successfully executed.
-     * - Inapplicable = 2 ---- The operation has been failed because the cashback has not relevant status.
-     * - OutOfFunds = 3 ------ The operation has been failed because the caller has not enough tokens.
-     * - OutOfAllowance = 4 -- The operation has been failed because the caller has not enough allowance for the contract.
+     * - Inapplicable = 2 ---- The operation has been failed because the cashback does not have a relevant status.
+     * - OutOfFunds = 3 ------ The operation has been failed because the caller does not have enough tokens.
+     * - OutOfAllowance = 4 -- The operation has been failed because
+     *                         the caller does not have enough allowance for the contract.
      * - OutOfBalance = 5 ---- The operation has been failed because the revocation amount exceeds the cashback amount.
      */
     enum RevocationStatus {
@@ -71,9 +72,9 @@ interface ICashbackDistributorTypes {
      * - Nonexistent = 0 --- The operation does not exist (the default value).
      * - Success = 1 ------- The operation has been successfully executed (cashback sent fully).
      * - Blocklisted = 2 --- The operation has been refused because the target account is blocklisted.
-     * - OutOfFunds = 3 ---- The operation has been refused because the contract has not enough tokens.
+     * - OutOfFunds = 3 ---- The operation has been refused because the contract does not have enough tokens.
      * - Disabled = 4 ------ The operation has been refused because cashback operations are disabled.
-     * - Inapplicable = 5 -- The operation has been failed because the cashback has not relevant status.
+     * - Inapplicable = 5 -- The operation has been failed because the cashback does not have a relevant status.
      * - Capped = 6 -------- The operation has been refused because the cap for the period has been reached.
      * - Partial = 7 ------- The operation has been successfully executed (cashback sent partially).
      */
@@ -288,7 +289,7 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      * This function is expected to be called by a limited number of accounts
      * that are allowed to control cashback operations.
      *
-     * Emits a {EnableCashback} event.
+     * Emits an {Enable} event.
      */
     function enable() external;
 
@@ -298,7 +299,7 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      * This function is expected to be called by a limited number of accounts
      * that are allowed to control cashback operations.
      *
-     * Emits a {DisableCashback} event.
+     * Emits a {Disable} event.
      */
     function disable() external;
 
@@ -339,21 +340,21 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
     ) external view returns (uint256[] memory);
 
     /**
-     * @dev Returns the total amount of all the success cashback operations associated with a token and an external ID.
+     * @dev Returns the total amount of all the successful cashback operations associated with a token and an external ID.
      * @param token The token contract address of the cashback operations to define the returned total amount.
      * @param externalId The external identifier of the cashback operations to define the returned total amount.
      */
     function getTotalCashbackByTokenAndExternalId(address token, bytes32 externalId) external view returns (uint256);
 
     /**
-     * @dev Returns the total amount of all the success cashback operations associated with a token and a recipient.
+     * @dev Returns the total amount of all the successful cashback operations associated with a token and a recipient.
      * @param token The token contract address of the cashback operations to define the returned total amount.
      * @param recipient The recipient address of the cashback operations to define the returned total amount.
      */
     function getTotalCashbackByTokenAndRecipient(address token, address recipient) external view returns (uint256);
 
     /**
-     * @dev Returns the total amount of all the success cashback operations since the last reset of the periodical cap.
+     * @dev Returns the total amount of all the successful cashback operations since the last reset of the periodical cap.
      * @param token The token contract address of the cashback operations to define the returned total amount.
      * @param recipient The recipient address of the cashback operations to define the returned total amount.
      */

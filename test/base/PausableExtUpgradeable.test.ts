@@ -6,11 +6,11 @@ import { connect, proveTx } from "../../test-utils/eth";
 import { createRevertMessageDueToMissingRole, setUpFixture } from "../../test-utils/common";
 
 describe("Contract 'PausableExtUpgradeable'", async () => {
-  // Events of the lib contracts
+  // Events of the library contracts
   const EVENT_NAME_PAUSED = "Paused";
   const EVENT_NAME_UNPAUSED = "Unpaused";
 
-  // Error messages of the lib contracts
+  // Error messages of the library contracts
   const ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_NOT_INITIALIZING = "Initializable: contract is not initializing";
 

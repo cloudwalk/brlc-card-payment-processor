@@ -13,12 +13,12 @@ interface ICardPaymentProcessorTypes {
      *
      * The possible values:
      * - Nonexistent = 0 -- The payment does not exist (the default value).
-     * - Uncleared = 1 ---- The status immediately after the payment making.
+     * - Uncleared = 1 ---- The status immediately after the payment is made.
      * - Cleared = 2 ------ The payment has been cleared and is ready to be confirmed.
      * - Revoked = 3 ------ The payment was revoked due to some technical reason.
      *                      The related tokens have been transferred back to the customer.
      *                      The payment can be made again with the same authorizationId
-     *                      if its revocation counter does not reach the configure limit.
+     *                      if its revocation counter does not reach the configured limit.
      * - Reversed = 4 ----- The payment was reversed due to the decision of the off-chain card processing service.
      *                      The related tokens have been transferred back to the customer.
      *                      The payment cannot be made again with the same authorizationId.
@@ -51,7 +51,7 @@ interface ICardPaymentProcessorTypes {
      * @dev The data of a single payment.
      *
      * The fields:
-     * - account ------------- The account who made the payment.
+     * - account ------------- The account that made the payment.
      * - baseAmount ---------- The base amount of tokens in the payment.
      * - status -------------- The current status of the payment.
      * - revocationCounter --- The number of payment revocations.
@@ -88,10 +88,10 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @dev Emitted when a payment is made.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
-     * @param account The account who made the payment.
+     * @param account The account that made the payment.
      * @param sumAmount The sum amount of tokens in the payment.
      * @param revocationCounter The number of payment revocations.
-     * @param sender The address of the account who made the payment.
+     * @param sender The address of the account that made the payment.
      */
     event MakePayment(
         bytes16 indexed authorizationId,
@@ -106,7 +106,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @dev Emitted when the extra amount of a payment is changed or set as non-zero during payment making.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
-     * @param account The account who made the payment.
+     * @param account The account that made the payment.
      * @param sumAmount The sum amount of tokens in the payment.
      * @param newExtraAmount The new extra amount of tokens in the payment.
      * @param oldExtraAmount The old extra amount of tokens in the payment.
@@ -142,7 +142,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @dev Emitted when the amount of a payment is updated.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
-     * @param account The account who made the payment.
+     * @param account The account that made the payment.
      * @param oldSumAmount The old sum amount of tokens in the payment.
      * @param newSumAmount The new sum amount of tokens in the payment.
      * @param oldBaseAmount The old base amount of tokens in the payment.
@@ -179,7 +179,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Emitted when a payment is cleared.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param account The account who made the payment.
+     * @param account The account that made the payment.
      * @param totalAmount The total amount of tokens in the payment.
      * @param clearedBalance The balance of cleared tokens of the account.
      * @param unclearedBalance The balance of uncleared tokens of the account.
@@ -209,7 +209,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Emitted when a payment is uncleared.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param account The account who made the payment.
+     * @param account The account that made the payment.
      * @param totalAmount The total amount of tokens in the payment.
      * @param clearedBalance The balance of cleared tokens of the account.
      * @param unclearedBalance The balance of uncleared tokens of the account.
@@ -240,7 +240,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @dev Emitted when a payment is revoked.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
-     * @param account The account who made the payment.
+     * @param account The account that made the payment.
      * @param sentAmount The amount of tokens sent back to the account.
      * @param clearedBalance The balance of cleared tokens of the account.
      * @param unclearedBalance The balance of uncleared tokens of the account.
@@ -280,7 +280,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @dev Emitted when a payment is reversed.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
-     * @param account The account who made the payment.
+     * @param account The account that made the payment.
      * @param sentAmount The amount of tokens sent back to the account.
      * @param clearedBalance The balance of cleared tokens of the account.
      * @param unclearedBalance The balance of uncleared tokens of the account.
@@ -319,7 +319,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Emitted when a payment is confirmed.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     * @param account The account who made the payment.
+     * @param account The account that made the payment.
      * @param totalAmount The total amount of tokens in the payment.
      * @param clearedBalance The balance of cleared tokens of the account.
      * @param revocationCounter The number of payment revocations.
@@ -348,7 +348,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @dev Emitted when a payment is refunded.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
-     * @param account The account who made the payment.
+     * @param account The account to be refunded.
      * @param refundAmount The amount of tokens refunded to the account.
      * @param sentAmount The amount of tokens sent back to the account.
      * @param status The status of the payment.
@@ -383,7 +383,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Emitted when an account is refunded.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
-     * @param account The account who made the payment.
+     * @param account The account that made the payment.
      * @param refundAmount The amount of tokens refunded to the account.
      */
     event RefundAccount(
@@ -459,7 +459,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * Emits a {MakePaymentSubsidized} event if the payment is subsidized.
      * Emits a {PaymentExtraAmountChanged} event if `extraAmount` is not zero.
      *
-     * @param account The account on that behalf the payment is made.
+     * @param account The account on whose behalf the payment is made.
      * @param baseAmount The base amount of tokens to transfer because of the payment.
      * @param extraAmount The extra amount of tokens to transfer because of the payment. No cashback is applied.
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
@@ -467,7 +467,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @param sponsor The address of a sponsor if the payment is subsidized, otherwise zero.
      * @param subsidyLimit The maximum amount of tokens that the sponsor is willing to compensate for the payment.
      * @param cashbackRateInPermil The cashback rate in permil for the payment or a negative value if
-     *                             the contract settings are used to determine cashback. If zero cashback is not sent.
+     *                             the contract settings are used to determine cashback. If zero, no cashback is sent.
      */
     function makePaymentFor(
         address account,
@@ -483,11 +483,11 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Updates the base amount and extra amount of a previously made payment.
      *
-     * Transfers the underlying tokens from the account to this contract or vise versa.
+     * Transfers the underlying tokens from the account to this contract or vice versa.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {UpdatePaymentAmount} event.
-     * Emits a {UpdatePaymentAmountSubsidized} event if the payment is subsidized.
+     * Emits a {UpdatePaymentSubsidized} event if the payment is subsidized.
      * Emits a {PaymentExtraAmountChanged} event if `extraAmount` of the payment is changed.
      *
      * @param newBaseAmount The new base amount of the payment.
@@ -562,7 +562,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      *
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
-     * @param parentTxHash The hash of the transaction where the payment was made.
+     * @param parentTxHash The hash of the parent transaction where the payment was made.
      */
     function reversePayment(
         bytes16 authorizationId, // Tools: this comment prevents Prettier from formatting into a single line.
@@ -571,7 +571,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     ) external;
 
     /**
-     * @dev Performs the revocation of a previously made card payment and increase its revocation counter.
+     * @dev Performs the revocation of a previously made card payment and increases its revocation counter.
      *
      * Does not finalize the payment: it can be made again until revocation counter reaches the configured limit.
      * Transfers tokens back from this contract to the payer.
@@ -594,7 +594,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @dev Executes the final step of a single card payment processing with token transferring.
      *
      * Finalizes the payment: no other operations can be done for the payment after this one.
-     * Transfers previously cleared tokens gotten from a payer to a dedicated cash-out account for further operations.
+     * Transfers previously cleared tokens obtained from a payer to a dedicated cash-out account for further operations.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {ConfirmPayment} event.
@@ -608,11 +608,11 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @dev Executes the final step of several card payments processing with token transferring.
      *
      * Finalizes the payment: no other operations can be done for the payment after this one.
-     * Transfers previously cleared tokens gotten from payers to a dedicated cash-out account for further operations.
+     * Transfers previously cleared tokens obtained from payers to a dedicated cash-out account for further operations.
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {ConfirmPayment} event for each payment.
-     * Emits a {ConfirmPaymentSubsidized} for each subsidized payment.
+     * Emits a {ConfirmPaymentSubsidized} event for each subsidized payment.
      *
      * @param authorizationIds The card transaction authorization IDs from the off-chain card processing backend.
      */
@@ -635,13 +635,13 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
     /**
      * @dev Executes updating, clearing and confirmation operations for a single previously made card payment.
      *
-     * Updating of the base amount and extra amount executes lazy, i.e. only if
-     * the provided new amounts differ from the current once of the payment. Otherwise the update operation is skipped.
+     * Updating of the base amount and extra amount executes lazily, i.e. only if
+     * the provided new amounts differ from the current ones of the payment. Otherwise the update operation is skipped.
      *
      * This function can be called by a limited number of accounts that are allowed to execute processing operations.
      *
      * Emits a {UpdatePaymentAmount} event if the update operation is executed.
-     * Emits a {UpdatePaymentAmountSubsidized} event if the update operation is executed and the payment is subsidized.
+     * Emits a {UpdatePaymentSubsidized} event if the update operation is executed and the payment is subsidized.
      * Emits a {PaymentExtraAmountChanged} event if `extraAmount` of the payment is changed.
      * Emits a {ClearPayment} event.
      * Emits a {ClearPaymentSubsidized} event if the payment is subsidized.
@@ -668,7 +668,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * Emits a {ClearPayment} event for each payment.
      * Emits a {ClearPaymentSubsidized} event for each subsidized payment.
      * Emits a {ConfirmPayment} event for each payment.
-     * Emits a {ConfirmPaymentSubsidized} for each subsidized payment.
+     * Emits a {ConfirmPaymentSubsidized} event for each subsidized payment.
      *
      * @param authorizationIds The card transaction authorization IDs from the off-chain card processing backend.
      */
@@ -682,7 +682,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * Emits a {PaymentExtraAmountChanged} event if `extraAmount` of the payment is changed.
      *
      * @param refundAmount The amount of tokens to refund.
-     * @param newExtraAmount. A new extra amount of the payment after the refund operation.
+     * @param newExtraAmount A new extra amount of the payment after the refund operation.
      * @param authorizationId The card transaction authorization ID.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */

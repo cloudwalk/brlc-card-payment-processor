@@ -7,7 +7,7 @@ import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC2
 /**
  * @title ERC20TokenMock contract
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev An implementation of the {ERC20Upgradeable} contract for testing purposes
+ * @dev A mock implementation that extends the {ERC20Upgradeable} contract for testing purposes
  */
 contract ERC20TokenMock is ERC20Upgradeable {
     bool public mintResult;
@@ -19,8 +19,8 @@ contract ERC20TokenMock is ERC20Upgradeable {
      *
      * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
      *
-     * @param name_ The name of the token to set for this ERC20-comparable contract.
-     * @param symbol_ The symbol of the token to set for this ERC20-comparable contract.
+     * @param name_ The name of the token to set for this ERC20-compatible contract.
+     * @param symbol_ The symbol of the token to set for this ERC20-compatible contract.
      */
     function initialize(string memory name_, string memory symbol_) public initializer {
         __ERC20_init(name_, symbol_);

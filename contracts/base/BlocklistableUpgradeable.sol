@@ -7,18 +7,18 @@ import { AccessControlExtUpgradeable } from "./AccessControlExtUpgradeable.sol";
 /**
  * @title BlocklistableUpgradeable base contract
  * @author CloudWalk Inc.
- * @dev Allows to blocklist and unblocklist accounts using the {BLOCKLISTER_ROLE} role.
+ * @dev Allows blocklisting and unblocklisting accounts using the {BLOCKLISTER_ROLE} role.
  *
  * This contract is used through inheritance. It makes available the modifier `notBlocklisted`,
  * which can be applied to functions to restrict their usage to not blocklisted accounts only.
  */
 abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
-    // -------------------- Constants ----------------------------- //
+    // ------------------ Constants ------------------------------- //
 
     /// @dev The role of the blocklister that is allowed to blocklist and unblocklist accounts.
     bytes32 public constant BLOCKLISTER_ROLE = keccak256("BLOCKLISTER_ROLE");
 
-    // -------------------- Storage ------------------------------- //
+    // ------------------ Storage --------------------------------- //
 
     /// @dev Mapping of presence in the blocklist for a given address.
     mapping(address => bool) private _blocklisted;
@@ -29,7 +29,7 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
      */
     uint256[49] private __gap;
 
-    // -------------------- Events -------------------------------- //
+    // ------------------ Events ---------------------------------- //
 
     /// @dev Emitted when an account is blocklisted.
     event Blocklisted(address indexed account);
@@ -40,12 +40,12 @@ abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
     /// @dev Emitted when an account is self blocklisted.
     event SelfBlocklisted(address indexed account);
 
-    // -------------------- Errors -------------------------------- //
+    // ------------------ Errors ---------------------------------- //
 
     /// @dev The account is blocklisted.
     error BlocklistedAccount(address account);
 
-    // -------------------- Modifiers ----------------------------- //
+    // ------------------ Modifiers ------------------------------- //
 
     /**
      * @dev Throws if called by a blocklisted account.

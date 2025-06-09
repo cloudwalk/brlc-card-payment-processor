@@ -71,7 +71,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
     // -------------------- Constructor --------------------------- //
 
     /**
-     * @dev Constructor that simply set values of all storage variables.
+     * @dev Constructor that simply sets values of all storage variables.
      */
     constructor(
         bool sendCashbackSuccessResult_,
@@ -117,7 +117,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
     /**
      * @inheritdoc ICashbackDistributor
      *
-     * @dev Just a stub for testing. Always returns `true`.
+     * @dev Just a stub for testing. Always returns zero.
      */
     function nextNonce() public pure returns (uint256) {
         return 0;
