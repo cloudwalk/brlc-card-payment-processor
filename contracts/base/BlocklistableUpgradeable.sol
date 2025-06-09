@@ -15,7 +15,7 @@ import { AccessControlExtUpgradeable } from "./AccessControlExtUpgradeable.sol";
 abstract contract BlocklistableUpgradeable is AccessControlExtUpgradeable {
     // ------------------ Constants ------------------------------- //
 
-    /// @dev The role of the blocklister that is allowed to blocklist and unblocklist accounts.
+    /// @dev The role of a blocklister that is allowed to blocklist and unblocklist accounts.
     bytes32 public constant BLOCKLISTER_ROLE = keccak256("BLOCKLISTER_ROLE");
 
     // ------------------ Storage --------------------------------- //

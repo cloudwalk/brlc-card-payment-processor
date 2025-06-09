@@ -49,7 +49,7 @@ contract CashbackDistributor is
 
     // -------------------- Constants ----------------------------- //
 
-    /// @dev The role of distributor that is allowed to execute the cashback operations.
+    /// @dev The role of a distributor that is allowed to execute the cashback operations.
     bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
 
     // -------------------- Errors -------------------------------- //

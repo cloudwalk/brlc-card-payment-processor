@@ -19,7 +19,7 @@ abstract contract RescuableUpgradeable is AccessControlExtUpgradeable {
 
     // ------------------ Constants ------------------------------- //
 
-    /// @dev The role of rescuer that is allowed to rescue tokens locked in the contract.
+    /// @dev The role of a rescuer that is allowed to rescue tokens locked in the contract.
     bytes32 public constant RESCUER_ROLE = keccak256("RESCUER_ROLE");
 
     // ------------------ Initializers ---------------------------- //

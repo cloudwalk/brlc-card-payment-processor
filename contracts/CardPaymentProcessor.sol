@@ -107,7 +107,7 @@ contract CardPaymentProcessor is
 
     // -------------------- Constants ----------------------------- //
 
-    /// @dev The role of executor that is allowed to execute the card payment operations.
+    /// @dev The role of an executor that is allowed to execute the card payment operations.
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
 
     /// @dev The maximum allowable cashback rate in permil (1 permil = 0.1 %).
