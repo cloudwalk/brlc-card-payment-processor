@@ -6,7 +6,7 @@ import { AccessControlExtUpgradeable } from "./AccessControlExtUpgradeable.sol";
 
 /**
  * @title BlocklistableUpgradeable base contract
- * @author CloudWalk Inc.
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Allows blocklisting and unblocklisting accounts using the {BLOCKLISTER_ROLE} role.
  *
  * This contract is used through inheritance. It makes available the modifier `notBlocklisted`,

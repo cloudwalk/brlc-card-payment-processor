@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 /**
  * @title StoragePlaceholder200 base contract
- * @author CloudWalk Inc.
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Reserves 200 storage slots.
  * Such a storage placeholder contract allows future replacement of it with other contracts
  * without shifting down storage in the inheritance chain.
