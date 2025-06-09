@@ -6,12 +6,12 @@ import { connect, proveTx } from "../../test-utils/eth";
 import { createRevertMessageDueToMissingRole, setUpFixture } from "../../test-utils/common";
 
 describe("Contract 'AccessControlExtUpgradeable'", async () => {
-  // Events of the lib contracts
+  // Events of the library contracts
   const EVENT_NAME_ROLE_ADMIN_CHANGED = "RoleAdminChanged";
   const EVENT_NAME_ROLE_GRANTED = "RoleGranted";
   const EVENT_NAME_ROLE_REVOKED = "RoleRevoked";
 
-  // Error messages of the lib contracts
+  // Error messages of the library contracts
   const ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_NOT_INITIALIZING = "Initializable: contract is not initializing";
 

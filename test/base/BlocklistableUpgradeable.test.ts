@@ -12,7 +12,7 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
   const EVENT_NAME_TEST_NOT_BLOCKLISTED_MODIFIER_SUCCEEDED = "TestNotBlocklistedModifierSucceeded";
   const EVENT_NAME_UNBLOCKLISTED = "UnBlocklisted";
 
-  // Error messages of the lib contracts
+  // Error messages of the library contracts
   const ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_NOT_INITIALIZING = "Initializable: contract is not initializing";
 

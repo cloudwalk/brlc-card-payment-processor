@@ -92,7 +92,7 @@ function checkNonexistentCashback(
   );
   expect(actualOnChainCashback.kind).to.equal(
     CashbackKind.Manual,
-    `cashback[${cashbackNonce}].account is incorrect`
+    `cashback[${cashbackNonce}].kind is incorrect`
   );
   expect(actualOnChainCashback.status).to.equal(
     CashbackStatus.Nonexistent,
@@ -133,7 +133,7 @@ function checkEquality(
     );
     expect(actualOnChainCashback.kind).to.equal(
       expectedCashback.kind,
-      `cashback[${expectedCashback.nonce - 1}].account is incorrect`
+      `cashback[${expectedCashback.nonce - 1}].kind is incorrect`
     );
     expect(actualOnChainCashback.status).to.equal(
       expectedCashback.status,
@@ -188,7 +188,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   const EVENT_NAME_REVOKE_CASHBACK = "RevokeCashback";
   const EVENT_NAME_SEND_CASHBACK = "SendCashback";
 
-  // Error messages of the lib contracts
+  // Error messages of the library contracts
   const ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const ERROR_MESSAGE_PAUSABLE_PAUSED = "Pausable: paused";
 
@@ -363,7 +363,10 @@ describe("Contract 'CashbackDistributor'", async () => {
 
     // Check the cashback structure after the last expected one. It must be nonexistent one.
     if (cashbacks.length > 0) {
-      checkNonexistentCashback(await cashbackDistributor.getCashback(0), cashbacks[cashbacks.length - 1].nonce);
+      checkNonexistentCashback(
+        await cashbackDistributor.getCashback(cashbacks[cashbacks.length - 1].nonce + 1),
+        cashbacks[cashbacks.length - 1].nonce + 1
+      );
     }
   }
 
@@ -546,10 +549,10 @@ describe("Contract 'CashbackDistributor'", async () => {
     });
 
     it("Is reverted for the contract implementation if it is called even for the first time", async () => {
-      const cashierImplementation = await cashbackDistributorFactory.deploy() as Contract;
-      await cashierImplementation.waitForDeployment();
+      const cashbackDistributorImplementation = await cashbackDistributorFactory.deploy() as Contract;
+      await cashbackDistributorImplementation.waitForDeployment();
 
-      await expect(cashierImplementation.initialize())
+      await expect(cashbackDistributorImplementation.initialize())
         .to.be.revertedWith(ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_ALREADY_INITIALIZED);
     });
   });
@@ -657,7 +660,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     }
 
     describe("Executes as expected and emits the correct event if the sending", async () => {
-      describe("Succeeds and the the cashback amount is", async () => {
+      describe("Succeeds and the cashback amount is", async () => {
         it("Nonzero and less than the period cap", async () => {
           const context = await beforeSendingCashback({ cashbackRequestedAmount: MAX_CASHBACK_FOR_PERIOD - 1 });
           context.cashbacks[0].sentAmount = context.cashbacks[0].requestedAmount;
@@ -1036,7 +1039,7 @@ describe("Contract 'CashbackDistributor'", async () => {
 
     describe("Executes as expected and emits the correct event if the increase", async () => {
       describe("Succeeds and the increase amount is", async () => {
-        it("Nonzero and less than the value than is needed to reach the period cap", async () => {
+        it("Nonzero and less than the value that is needed to reach the period cap", async () => {
           const context = await beforeSendingCashback();
           const { cashbacks: [cashback] } = context;
           cashback.increaseRequestedAmount = MAX_CASHBACK_FOR_PERIOD - cashback.requestedAmount - 1;
@@ -1045,7 +1048,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           await checkIncreasing(IncreaseStatus.Success, context);
         });
 
-        it("Nonzero and equals the value than is needed to reach the period cap", async () => {
+        it("Nonzero and equals the value that is needed to reach the period cap", async () => {
           const context = await beforeSendingCashback();
           const { cashbacks: [cashback] } = context;
           cashback.increaseRequestedAmount = MAX_CASHBACK_FOR_PERIOD - cashback.requestedAmount;
@@ -1054,7 +1057,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           await checkIncreasing(IncreaseStatus.Success, context);
         });
 
-        it("Nonzero and higher the value than is needed to reach the period cap", async () => {
+        it("Nonzero and higher than the value that is needed to reach the period cap", async () => {
           const context = await beforeSendingCashback();
           const { cashbacks: [cashback] } = context;
           cashback.increaseRequestedAmount = MAX_CASHBACK_FOR_PERIOD - cashback.requestedAmount + 1;

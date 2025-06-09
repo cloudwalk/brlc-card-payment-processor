@@ -381,7 +381,7 @@ class CardPaymentProcessorModel {
   getPaymentByAuthorizationId(authorizationId: string): PaymentModel {
     const payment = this.#paymentPerAuthorizationId.get(authorizationId);
     if (!payment) {
-      throw Error(`A payment is not in the model. authorizationId = ${authorizationId}`);
+      throw new Error(`A payment is not in the model. authorizationId = ${authorizationId}`);
     }
     return payment;
   }
@@ -410,7 +410,7 @@ class CardPaymentProcessorModel {
     const currentPayment = this.#paymentPerAuthorizationId.get(payment.authorizationId);
     if (!!currentPayment && currentPayment.status != PaymentStatus.Revoked) {
       throw new Error(
-        `A payment with the provided authorization ID already exists in the model and its status is not "Revoked".` +
+        `A payment with the provided authorization ID already exists in the model and its status is not "Revoked". ` +
         `authorizationId=${payment.authorizationId}`
       );
     }
@@ -557,7 +557,7 @@ class CardPaymentProcessorModel {
     }
     if (payment.refundAmount > operation.newBaseAmount) {
       throw new Error(
-        `The new base amount is wrong for the payment with authorizationId=${payment.authorizationId}.` +
+        `The new base amount is wrong for the payment with authorizationId=${payment.authorizationId}. ` +
         `The requested new base amount: ${operation.newBaseAmount}. ` +
         `The payment initial base amount: ${payment.baseAmount}. ` +
         `The current payment refund amount: ${payment.refundAmount}`
@@ -808,7 +808,7 @@ class CardPaymentProcessorModel {
     }
     if (operation.refundAmountChange > payment.baseAmount - payment.refundAmount) {
       throw new Error(
-        `The refund amount is wrong for the payment with authorizationId=${payment.authorizationId}.` +
+        `The refund amount is wrong for the payment with authorizationId=${payment.authorizationId}. ` +
         `The requested amount: ${operation.refundAmountChange}. ` +
         `The payment initial amount: ${payment.baseAmount}. ` +
         `The current payment refund amount: ${payment.refundAmount}`
@@ -816,7 +816,7 @@ class CardPaymentProcessorModel {
     }
     if (operation.newExtraAmount > payment.extraAmount) {
       throw new Error(
-        `The new extra amount is wrong for the payment with authorizationId=${payment.authorizationId}.` +
+        `The new extra amount is wrong for the payment with authorizationId=${payment.authorizationId}. ` +
         `The requested new extra amount: ${operation.newExtraAmount}. ` +
         `The payment initial extra amount: ${payment.extraAmount}`
       );
@@ -1910,7 +1910,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     patch: 0
   };
 
-  // Error messages of the lib contracts
+  // Error messages of the library contracts
   const ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const ERROR_MESSAGE_PAUSABLE_PAUSED = "Pausable: paused";
   const ERROR_MESSAGE_ERC20_TRANSFER_AMOUNT_EXCEEDS_BALANCE = "ERC20: transfer amount exceeds balance";
