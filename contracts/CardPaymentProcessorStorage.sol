@@ -70,8 +70,6 @@ abstract contract CardPaymentProcessorStorageV3 is ICardPaymentCashbackTypes {
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Contains storage variables of the {CardPaymentProcessor} contract.
  *
- * We are following Compound's approach of upgrading to new contract implementations.
- * See https://github.com/compound-finance/compound-protocol.
  * When we need to add new storage variables, we create a new version of CardPaymentProcessorStorage
  * e.g. CardPaymentProcessorStorage<versionNumber>, so finally it would look like
  * "contract CardPaymentProcessorStorage is CardPaymentProcessorStorageV1, CardPaymentProcessorStorageV2".

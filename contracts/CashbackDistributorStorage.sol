@@ -58,8 +58,6 @@ abstract contract CashbackDistributorStorageV2 {
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Contains storage variables of the {CashbackDistributor} contract.
  *
- * We are following Compound's approach of upgrading new contract implementations.
- * See https://github.com/compound-finance/compound-protocol.
  * When we need to add new storage variables, we create a new version of CashbackDistributorStorage
  * e.g. CashbackDistributorStorage<versionNumber>, so finally it would look like
  * "contract CashbackDistributorStorage is CashbackDistributorStorageV1, CashbackDistributorStorageV2".
