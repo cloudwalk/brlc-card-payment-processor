@@ -7,10 +7,13 @@ import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC
 import { ICashbackDistributor } from "../interfaces/ICashbackDistributor.sol";
 
 /**
- * @title CashbackDistributor contract
+ * @title CashbackDistributorMock contract
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev An implementation of the {ICashbackDistributor} interface for test purposes.
  */
 contract CashbackDistributorMock is ICashbackDistributor {
+    // ------------------ Storage --------------------------------- //
+
     /// @dev The success part of the `sendCashback()` function result to return next time.
     bool public sendCashbackSuccessResult;
 
@@ -41,6 +44,8 @@ contract CashbackDistributorMock is ICashbackDistributor {
     /// @dev The token address of the last call of the {sendCashback} function.
     address public lastCashbackToken;
 
+    // ------------------ Events -------------------------------- //
+
     /**
      * @dev Emitted when the 'sendCashback()' function is called
      */
@@ -63,8 +68,10 @@ contract CashbackDistributorMock is ICashbackDistributor {
      */
     event IncreaseCashbackMock(address sender, uint256 nonce, uint256 amount);
 
+    // ------------------ Constructor --------------------------- //
+
     /**
-     * @dev Constructor that simply set values of all storage variables.
+     * @dev Constructor that simply sets values of all storage variables.
      */
     constructor(
         bool sendCashbackSuccessResult_,
@@ -96,28 +103,30 @@ contract CashbackDistributorMock is ICashbackDistributor {
         disable();
     }
 
+    // ------------------ Pure functions ------------------------ //
+
     /**
-     * @dev See {ICashbackDistributor-revokeCashback}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Just a stub for testing. Always returns `true`.
+     * @dev Just a stub for testing. Always returns `true`.
      */
     function enabled() public pure returns (bool) {
         return true;
     }
 
     /**
-     * @dev See {ICashbackDistributor-nextNonce}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Just a stub for testing. Always returns `true`.
+     * @dev Just a stub for testing. Always returns zero.
      */
     function nextNonce() public pure returns (uint256) {
         return 0;
     }
 
     /**
-     * @dev See {ICashbackDistributor-getCashback}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Just a stub for testing. Always returns an empty structure.
+     * @dev Just a stub for testing. Always returns an empty structure.
      */
     function getCashback(uint256 nonce) public pure returns (Cashback memory cashback) {
         cashback = (new Cashback[](1))[0];
@@ -125,9 +134,9 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @dev See {ICashbackDistributor-getCashbacks}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Just a stub for testing. Always returns an empty array.
+     * @dev Just a stub for testing. Always returns an empty array.
      */
     function getCashbacks(uint256[] memory nonces) public pure returns (Cashback[] memory cashbacks) {
         cashbacks = new Cashback[](0);
@@ -135,9 +144,9 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @dev See {ICashbackDistributor-getCashbackNonces}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Just a stub for testing. Always returns an empty array.
+     * @dev Just a stub for testing. Always returns an empty array.
      */
     function getCashbackNonces(
         bytes32 externalId,
@@ -151,9 +160,9 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @dev See {ICashbackDistributor-getTotalCashbackByTokenAndExternalId}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Just a stub for testing. Always returns zero.
+     * @dev Just a stub for testing. Always returns zero.
      */
     function getTotalCashbackByTokenAndExternalId(address token, bytes32 externalId) public pure returns (uint256) {
         token;
@@ -162,9 +171,9 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @dev See {ICashbackDistributor-getTotalCashbackByTokenAndRecipient}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Just a stub for testing. Always returns zero.
+     * @dev Just a stub for testing. Always returns zero.
      */
     function getTotalCashbackByTokenAndRecipient(address token, address recipient) public pure returns (uint256) {
         token;
@@ -173,9 +182,9 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @dev See {ICashbackDistributor-getCashbackSinceLastReset}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Just a stub for testing. Always returns zero.
+     * @dev Just a stub for testing. Always returns zero.
      */
     function getCashbackSinceLastReset(address token, address recipient) public pure returns (uint256) {
         token;
@@ -184,9 +193,9 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @dev See {ICashbackDistributor-getCashbackLastTimeReset}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Just a stub for testing. Always returns zero.
+     * @dev Just a stub for testing. Always returns zero.
      */
     function getCashbackLastTimeReset(address token, address recipient) public pure returns (uint256) {
         token;
@@ -195,9 +204,9 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @dev See {ICashbackDistributor-previewCashbackCap}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Just a stub for testing. Always returns zeros.
+     * @dev Just a stub for testing. Always returns zeros.
      */
     function previewCashbackCap(
         address token,
@@ -209,29 +218,29 @@ contract CashbackDistributorMock is ICashbackDistributor {
         overallCashbackForPeriod = 0;
     }
 
+    // ------------------ Transactional functions ----------------- //
+
     /**
-     * @dev See {ICashbackDistributor-enable}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Just a stub for testing. Does nothing.
+     * @dev Just a stub for testing. Does nothing.
      */
     function enable() public {}
 
     /**
-     * @dev See {ICashbackDistributor-disable}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Just a stub for testing. Does nothing.
+     * @dev Just a stub for testing. Does nothing.
      */
     function disable() public {}
 
     /**
-     * @dev See {ICashbackDistributor-sendCashback}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Just a stub for testing.
-     * Returns the previously set values and emits an event with provided arguments.
+     * @dev Returns the previously set values and emits an event with provided arguments.
      * Stores `token`, `msg.sender` and `recipient` for further usage.
      * if the returned `success` part of the result is `true` sends the provided amount of tokens
      * from this contract to `recipient`.
-     *
      */
     function sendCashback(
         address token,
@@ -256,10 +265,9 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @dev See {ICashbackDistributor-revokeCashback}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Just a stub for testing.
-     * Returns the previously set value and emits an event with provided arguments.
+     * @dev Returns the previously set value and emits an event with provided arguments.
      * If the returned value is `true` sends the provided amount of tokens from `msg.sender` to this contract.
      */
     function revokeCashback(uint256 nonce, uint256 amount) external returns (bool success) {
@@ -271,10 +279,9 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @dev See {ICashbackDistributor-increaseCashback}.
+     * @inheritdoc ICashbackDistributor
      *
-     * Just a stub for testing.
-     * Returns the previously set value and emits an event with provided arguments.
+     * @dev Returns the previously set value and emits an event with provided arguments.
      * If the returned value is `true` sends the provided amount of tokens
      * from this contract to {lastCashbackRecipient}.
      */
@@ -293,6 +300,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
 
     /**
      * @dev Sets a new value for the success part of the `sendCashback()` function result.
+     * @param newSendCashbackSuccessResult The new value for the success part of the `sendCashback()` function result.
      */
     function setSendCashbackSuccessResult(bool newSendCashbackSuccessResult) external {
         sendCashbackSuccessResult = newSendCashbackSuccessResult;
@@ -300,6 +308,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
 
     /**
      * @dev Sets a new value for the amount part of the `sendCashback()` function result.
+     * @param newSendCashbackAmountResult The new value for the amount part of the `sendCashback()` function result.
      */
     function setSendCashbackAmountResult(int256 newSendCashbackAmountResult) external {
         sendCashbackAmountResult = newSendCashbackAmountResult;
@@ -307,6 +316,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
 
     /**
      * @dev Sets a new value for the result of the `revokeCashback()` function.
+     * @param newRevokeCashbackSuccessResult The new value for the result of the `revokeCashback()` function.
      */
     function setRevokeCashbackSuccessResult(bool newRevokeCashbackSuccessResult) external {
         revokeCashbackSuccessResult = newRevokeCashbackSuccessResult;
@@ -314,6 +324,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
 
     /**
      * @dev Sets a new value for the success part of the `increaseCashback()` function.
+     * @param newIncreaseCashbackSuccessResult The new value for the success part of the `increaseCashback()` function.
      */
     function setIncreaseCashbackSuccessResult(bool newIncreaseCashbackSuccessResult) external {
         increaseCashbackSuccessResult = newIncreaseCashbackSuccessResult;
@@ -321,6 +332,8 @@ contract CashbackDistributorMock is ICashbackDistributor {
 
     /**
      * @dev Sets a new value for the amount part of the `increaseCashback()` function result.
+     * @param newIncreaseCashbackAmountResult The new value for the amount part of
+     *                                        the `increaseCashback()` function result.
      */
     function setIncreaseCashbackAmountResult(int256 newIncreaseCashbackAmountResult) external {
         increaseCashbackAmountResult = newIncreaseCashbackAmountResult;

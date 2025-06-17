@@ -3,20 +3,31 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title CardPaymentCashback types interface
+ * @title ICardPaymentCashbackTypes interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the types used in the wrapper contract for the card payment cashback operations.
  */
 interface ICardPaymentCashbackTypes {
-    /// @dev Structure with data of a single cashback operation.
+    /**
+     * @dev The data of a single cashback operation.
+     *
+     * The fields:
+     *
+     * - lastCashbackNonce -- The nonce of the last cashback operation.
+     */
     struct Cashback {
-        uint256 lastCashbackNonce; // The nonce of the last cashback operation.
+        uint256 lastCashbackNonce;
     }
 }
 
 /**
- * @title CardPaymentCashback interface
- * @dev The interface of the wrapper contract for the card payment cashback operations.
+ * @title ICardPaymentCashback interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the interface of the wrapper contract for the card payment cashback operations.
  */
 interface ICardPaymentCashback is ICardPaymentCashbackTypes {
+    // ------------------ Events ---------------------------------- //
+
     /**
      * @dev Emitted when the cashback distributor is changed.
      * @param oldDistributor The address of the old cashback distributor contract.
@@ -85,26 +96,7 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
     /// @dev Emitted when cashback operations are disabled.
     event DisableCashback();
 
-    /**
-     * @dev Returns the address of the cashback distributor contract.
-     */
-    function cashbackDistributor() external view returns (address);
-
-    /**
-     * @dev Checks if the cashback operations are enabled.
-     */
-    function cashbackEnabled() external view returns (bool);
-
-    /**
-     * @dev Returns the current cashback rate in permil.
-     */
-    function cashbackRate() external view returns (uint256);
-
-    /**
-     * @dev Returns the cashback details for the transaction authorization ID.
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     */
-    function getCashback(bytes16 authorizationId) external view returns (Cashback memory);
+    // ------------------ Transactional functions --------------- //
 
     /**
      * @dev Sets a new address of the cashback distributor contract.
@@ -137,4 +129,27 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
      * Emits a {DisableCashback} event.
      */
     function disableCashback() external;
+
+    // ------------------ View functions ------------------------ //
+
+    /**
+     * @dev Returns the address of the cashback distributor contract.
+     */
+    function cashbackDistributor() external view returns (address);
+
+    /**
+     * @dev Checks if the cashback operations are enabled.
+     */
+    function cashbackEnabled() external view returns (bool);
+
+    /**
+     * @dev Returns the current cashback rate in permil.
+     */
+    function cashbackRate() external view returns (uint256);
+
+    /**
+     * @dev Returns the cashback details for the transaction authorization ID.
+     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     */
+    function getCashback(bytes16 authorizationId) external view returns (Cashback memory);
 }

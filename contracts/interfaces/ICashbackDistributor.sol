@@ -3,90 +3,111 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title CashbackDistributor types interface
+ * @title ICashbackDistributorTypes interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the types used in the wrapper contract for the cashback operations.
  */
 interface ICashbackDistributorTypes {
     /**
      * @dev Kinds of a cashback operation as an enum.
      *
      * The possible values:
-     * - Manual ------ The cashback is sent manually (the default value).
-     * - CardPayment - The cashback is sent through the CardPaymentProcessor contract.
+     * - Manual = 0 ------- The cashback is sent manually (the default value).
+     * - CardPayment = 1 -- The cashback is sent through the CardPaymentProcessor contract.
      */
     enum CashbackKind {
-        Manual,     // 0
-        CardPayment // 1
+        Manual,
+        CardPayment
     }
 
     /**
      * @dev Statuses of a cashback operation as an enum.
      *
      * The possible values:
-     * - Nonexistent - The cashback operation does not exist (the default value).
-     * - Success ----- The operation has been successfully executed (cashback sent fully).
-     * - Blocklisted - The cashback operation has been refused because the target account is blocklisted.
-     * - OutOfFunds -- The cashback operation has been refused because the contract has not enough tokens.
-     * - Disabled ---- The cashback operation has been refused because cashback operations are disabled.
-     * - Revoked ----- Obsolete and not in use anymore.
-     * - Capped ------ The cashback operation has been refused because the cap for the period has been reached.
-     * - Partial ----- The operation has been successfully executed (cashback sent partially).
+     * - Nonexistent = 0 -- The cashback operation does not exist (the default value).
+     * - Success = 1 ------ The operation has been successfully executed (cashback sent fully).
+     * - Blocklisted = 2 -- The cashback operation has been refused because the target account is blocklisted.
+     * - OutOfFunds = 3 --- The cashback operation has been refused because the contract does not have enough tokens.
+     * - Disabled = 4 ----- The cashback operation has been refused because cashback operations are disabled.
+     * - Revoked = 5 ------ Obsolete and not in use anymore.
+     * - Capped = 6 ------- The cashback operation has been refused because the cap for the period has been reached.
+     * - Partial = 7 ------ The operation has been successfully executed (cashback sent partially).
      */
     enum CashbackStatus {
-        Nonexistent, // 0
-        Success,     // 1
-        Blocklisted, // 2
-        OutOfFunds,  // 3
-        Disabled,    // 4
-        Revoked,     // 5
-        Capped,      // 6
-        Partial      // 7
+        Nonexistent,
+        Success,
+        Blocklisted,
+        OutOfFunds,
+        Disabled,
+        Revoked,
+        Capped,
+        Partial
     }
 
     /**
      * @dev Statuses of a cashback revocation operation as an enum.
      *
      * The possible values:
-     * - Unknown -------- The operation has not been initiated (the default value).
-     * - Success -------- The operation has been successfully executed.
-     * - Inapplicable --- The operation has been failed because the cashback has not relevant status.
-     * - OutOfFunds ----- The operation has been failed because the caller has not enough tokens.
-     * - OutOfAllowance - The operation has been failed because the caller has not enough allowance for the contract.
-     * - OutOfBalance --- The operation has been failed because the revocation amount exceeds the cashback amount.
+     * - Unknown = 0 --------- The operation has not been initiated (the default value).
+     * - Success = 1 --------- The operation has been successfully executed.
+     * - Inapplicable = 2 ---- The operation has been failed because the cashback does not have a relevant status.
+     * - OutOfFunds = 3 ------ The operation has been failed because the caller does not have enough tokens.
+     * - OutOfAllowance = 4 -- The operation has been failed because
+     *                         the caller does not have enough allowance for the contract.
+     * - OutOfBalance = 5 ---- The operation has been failed because the revocation amount exceeds the cashback amount.
      */
     enum RevocationStatus {
-        Unknown,        // 0
-        Success,        // 1
-        Inapplicable,   // 2
-        OutOfFunds,     // 3
-        OutOfAllowance, // 4
-        OutOfBalance    // 5
+        Unknown,
+        Success,
+        Inapplicable,
+        OutOfFunds,
+        OutOfAllowance,
+        OutOfBalance
     }
 
     /**
      * @dev Statuses of a cashback increase operation as an enum.
      *
      * The possible values:
-     * - Nonexistent -- The operation does not exist (the default value).
-     * - Success ------ The operation has been successfully executed (cashback sent fully).
-     * - Blocklisted -- The operation has been refused because the target account is blocklisted.
-     * - OutOfFunds --- The operation has been refused because the contract has not enough tokens.
-     * - Disabled ----- The operation has been refused because cashback operations are disabled.
-     * - Inapplicable - The operation has been failed because the cashback has not relevant status.
-     * - Capped ------- The operation has been refused because the cap for the period has been reached.
-     * - Partial ------ The operation has been successfully executed (cashback sent partially).
+     * - Nonexistent = 0 --- The operation does not exist (the default value).
+     * - Success = 1 ------- The operation has been successfully executed (cashback sent fully).
+     * - Blocklisted = 2 --- The operation has been refused because the target account is blocklisted.
+     * - OutOfFunds = 3 ---- The operation has been refused because the contract does not have enough tokens.
+     * - Disabled = 4 ------ The operation has been refused because cashback operations are disabled.
+     * - Inapplicable = 5 -- The operation has been failed because the cashback does not have a relevant status.
+     * - Capped = 6 -------- The operation has been refused because the cap for the period has been reached.
+     * - Partial = 7 ------- The operation has been successfully executed (cashback sent partially).
      */
     enum IncreaseStatus {
-        Nonexistent,  // 0
-        Success,      // 1
-        Blocklisted,  // 2
-        OutOfFunds,   // 3
-        Disabled,     // 4
-        Inapplicable, // 5
-        Capped,       // 6
-        Partial       // 7
+        Nonexistent,
+        Success,
+        Blocklisted,
+        OutOfFunds,
+        Disabled,
+        Inapplicable,
+        Capped,
+        Partial
     }
 
-    /// @dev Structure with data of a single cashback operation.
+    /**
+     * @dev The data of a single cashback operation.
+     *
+     * The fields:
+     * - token ---------- The address of the token contract that is used for the cashback operation.
+     * - kind ----------- The kind of the cashback operation.
+     * - status --------- The status of the cashback operation.
+     * - externalId ----- The external identifier of the cashback operation.
+     * - recipient ------ The account that received the cashback.
+     * - amount --------- The requested or actually sent amount of cashback (see the notes below).
+     * - sender --------- The account that initiated the cashback operation.
+     * - revokedAmount -- The amount of cashback that has been revoked.
+     *
+     * NOTES:
+     *  1. The `amount` field of the structure contains the actual amount of sent cashback only if
+     *     the operation was successful or partially successful according to the `status` field,
+     *     otherwise the `amount` field contains the requested amount of cashback to send.
+     *  2. The actual cashback balance of an operation is the `amount` field minus the `revokedAmount` field.
+     */
     struct Cashback {
         address token;
         CashbackKind kind;
@@ -100,10 +121,13 @@ interface ICashbackDistributorTypes {
 }
 
 /**
- * @title CashbackDistributor interface
- * @dev The interface of the wrapper contract for the cashback operations.
+ * @title ICashbackDistributor interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the interface of the wrapper contract for the cashback operations.
  */
 interface ICashbackDistributor is ICashbackDistributorTypes {
+    // ------------------ Events ---------------------------------- //
+
     /**
      * @dev Emitted when a cashback operation is executed.
      *
@@ -200,6 +224,8 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      */
     event Disable(address sender);
 
+    // ------------------ Transactional functions --------------- //
+
     /**
      * @dev Sends a cashback to a recipient.
      *
@@ -263,7 +289,7 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      * This function is expected to be called by a limited number of accounts
      * that are allowed to control cashback operations.
      *
-     * Emits a {EnableCashback} event.
+     * Emits an {Enable} event.
      */
     function enable() external;
 
@@ -273,9 +299,11 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      * This function is expected to be called by a limited number of accounts
      * that are allowed to control cashback operations.
      *
-     * Emits a {DisableCashback} event.
+     * Emits a {Disable} event.
      */
     function disable() external;
+
+    // ------------------ View functions ------------------------ //
 
     /**
      * @dev Checks if the cashback operations are enabled.
@@ -312,21 +340,21 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
     ) external view returns (uint256[] memory);
 
     /**
-     * @dev Returns the total amount of all the success cashback operations associated with a token and an external ID.
+     * @dev Returns the total amount of all the successful cashback operations associated with a token and an external ID.
      * @param token The token contract address of the cashback operations to define the returned total amount.
      * @param externalId The external identifier of the cashback operations to define the returned total amount.
      */
     function getTotalCashbackByTokenAndExternalId(address token, bytes32 externalId) external view returns (uint256);
 
     /**
-     * @dev Returns the total amount of all the success cashback operations associated with a token and a recipient.
+     * @dev Returns the total amount of all the successful cashback operations associated with a token and a recipient.
      * @param token The token contract address of the cashback operations to define the returned total amount.
      * @param recipient The recipient address of the cashback operations to define the returned total amount.
      */
     function getTotalCashbackByTokenAndRecipient(address token, address recipient) external view returns (uint256);
 
     /**
-     * @dev Returns the total amount of all the success cashback operations since the last reset of the periodical cap.
+     * @dev Returns the total amount of all the successful cashback operations since the last reset of the periodical cap.
      * @param token The token contract address of the cashback operations to define the returned total amount.
      * @param recipient The recipient address of the cashback operations to define the returned total amount.
      */
