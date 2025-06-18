@@ -1976,7 +1976,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     const name = "ERC20 Test";
     const symbol = "TEST";
 
-    let tokenMock = await upgrades.deployProxy(tokenMockFactory, [name, symbol]) as Contract;
+    let tokenMock = await upgrades.deployProxy(
+      tokenMockFactory,
+      [name, symbol],
+      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+    ) as Contract;
     await tokenMock.waitForDeployment();
     tokenMock = connect(tokenMock, deployer); // Explicitly specifying the initial account
 
@@ -1989,8 +1993,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   }> {
     const { tokenMock } = await deployTokenMock();
 
-    let cardPaymentProcessor =
-      await upgrades.deployProxy(cardPaymentProcessorFactory, [getAddress(tokenMock)]) as Contract;
+    let cardPaymentProcessor = await upgrades.deployProxy(
+      cardPaymentProcessorFactory,
+      [getAddress(tokenMock)],
+      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+    ) as Contract;
     await cardPaymentProcessor.waitForDeployment();
     cardPaymentProcessor = connect(cardPaymentProcessor, deployer); // Explicitly specifying the initial account
 
@@ -2150,8 +2157,14 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
 
     it("Is reverted if the passed token address is zero", async () => {
-      const anotherCardPaymentProcessor =
-        await upgrades.deployProxy(cardPaymentProcessorFactory, [], { initializer: false }) as Contract;
+      const anotherCardPaymentProcessor = await upgrades.deployProxy(
+        cardPaymentProcessorFactory,
+        [],
+        {
+          initializer: false,
+          unsafeSkipProxyAdminCheck: true // This is necessary to run tests on other networks
+        }
+      ) as Contract;
 
       await expect(anotherCardPaymentProcessor.initialize(ZERO_ADDRESS))
         .to.be.revertedWithCustomError(anotherCardPaymentProcessor, ERROR_NAME_ZERO_TOKEN_ADDRESS);

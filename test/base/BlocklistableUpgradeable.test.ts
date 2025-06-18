@@ -36,7 +36,11 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
     let blocklistableMockFactory = await ethers.getContractFactory("BlocklistableUpgradeableMock");
     blocklistableMockFactory = blocklistableMockFactory.connect(deployer);
 
-    let blocklistableMock = await upgrades.deployProxy(blocklistableMockFactory) as Contract;
+    let blocklistableMock = await upgrades.deployProxy(
+      blocklistableMockFactory,
+      [],
+      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+    ) as Contract;
     await blocklistableMock.waitForDeployment();
     blocklistableMock = connect(blocklistableMock, deployer); // Explicitly specifying the initial account
 

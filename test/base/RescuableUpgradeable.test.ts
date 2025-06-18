@@ -32,7 +32,11 @@ describe("Contract 'RescuableUpgradeable'", async () => {
     rescuableMockFactory = rescuableMockFactory.connect(deployer);
 
     // The contract under test with the explicitly specified initial account
-    let rescuableMock = await upgrades.deployProxy(rescuableMockFactory) as Contract;
+    let rescuableMock = await upgrades.deployProxy(
+      rescuableMockFactory,
+      [],
+      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+    ) as Contract;
     await rescuableMock.waitForDeployment();
     rescuableMock = connect(rescuableMock, deployer); // Explicitly specifying the initial account
 
@@ -45,7 +49,11 @@ describe("Contract 'RescuableUpgradeable'", async () => {
     tokenMockFactory = tokenMockFactory.connect(deployer);
 
     // The token contract with the explicitly specified initial account
-    let tokenMock = await upgrades.deployProxy(tokenMockFactory, ["ERC20 Test", "TEST"]) as Contract;
+    let tokenMock = await upgrades.deployProxy(
+      tokenMockFactory,
+      ["ERC20 Test", "TEST"],
+      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+    ) as Contract;
     await tokenMock.waitForDeployment();
     tokenMock = connect(tokenMock, deployer); // Explicitly specifying the initial account
 
