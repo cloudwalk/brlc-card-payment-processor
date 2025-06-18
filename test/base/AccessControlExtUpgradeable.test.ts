@@ -36,7 +36,11 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
     accessControlExtMockFactory = accessControlExtMockFactory.connect(deployer);
 
     // The contract under test with the explicitly specified initial account
-    let accessControlExtMock = await upgrades.deployProxy(accessControlExtMockFactory) as Contract;
+    let accessControlExtMock = await upgrades.deployProxy(
+      accessControlExtMockFactory,
+      [],
+      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+    ) as Contract;
     await accessControlExtMock.waitForDeployment();
     accessControlExtMock = connect(accessControlExtMock, deployer);
 

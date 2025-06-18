@@ -227,7 +227,11 @@ describe("Contract 'CashbackDistributor'", async () => {
     const name = "ERC20 Test" + nameSuffix;
     const symbol = "TEST" + nameSuffix;
 
-    let tokenMock = await upgrades.deployProxy(tokenMockFactory, [name, symbol]) as Contract;
+    let tokenMock = await upgrades.deployProxy(
+      tokenMockFactory,
+      [name, symbol],
+      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+    ) as Contract;
     await tokenMock.waitForDeployment();
     tokenMock = connect(tokenMock, deployer); // Explicitly specifying the initial account
 
@@ -235,7 +239,11 @@ describe("Contract 'CashbackDistributor'", async () => {
   }
 
   async function deployCashbackDistributor(): Promise<{ cashbackDistributor: Contract }> {
-    let cashbackDistributor = await upgrades.deployProxy(cashbackDistributorFactory) as Contract;
+    let cashbackDistributor = await upgrades.deployProxy(
+      cashbackDistributorFactory,
+      [],
+      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+    ) as Contract;
     await cashbackDistributor.waitForDeployment();
     cashbackDistributor = connect(cashbackDistributor, deployer);
 
