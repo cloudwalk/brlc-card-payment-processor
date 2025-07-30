@@ -201,7 +201,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @param addendum Empty. Reserved for future possible additional information.
      */
     event ClearPaymentSubsidized(
-        bytes16 indexed authorizationId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes16 indexed authorizationId, // Tools: prevent Prettier one-liner
         address indexed sponsor,
         bytes addendum
     );
@@ -231,7 +231,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @param addendum Empty. Reserved for future possible additional information.
      */
     event UnclearPaymentSubsidized(
-        bytes16 indexed authorizationId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes16 indexed authorizationId, // Tools: prevent Prettier one-liner
         address indexed sponsor,
         bytes addendum
     );
@@ -339,7 +339,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @param addendum Empty. Reserved for future possible additional information.
      */
     event ConfirmPaymentSubsidized(
-        bytes16 indexed authorizationId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes16 indexed authorizationId, // Tools: prevent Prettier one-liner
         address indexed sponsor,
         bytes addendum
     );
@@ -387,7 +387,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @param refundAmount The amount of tokens refunded to the account.
      */
     event RefundAccount(
-        bytes16 indexed correlationId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes16 indexed correlationId, // Tools: prevent Prettier one-liner
         address indexed account,
         uint256 refundAmount
     );
@@ -398,7 +398,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @param newCashOutAccount The new address of the cash-out account.
      */
     event SetCashOutAccount(
-        address oldCashOutAccount, // Tools: this comment prevents Prettier from formatting into a single line.
+        address oldCashOutAccount, // Tools: prevent Prettier one-liner
         address newCashOutAccount
     );
 
@@ -565,7 +565,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @param parentTxHash The hash of the parent transaction where the payment was made.
      */
     function reversePayment(
-        bytes16 authorizationId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes16 authorizationId, // Tools: prevent Prettier one-liner
         bytes16 correlationId,
         bytes32 parentTxHash
     ) external;
@@ -585,7 +585,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @param parentTxHash The hash of the transaction where the payment was made.
      */
     function revokePayment(
-        bytes16 authorizationId, // Tools: this comment prevents Prettier from formatting into a single line.
+        bytes16 authorizationId, // Tools: prevent Prettier one-liner
         bytes16 correlationId,
         bytes32 parentTxHash
     ) external;
@@ -705,7 +705,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      */
     function refundAccount(
-        address account, // Tools: this comment prevents Prettier from formatting into a single line.
+        address account, // Tools: prevent Prettier one-liner
         uint256 refundAmount,
         bytes16 correlationId
     ) external;
