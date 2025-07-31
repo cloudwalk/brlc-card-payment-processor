@@ -852,7 +852,7 @@ interface ICardPaymentProcessorConfiguration {
      * @param newCashOutAccount The new address of the cash-out account.
      */
     event SetCashOutAccount(
-        address oldCashOutAccount, // Tools: this comment prevents Prettier from formatting into a single line.
+        address oldCashOutAccount, // Tools: prevent Prettier one-liner
         address newCashOutAccount
     );
 
