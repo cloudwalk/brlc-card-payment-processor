@@ -118,6 +118,17 @@ interface ICashbackDistributorTypes {
         address sender;
         uint256 revokedAmount;
     }
+
+    /// @dev A helper structure to store context of function execution and avoid stack overflow error.
+    struct ExecutionContext {
+        address token;
+        CashbackStatus cashbackStatus;
+        bytes32 externalId;
+        address recipient;
+        address sender;
+        uint256 nonce;
+        uint256 newAmount;
+    }
 }
 
 /**
@@ -126,7 +137,20 @@ interface ICashbackDistributorTypes {
  * @dev Defines the errors interface of the wrapper contract for the cashback operations.
  */
 interface ICashbackDistributorErrors {
+    /// @dev The cashback operations are already enabled.
+    error CashbackAlreadyEnabled();
 
+    /// @dev The cashback operations are already disabled.
+    error CashbackAlreadyDisabled();
+
+    /// @dev The zero token address has been passed as a function argument.
+    error ZeroTokenAddress();
+
+    /// @dev Zero external identifier has been passed as a function argument.
+    error ZeroExternalId();
+
+    /// @dev The zero account address has been passed as a function argument.
+    error ZeroRecipientAddress();
 }
 
 /**
