@@ -21,11 +21,11 @@ interface ICardPaymentCashbackTypes {
 }
 
 /**
- * @title ICardPaymentCashback interface
+ * @title ICardPaymentCashbackConfiguration interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the interface of the wrapper contract for the card payment cashback operations.
+ * @dev Defines the configuration interface of the wrapper contract for the card payment cashback operations.
  */
-interface ICardPaymentCashback is ICardPaymentCashbackTypes {
+interface ICardPaymentCashbackConfiguration {
     // ------------------ Events ---------------------------------- //
 
     /**
@@ -41,6 +41,83 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
      * @param newRateInPermil The value of the new cashback rate in permil.
      */
     event SetCashbackRate(uint16 oldRateInPermil, uint16 newRateInPermil);
+
+    /// @dev Emitted when cashback operations are enabled.
+    event EnableCashback();
+
+    /// @dev Emitted when cashback operations are disabled.
+    event DisableCashback();
+
+    // ------------------ Transactional functions --------------- //
+
+    /**
+     * @dev Sets a new address of the cashback distributor contract.
+     *
+     * Emits a {SetCashbackDistributor} event.
+     *
+     * @param newCashbackDistributor The address of the new cashback distributor contract.
+     */
+    function setCashbackDistributor(address newCashbackDistributor) external;
+
+    /**
+     * @dev Sets a new cashback rate.
+     *
+     * Emits a {SetCashbackRate} event.
+     *
+     * @param newCashbackRateInPermil The value of the new cashback rate in permil.
+     */
+    function setCashbackRate(uint16 newCashbackRateInPermil) external;
+
+    /**
+     * @dev Enables the cashback operations.
+     *
+     * Emits a {EnableCashback} event.
+     */
+    function enableCashback() external;
+
+    /**
+     * @dev Disables the cashback operations.
+     *
+     * Emits a {DisableCashback} event.
+     */
+    function disableCashback() external;
+}
+
+/**
+ * @title ICardPaymentCashbackErrors interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the errors interface of the wrapper contract for the card payment cashback operations.
+ */
+interface ICardPaymentCashbackErrors {
+    /// @dev A new cashback rate is the same as previously set one.
+    error CashbackRateUnchanged();
+
+    /// @dev The provided cashback rate exceeds the allowed maximum.
+    error CashbackRateExcess();
+
+    /// @dev The cashback operations are already enabled.
+    error CashbackAlreadyEnabled();
+
+    /// @dev The cashback operations are already disabled.
+    error CashbackAlreadyDisabled();
+
+    /// @dev The zero cashback distributor address has been passed as a function argument.
+    error CashbackDistributorZeroAddress();
+
+    /// @dev The cashback distributor contract is not configured.
+    error CashbackDistributorNotConfigured();
+
+    /// @dev The cashback distributor contract is already configured.
+    error CashbackDistributorAlreadyConfigured();
+}
+
+/**
+ * @title ICardPaymentCashbackPrimary interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the primary interface of the wrapper contract for the card payment cashback operations.
+ */
+interface ICardPaymentCashbackPrimary is ICardPaymentCashbackTypes {
+    // ------------------ Events ---------------------------------- //
 
     /**
      * @dev Emitted when a cashback send request succeeded.
@@ -90,46 +167,6 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
      */
     event IncreaseCashbackFailure(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
 
-    /// @dev Emitted when cashback operations are enabled.
-    event EnableCashback();
-
-    /// @dev Emitted when cashback operations are disabled.
-    event DisableCashback();
-
-    // ------------------ Transactional functions --------------- //
-
-    /**
-     * @dev Sets a new address of the cashback distributor contract.
-     *
-     * Emits a {SetCashbackDistributor} event.
-     *
-     * @param newCashbackDistributor The address of the new cashback distributor contract.
-     */
-    function setCashbackDistributor(address newCashbackDistributor) external;
-
-    /**
-     * @dev Sets a new cashback rate.
-     *
-     * Emits a {SetCashbackRate} event.
-     *
-     * @param newCashbackRateInPermil The value of the new cashback rate in permil.
-     */
-    function setCashbackRate(uint16 newCashbackRateInPermil) external;
-
-    /**
-     * @dev Enables the cashback operations.
-     *
-     * Emits a {EnableCashback} event.
-     */
-    function enableCashback() external;
-
-    /**
-     * @dev Disables the cashback operations.
-     *
-     * Emits a {DisableCashback} event.
-     */
-    function disableCashback() external;
-
     // ------------------ View functions ------------------------ //
 
     /**
@@ -152,4 +189,17 @@ interface ICardPaymentCashback is ICardPaymentCashbackTypes {
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      */
     function getCashback(bytes16 authorizationId) external view returns (Cashback memory);
+}
+
+/**
+ * @title ICardPaymentCashback interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the interface of the wrapper contract for the card payment cashback operations.
+ */
+interface ICardPaymentCashback is
+    ICardPaymentCashbackPrimary,
+    ICardPaymentCashbackConfiguration,
+    ICardPaymentCashbackErrors
+{
+
 }

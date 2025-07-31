@@ -940,26 +940,6 @@ interface ICardPaymentProcessorErrors is ICardPaymentProcessorTypes {
     /// @dev A new cash-out account is the same as the previously set one.
     error CashOutAccountUnchanged();
 
-    /// @dev A new cashback rate is the same as previously set one.
-    error CashbackRateUnchanged();
-
-    /// @dev The provided cashback rate exceeds the allowed maximum.
-    error CashbackRateExcess();
-
-    /// @dev The cashback operations are already enabled.
-    error CashbackAlreadyEnabled();
-
-    /// @dev The cashback operations are already disabled.
-    error CashbackAlreadyDisabled();
-
-    /// @dev The zero cashback distributor address has been passed as a function argument.
-    error CashbackDistributorZeroAddress();
-
-    /// @dev The cashback distributor contract is not configured.
-    error CashbackDistributorNotConfigured();
-
-    /// @dev The cashback distributor contract is already configured.
-    error CashbackDistributorAlreadyConfigured();
 
     /// @dev The requested refund amount does not meet the requirements.
     error InappropriateRefundAmount();

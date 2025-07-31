@@ -14,7 +14,7 @@ import { Versionable } from "./base/Versionable.sol";
 
 import { CardPaymentProcessorStorage } from "./CardPaymentProcessorStorage.sol";
 import { ICardPaymentProcessor, ICardPaymentProcessorPrimary, ICardPaymentProcessorConfiguration } from "./interfaces/ICardPaymentProcessor.sol";
-import { ICardPaymentCashback } from "./interfaces/ICardPaymentCashback.sol";
+import { ICardPaymentCashback, ICardPaymentCashbackPrimary, ICardPaymentCashbackConfiguration } from "./interfaces/ICardPaymentCashback.sol";
 import { ICashbackDistributor, ICashbackDistributorTypes } from "./interfaces/ICashbackDistributor.sol";
 
 /**
@@ -51,7 +51,6 @@ contract CardPaymentProcessor is
      * Currently, it can only be changed by deploying a new implementation of the contract.
      */
     uint16 public constant CASHBACK_ROUNDING_COEF = 10000;
-
 
     // ------------------ Constructor ----------------------------- //
 
@@ -541,7 +540,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackConfiguration
      *
      * @dev Requirements:
      *
@@ -567,7 +566,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackConfiguration
      *
      * @dev Requirements:
      *
@@ -590,7 +589,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackConfiguration
      *
      * @dev Requirements:
      *
@@ -612,7 +611,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackConfiguration
      *
      * @dev Requirements:
      *
@@ -702,28 +701,28 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackPrimary
      */
     function cashbackDistributor() external view returns (address) {
         return _cashbackDistributor;
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackPrimary
      */
     function cashbackEnabled() external view returns (bool) {
         return _cashbackEnabled;
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackPrimary
      */
     function cashbackRate() external view returns (uint256) {
         return _cashbackRateInPermil;
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackPrimary
      */
     function getCashback(bytes16 authorizationId) external view returns (Cashback memory) {
         return _cashbacks[authorizationId];
