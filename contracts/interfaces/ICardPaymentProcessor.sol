@@ -142,7 +142,6 @@ interface ICardPaymentProcessorTypes {
         uint256 totalSentAmount;
         uint256 revokedCashbackAmount;
     }
-
 }
 
 /**
@@ -845,7 +844,9 @@ interface ICardPaymentProcessorPrimary is ICardPaymentProcessorTypes {
  * @dev The configuration part of the card payment processor smart contract interface.
  */
 interface ICardPaymentProcessorConfiguration {
+
 }
+
 /**
  * @title ICardPaymentProcessorErrors interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
@@ -853,13 +854,95 @@ interface ICardPaymentProcessorConfiguration {
  *
  * The errors are ordered alphabetically.
  */
-interface ICardPaymentProcessorErrors {
+interface ICardPaymentProcessorErrors is ICardPaymentProcessorTypes {
+    /// @dev The zero token address has been passed as a function argument.
+    error ZeroTokenAddress();
 
+    /// @dev The zero account address has been passed as a function argument.
+    error ZeroAccount();
+
+    /// @dev Zero authorization ID has been passed as a function argument.
+    error ZeroAuthorizationId();
+
+    /// @dev The payment with the provided authorization ID already exists and is not revoked.
+    error PaymentAlreadyExists();
+
+    /// @dev Payment with the provided authorization ID is uncleared, but it must be cleared.
+    error PaymentAlreadyUncleared();
+
+    /// @dev Payment with the provided authorization ID is cleared, but it must be uncleared.
+    error PaymentAlreadyCleared();
+
+    /// @dev The payment with the provided authorization ID does not exist.
+    error PaymentNotExist();
+
+    /// @dev Empty array of authorization IDs has been passed as a function argument.
+    error EmptyAuthorizationIdsArray();
+
+    /// @dev Zero parent transaction hash has been passed as a function argument.
+    error ZeroParentTransactionHash();
+
+    /// @dev The cash-out account is not configured.
+    error ZeroCashOutAccount();
+
+    /**
+     * @dev The payment with the provided authorization ID has an inappropriate status.
+     * @param currentStatus The current status of payment with the provided authorization ID.
+     */
+    error InappropriatePaymentStatus(PaymentStatus currentStatus);
+
+    /**
+     * @dev Revocation counter of the payment reached the configured limit.
+     * @param configuredRevocationLimit The configured revocation limit.
+     */
+    error RevocationLimitReached(uint8 configuredRevocationLimit);
+
+    /// @dev A new cash-out account is the same as the previously set one.
+    error CashOutAccountUnchanged();
+
+    /// @dev A new cashback rate is the same as previously set one.
+    error CashbackRateUnchanged();
+
+    /// @dev The provided cashback rate exceeds the allowed maximum.
+    error CashbackRateExcess();
+
+    /// @dev The cashback operations are already enabled.
+    error CashbackAlreadyEnabled();
+
+    /// @dev The cashback operations are already disabled.
+    error CashbackAlreadyDisabled();
+
+    /// @dev The zero cashback distributor address has been passed as a function argument.
+    error CashbackDistributorZeroAddress();
+
+    /// @dev The cashback distributor contract is not configured.
+    error CashbackDistributorNotConfigured();
+
+    /// @dev The cashback distributor contract is already configured.
+    error CashbackDistributorAlreadyConfigured();
+
+    /// @dev The requested refund amount does not meet the requirements.
+    error InappropriateRefundAmount();
+
+    /// @dev The new amount of the payment does not meet the requirements.
+    error InappropriateNewBasePaymentAmount();
+
+    /// @dev The new extra amount of the payment does not meet the requirements.
+    error InappropriateNewExtraPaymentAmount();
+
+    /// @dev The function cannot be executed for a subsidized payment with the non-zero refund amount.
+    error SubsidizedPaymentWithNonZeroRefundAmount();
 }
+
 /**
  * @title ICardPaymentProcessor interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Defines the interface of the wrapper contract for the card payment operations.
  */
-interface ICardPaymentProcessor is ICardPaymentProcessorPrimary, ICardPaymentProcessorConfiguration, ICardPaymentProcessorErrors {
+interface ICardPaymentProcessor is
+    ICardPaymentProcessorPrimary,
+    ICardPaymentProcessorConfiguration,
+    ICardPaymentProcessorErrors
+{
+
 }
