@@ -462,37 +462,7 @@ interface ICardPaymentProcessorPrimary is ICardPaymentProcessorTypes {
         uint256 refundAmount
     );
 
-    /**
-     * @dev Emitted when the cash-out account is changed.
-     * @param oldCashOutAccount The old address of the cash-out account.
-     * @param newCashOutAccount The new address of the cash-out account.
-     */
-    event SetCashOutAccount(
-        address oldCashOutAccount, // Tools: prevent Prettier one-liner
-        address newCashOutAccount
-    );
-
     // ------------------ Transactional functions --------------- //
-
-    /**
-     * @dev Sets the cash-out account that will receive cleared tokens of confirmed payments.
-     *
-     * Emits a {SetCashOutAccount} event if the new account differs from the old one.
-     *
-     * @param newCashOutAccount The new address of the cash-out account.
-     */
-    function setCashOutAccount(address newCashOutAccount) external;
-
-    /**
-     * @dev Sets a new value for the revocation limit.
-     *
-     * If the limit equals 0 or 1 a payment with the same authorization ID cannot be repeated after the revocation.
-     *
-     * Emits a {SetRevocationLimit} event if the new limit differs from the old value.
-     *
-     * @param newLimit The new revocation limit value to be set.
-     */
-    function setRevocationLimit(uint8 newLimit) external;
 
     /**
      * @dev Makes a card payment.
@@ -856,7 +826,7 @@ interface ICardPaymentProcessorConfiguration {
         address newCashOutAccount
     );
 
-        /**
+    /**
      * @dev Emitted when the revocation limit is changed.
      * @param oldLimit The old value of the revocation limit.
      * @param newLimit The new value of the revocation limit.
@@ -873,7 +843,7 @@ interface ICardPaymentProcessorConfiguration {
      * @param newCashOutAccount The new address of the cash-out account.
      */
     function setCashOutAccount(address newCashOutAccount) external;
-    
+
     /**
      * @dev Sets a new value for the revocation limit.
      *
@@ -884,7 +854,6 @@ interface ICardPaymentProcessorConfiguration {
      * @param newLimit The new revocation limit value to be set.
      */
     function setRevocationLimit(uint8 newLimit) external;
-
 }
 
 /**
@@ -939,7 +908,6 @@ interface ICardPaymentProcessorErrors is ICardPaymentProcessorTypes {
 
     /// @dev A new cash-out account is the same as the previously set one.
     error CashOutAccountUnchanged();
-
 
     /// @dev The requested refund amount does not meet the requirements.
     error InappropriateRefundAmount();
