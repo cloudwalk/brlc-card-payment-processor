@@ -121,11 +121,20 @@ interface ICashbackDistributorTypes {
 }
 
 /**
- * @title ICashbackDistributor interface
+ * @title ICashbackDistributorErrors interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the interface of the wrapper contract for the cashback operations.
+ * @dev Defines the errors interface of the wrapper contract for the cashback operations.
  */
-interface ICashbackDistributor is ICashbackDistributorTypes {
+interface ICashbackDistributorErrors {
+
+}
+
+/**
+ * @title ICashbackDistributorPrimary interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the primary interface of the wrapper contract for the cashback operations.
+ */
+interface ICashbackDistributorPrimary is ICashbackDistributorTypes {
     // ------------------ Events ---------------------------------- //
 
     /**
@@ -378,4 +387,26 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
         address token,
         address recipient
     ) external view returns (uint256 cashbackPeriodStart, uint256 overallCashbackForPeriod);
+}
+
+/**
+ * @title ICashbackDistributorConfiguration interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the configuration interface of the wrapper contract for the cashback operations.
+ */
+interface ICashbackDistributorConfiguration {
+
+}
+
+/**
+ * @title ICashbackDistributor interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the interface of the wrapper contract for the cashback operations.
+ */
+interface ICashbackDistributor is
+    ICashbackDistributorPrimary,
+    ICashbackDistributorConfiguration,
+    ICashbackDistributorErrors
+{
+
 }
