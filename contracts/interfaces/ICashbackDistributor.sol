@@ -92,7 +92,7 @@ interface ICashbackDistributorTypes {
     /**
      * @dev The data of a single cashback operation.
      *
-     * The fields:
+     * Fields:
      * - token ---------- The address of the token contract that is used for the cashback operation.
      * - kind ----------- The kind of the cashback operation.
      * - status --------- The status of the cashback operation.

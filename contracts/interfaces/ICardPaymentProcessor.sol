@@ -50,7 +50,7 @@ interface ICardPaymentProcessorTypes {
     /**
      * @dev The data of a single payment.
      *
-     * The fields:
+     * Fields:
      * - account ------------- The account that made the payment.
      * - baseAmount ---------- The base amount of tokens in the payment.
      * - status -------------- The current status of the payment.
