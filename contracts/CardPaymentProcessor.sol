@@ -13,7 +13,7 @@ import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.
 import { Versionable } from "./base/Versionable.sol";
 
 import { CardPaymentProcessorStorage } from "./CardPaymentProcessorStorage.sol";
-import { ICardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
+import { ICardPaymentProcessor, ICardPaymentProcessorPrimary } from "./interfaces/ICardPaymentProcessor.sol";
 import { ICardPaymentCashback } from "./interfaces/ICardPaymentCashback.sol";
 import { ICashbackDistributor, ICashbackDistributorTypes } from "./interfaces/ICashbackDistributor.sol";
 
@@ -36,74 +36,6 @@ contract CardPaymentProcessor is
     // ------------------ Types ----------------------------------- //
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    /**
-     * @dev Kind of a payment updating operation as an enum.
-     *
-     * The possible values:
-     * - Full = 0 -- The operation is executed fully regardless of the new values of the base amount and extra amount.
-     * - Lazy = 1 -- The operation is executed only if the new amounts differ from the current ones of the payment.
-     */
-    enum UpdatingOperationKind {
-        Full,
-        Lazy
-    }
-
-    /// @dev Contains parameters of a payment making operation.
-    struct MakingOperation {
-        address sender;
-        address account;
-        uint256 baseAmount;
-        uint256 extraAmount;
-        bytes16 authorizationId;
-        bytes16 correlationId;
-        address sponsor;
-        uint256 subsidyLimit;
-        int16 cashbackRateInPermil;
-    }
-
-    /// @dev Contains parameters for a payment updating operation.
-    struct UpdatingOperation {
-        uint256 oldPaymentSumAmount;
-        uint256 newPaymentSumAmount;
-        uint256 oldSponsorSumAmount;
-        uint256 newSponsorSumAmount;
-        uint256 oldPaymentBaseAmount;
-        uint256 newPaymentBaseAmount;
-        uint256 oldCompensationAmount;
-        uint256 paymentTotalAmountChange;
-        uint256 accountBalanceChange;
-        uint256 sponsorBalanceChange;
-        uint256 cashbackAmountChange;
-        bool paymentSumAmountDecreased;
-        bool cashbackDecreased;
-    }
-
-    /// @dev Contains parameters of a payment canceling operation.
-    struct CancelingOperation {
-        uint256 paymentTotalAmount;
-        uint256 accountSentAmount;
-        uint256 sponsorSentAmount;
-        uint256 totalSentAmount;
-        uint256 revokedCashbackAmount;
-    }
-
-    /// @dev Contains parameters of a payment refunding operation.
-    struct RefundingOperation {
-        uint256 paymentRefundAmount; // It is for local use only to avoid the "Stack too deep" error.
-        uint256 sponsorRefundAmount;
-        uint256 newPaymentRefundAmount;
-        uint256 newPaymentSumAmount;
-        uint256 paymentTotalAmountDiff;
-        uint256 oldCashbackAmount; // It is for local use only to avoid the "Stack too deep" error.
-        uint256 newCashbackAmount; // It is for local use only to avoid the "Stack too deep" error.
-        uint256 oldCompensationAmount; // It is for local use only to avoid the "Stack too deep" error.
-        uint256 newCompensationAmount;
-        uint256 accountSentAmount;
-        uint256 sponsorSentAmount;
-        uint256 totalSentAmount;
-        uint256 revokedCashbackAmount;
-    }
 
     // ------------------ Constants ------------------------------- //
 
@@ -257,7 +189,7 @@ contract CardPaymentProcessor is
     // ------------------ Transactional functions ----------------- //
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -277,7 +209,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -294,7 +226,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -326,7 +258,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -369,7 +301,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -398,7 +330,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -415,7 +347,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -441,7 +373,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -458,7 +390,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -484,7 +416,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -502,7 +434,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -525,7 +457,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -541,7 +473,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -566,7 +498,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -580,7 +512,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -611,7 +543,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -642,7 +574,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -672,7 +604,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -788,70 +720,70 @@ contract CardPaymentProcessor is
     // ------------------ View functions -------------------------- //
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function cashOutAccount() external view returns (address) {
         return _cashOutAccount;
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function underlyingToken() external view returns (address) {
         return _token;
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function totalUnclearedBalance() external view returns (uint256) {
         return _totalUnclearedBalance;
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function totalClearedBalance() external view returns (uint256) {
         return _totalClearedBalance;
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function unclearedBalanceOf(address account) external view returns (uint256) {
         return _unclearedBalances[account];
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function clearedBalanceOf(address account) external view returns (uint256) {
         return _clearedBalances[account];
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function paymentFor(bytes16 authorizationId) external view returns (Payment memory) {
         return _payments[authorizationId];
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function isPaymentRevoked(bytes32 parentTxHash) external view returns (bool) {
         return _paymentRevocationFlags[parentTxHash];
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function isPaymentReversed(bytes32 parentTxHash) external view returns (bool) {
         return _paymentReversionFlags[parentTxHash];
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function revocationLimit() external view returns (uint8) {
         return _revocationLimit;
