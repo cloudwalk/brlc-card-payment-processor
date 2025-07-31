@@ -77,11 +77,13 @@ interface ICardPaymentProcessorTypes {
 }
 
 /**
- * @title ICardPaymentProcessor interface
+ * @title ICardPaymentProcessorPrimary interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the interface of the wrapper contract for the card payment operations.
+ * @dev The primary part of the card payment processor smart contract interface.
+ *
+ * See details about the contract in the comments of the {ICardPaymentProcessor} interface.
  */
-interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
+interface ICardPaymentProcessorPrimary is ICardPaymentProcessorTypes {
     // ------------------ Events ---------------------------------- //
 
     /**
@@ -766,4 +768,29 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      * @dev Returns the configured limit of revocations for a single payment.
      */
     function revocationLimit() external view returns (uint8);
+}
+
+/**
+ * @title ICardPaymentProcessorConfiguration interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev The configuration part of the card payment processor smart contract interface.
+ */
+interface ICardPaymentProcessorConfiguration {
+}
+/**
+ * @title ICardPaymentProcessorErrors interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the custom errors used in the card payment processor contract.
+ *
+ * The errors are ordered alphabetically.
+ */
+interface ICardPaymentProcessorErrors {
+
+}
+/**
+ * @title ICardPaymentProcessor interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the interface of the wrapper contract for the card payment operations.
+ */
+interface ICardPaymentProcessor is ICardPaymentProcessorPrimary, ICardPaymentProcessorConfiguration, ICardPaymentProcessorErrors {
 }
