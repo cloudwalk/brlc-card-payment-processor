@@ -86,7 +86,7 @@ contract CashbackDistributor is
     // ------------------ Initializers ---------------------------- //
 
     /**
-     * @dev The initialize function of the upgradeable contract.
+     * @dev Initializer of the upgradeable contract.
      *
      * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
      */
@@ -166,7 +166,7 @@ contract CashbackDistributor is
         _nonceCollectionByExternalId[externalId].push(nonce);
 
         emit SendCashback(
-            token, // Tools: this comment prevents Prettier from formatting into a single line.
+            token, // Tools: prevent Prettier one-liner
             kind,
             status,
             externalId,
@@ -504,7 +504,7 @@ contract CashbackDistributor is
      * @param amount The amount to reduce.
      */
     function _reduceOverallCashback(
-        address token, // Tools: this comment prevents Prettier from formatting into a single line.
+        address token, // Tools: prevent Prettier one-liner
         address recipient,
         uint256 amount
     ) internal {

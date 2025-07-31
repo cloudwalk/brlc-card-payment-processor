@@ -11,7 +11,7 @@ interface ICardPaymentCashbackTypes {
     /**
      * @dev The data of a single cashback operation.
      *
-     * The fields:
+     * Fields:
      *
      * - lastCashbackNonce -- The nonce of the last cashback operation.
      */

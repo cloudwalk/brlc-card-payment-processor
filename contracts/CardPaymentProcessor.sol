@@ -226,7 +226,7 @@ contract CardPaymentProcessor is
     // ------------------ Initializers ---------------------------- //
 
     /**
-     * @dev The initialize function of the upgradeable contract.
+     * @dev Initializer of the upgradeable contract.
      *
      * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
      *
@@ -389,7 +389,7 @@ contract CardPaymentProcessor is
         bytes16 correlationId
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         _updatePaymentAmount(
-            newBaseAmount, // Tools: this comment prevents Prettier from formatting into a single line.
+            newBaseAmount, // Tools: prevent Prettier one-liner
             newExtraAmount,
             authorizationId,
             correlationId,
@@ -601,7 +601,7 @@ contract CardPaymentProcessor is
         bytes16 correlationId
     ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
         _updatePaymentAmount(
-            newBaseAmount, // Tools: this comment prevents Prettier from formatting into a single line.
+            newBaseAmount, // Tools: prevent Prettier one-liner
             newExtraAmount,
             authorizationId,
             correlationId,
@@ -1283,7 +1283,7 @@ contract CardPaymentProcessor is
         _clearedBalances[account] = newClearedBalance;
 
         emit ConfirmPayment(
-            authorizationId, // Tools: this comment prevents Prettier from formatting into a single line.
+            authorizationId, // Tools: prevent Prettier one-liner
             account,
             totalAmount,
             newClearedBalance,
@@ -1513,7 +1513,7 @@ contract CardPaymentProcessor is
         _revokeCashback(authorizationId, operation.revokedCashbackAmount);
 
         emit RefundPayment(
-            authorizationId, // Tools: this comment prevents Prettier from formatting into a single line.
+            authorizationId, // Tools: prevent Prettier one-liner
             correlationId,
             account,
             refundAmount,
