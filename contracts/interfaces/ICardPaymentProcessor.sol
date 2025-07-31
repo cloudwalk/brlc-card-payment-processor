@@ -931,6 +931,4 @@ interface ICardPaymentProcessor is
     ICardPaymentProcessorPrimary,
     ICardPaymentProcessorConfiguration,
     ICardPaymentProcessorErrors
-{
-
-}
+{}

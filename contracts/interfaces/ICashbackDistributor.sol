@@ -245,18 +245,6 @@ interface ICashbackDistributorPrimary is ICashbackDistributorTypes {
         uint256 nonce
     );
 
-    /**
-     * @dev Emitted when cashback operations are enabled.
-     * @param sender The account that enabled the operations.
-     */
-    event Enable(address sender);
-
-    /**
-     * @dev Emitted when cashback operations are disabled.
-     * @param sender The account that disabled the operations.
-     */
-    event Disable(address sender);
-
     // ------------------ Transactional functions --------------- //
 
     /**
@@ -315,26 +303,6 @@ interface ICashbackDistributorPrimary is ICashbackDistributorTypes {
      * @return sentAmount The amount of the actual cashback increase.
      */
     function increaseCashback(uint256 nonce, uint256 amount) external returns (bool success, uint256 sentAmount);
-
-    /**
-     * @dev Enables the cashback operations.
-     *
-     * This function is expected to be called by a limited number of accounts
-     * that are allowed to control cashback operations.
-     *
-     * Emits an {Enable} event.
-     */
-    function enable() external;
-
-    /**
-     * @dev Disables the cashback operations.
-     *
-     * This function is expected to be called by a limited number of accounts
-     * that are allowed to control cashback operations.
-     *
-     * Emits a {Disable} event.
-     */
-    function disable() external;
 
     // ------------------ View functions ------------------------ //
 
@@ -419,7 +387,41 @@ interface ICashbackDistributorPrimary is ICashbackDistributorTypes {
  * @dev Defines the configuration interface of the wrapper contract for the cashback operations.
  */
 interface ICashbackDistributorConfiguration {
+    // ------------------ Events ---------------------------------- //
 
+    /**
+     * @dev Emitted when cashback operations are enabled.
+     * @param sender The account that enabled the operations.
+     */
+    event Enable(address sender);
+
+    /**
+     * @dev Emitted when cashback operations are disabled.
+     * @param sender The account that disabled the operations.
+     */
+    event Disable(address sender);
+
+    // ------------------ Transactional functions --------------- //
+
+    /**
+     * @dev Enables the cashback operations.
+     *
+     * This function is expected to be called by a limited number of accounts
+     * that are allowed to control cashback operations.
+     *
+     * Emits an {Enable} event.
+     */
+    function enable() external;
+
+    /**
+     * @dev Disables the cashback operations.
+     *
+     * This function is expected to be called by a limited number of accounts
+     * that are allowed to control cashback operations.
+     *
+     * Emits a {Disable} event.
+     */
+    function disable() external;
 }
 
 /**
@@ -431,6 +433,4 @@ interface ICashbackDistributor is
     ICashbackDistributorPrimary,
     ICashbackDistributorConfiguration,
     ICashbackDistributorErrors
-{
-
-}
+{}

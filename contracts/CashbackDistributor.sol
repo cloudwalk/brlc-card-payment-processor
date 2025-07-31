@@ -14,7 +14,7 @@ import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.
 import { Versionable } from "./base/Versionable.sol";
 
 import { CashbackDistributorStorage } from "./CashbackDistributorStorage.sol";
-import { ICashbackDistributor, ICashbackDistributorPrimary } from "./interfaces/ICashbackDistributor.sol";
+import { ICashbackDistributor, ICashbackDistributorPrimary, ICashbackDistributorConfiguration } from "./interfaces/ICashbackDistributor.sol";
 
 /**
  * @title CashbackDistributor contract
@@ -287,7 +287,7 @@ contract CashbackDistributor is
     }
 
     /**
-     * @inheritdoc ICashbackDistributorPrimary
+     * @inheritdoc ICashbackDistributorConfiguration
      *
      * @dev Requirements:
      *
@@ -304,7 +304,7 @@ contract CashbackDistributor is
     }
 
     /**
-     * @inheritdoc ICashbackDistributorPrimary
+     * @inheritdoc ICashbackDistributorConfiguration
      *
      * @dev Requirements:
      *

@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
-import { ICashbackDistributor, ICashbackDistributorPrimary } from "../interfaces/ICashbackDistributor.sol";
+import { ICashbackDistributor, ICashbackDistributorPrimary, ICashbackDistributorConfiguration } from "../interfaces/ICashbackDistributor.sol";
 
 /**
  * @title CashbackDistributorMock contract
@@ -221,14 +221,14 @@ contract CashbackDistributorMock is ICashbackDistributor {
     // ------------------ Transactional functions ----------------- //
 
     /**
-     * @inheritdoc ICashbackDistributorPrimary
+     * @inheritdoc ICashbackDistributorConfiguration
      *
      * @dev Just a stub for testing. Does nothing.
      */
     function enable() public {}
 
     /**
-     * @inheritdoc ICashbackDistributorPrimary
+     * @inheritdoc ICashbackDistributorConfiguration
      *
      * @dev Just a stub for testing. Does nothing.
      */

@@ -200,6 +200,4 @@ interface ICardPaymentCashback is
     ICardPaymentCashbackPrimary,
     ICardPaymentCashbackConfiguration,
     ICardPaymentCashbackErrors
-{
-
-}
+{}
