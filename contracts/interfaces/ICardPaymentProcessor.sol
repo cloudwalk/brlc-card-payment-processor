@@ -844,6 +844,46 @@ interface ICardPaymentProcessorPrimary is ICardPaymentProcessorTypes {
  * @dev The configuration part of the card payment processor smart contract interface.
  */
 interface ICardPaymentProcessorConfiguration {
+    // ------------------ Events ---------------------------------- //
+
+    /**
+     * @dev Emitted when the cash-out account is changed.
+     * @param oldCashOutAccount The old address of the cash-out account.
+     * @param newCashOutAccount The new address of the cash-out account.
+     */
+    event SetCashOutAccount(
+        address oldCashOutAccount, // Tools: this comment prevents Prettier from formatting into a single line.
+        address newCashOutAccount
+    );
+
+        /**
+     * @dev Emitted when the revocation limit is changed.
+     * @param oldLimit The old value of the revocation limit.
+     * @param newLimit The new value of the revocation limit.
+     */
+    event SetRevocationLimit(uint8 oldLimit, uint8 newLimit);
+
+    // ------------------ Transactional functions --------------- //
+
+    /**
+     * @dev Sets the cash-out account that will receive cleared tokens of confirmed payments.
+     *
+     * Emits a {SetCashOutAccount} event if the new account differs from the old one.
+     *
+     * @param newCashOutAccount The new address of the cash-out account.
+     */
+    function setCashOutAccount(address newCashOutAccount) external;
+    
+    /**
+     * @dev Sets a new value for the revocation limit.
+     *
+     * If the limit equals 0 or 1 a payment with the same authorization ID cannot be repeated after the revocation.
+     *
+     * Emits a {SetRevocationLimit} event if the new limit differs from the old value.
+     *
+     * @param newLimit The new revocation limit value to be set.
+     */
+    function setRevocationLimit(uint8 newLimit) external;
 
 }
 

@@ -13,7 +13,7 @@ import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.
 import { Versionable } from "./base/Versionable.sol";
 
 import { CardPaymentProcessorStorage } from "./CardPaymentProcessorStorage.sol";
-import { ICardPaymentProcessor, ICardPaymentProcessorPrimary } from "./interfaces/ICardPaymentProcessor.sol";
+import { ICardPaymentProcessor, ICardPaymentProcessorPrimary, ICardPaymentProcessorConfiguration } from "./interfaces/ICardPaymentProcessor.sol";
 import { ICardPaymentCashback } from "./interfaces/ICardPaymentCashback.sol";
 import { ICashbackDistributor, ICashbackDistributorTypes } from "./interfaces/ICashbackDistributor.sol";
 
@@ -52,14 +52,6 @@ contract CardPaymentProcessor is
      */
     uint16 public constant CASHBACK_ROUNDING_COEF = 10000;
 
-    // ------------------ Events ---------------------------------- //
-
-    /**
-     * @dev Emitted when the revocation limit is changed.
-     * @param oldLimit The old value of the revocation limit.
-     * @param newLimit The new value of the revocation limit.
-     */
-    event SetRevocationLimit(uint8 oldLimit, uint8 newLimit);
 
     // ------------------ Constructor ----------------------------- //
 
@@ -109,7 +101,7 @@ contract CardPaymentProcessor is
     // ------------------ Transactional functions ----------------- //
 
     /**
-     * @inheritdoc ICardPaymentProcessorPrimary
+     * @inheritdoc ICardPaymentProcessorConfiguration
      *
      * @dev Requirements:
      *
@@ -129,7 +121,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessorPrimary
+     * @inheritdoc ICardPaymentProcessorConfiguration
      *
      * @dev Requirements:
      *
