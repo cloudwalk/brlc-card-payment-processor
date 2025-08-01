@@ -51,7 +51,11 @@ contract CardPaymentProcessor is
         Lazy
     }
 
-    /// @dev Contains parameters of a payment making operation.
+    /**
+     * @dev Contains parameters of a payment making operation.
+     * 
+     * Used as parameter of the {_makePayment} function.
+     */
     struct MakingOperation {
         address sender;
         address account;
@@ -64,7 +68,11 @@ contract CardPaymentProcessor is
         int16 cashbackRateInPermil;
     }
 
-    /// @dev Contains parameters for a payment updating operation.
+    /**
+     * @dev Contains parameters for a payment updating operation.
+     * 
+     * For internal use only.
+     */
     struct UpdatingOperation {
         uint256 oldPaymentSumAmount;
         uint256 newPaymentSumAmount;
@@ -81,7 +89,11 @@ contract CardPaymentProcessor is
         bool cashbackDecreased;
     }
 
-    /// @dev Contains parameters of a payment canceling operation.
+    /**
+     * @dev Contains parameters of a payment canceling operation.
+     * 
+     * For internal use only.
+     */
     struct CancelingOperation {
         uint256 paymentTotalAmount;
         uint256 accountSentAmount;
@@ -90,7 +102,11 @@ contract CardPaymentProcessor is
         uint256 revokedCashbackAmount;
     }
 
-    /// @dev Contains parameters of a payment refunding operation.
+    /**
+     * @dev Contains parameters of a payment refunding operation.
+     * 
+     * For internal use only.
+     */
     struct RefundingOperation {
         uint256 paymentRefundAmount; // It is for local use only to avoid the "Stack too deep" error.
         uint256 sponsorRefundAmount;

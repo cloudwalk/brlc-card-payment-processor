@@ -37,7 +37,11 @@ contract CashbackDistributor is
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
 
-    /// @dev A helper structure to store context of function execution and avoid stack overflow error.
+    /**
+     * @dev A helper structure to store context of function execution and avoid stack overflow error.
+     *
+     * For internal use only.
+     */
     struct ExecutionContext {
         address token;
         CashbackStatus cashbackStatus;
