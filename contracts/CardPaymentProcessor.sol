@@ -53,7 +53,7 @@ contract CardPaymentProcessor is
 
     /**
      * @dev Contains parameters of a payment making operation.
-     * 
+     *
      * Used as parameter of the {_makePayment} function.
      */
     struct MakingOperation {
@@ -70,7 +70,7 @@ contract CardPaymentProcessor is
 
     /**
      * @dev Contains parameters for a payment updating operation.
-     * 
+     *
      * For internal use only.
      */
     struct UpdatingOperation {
@@ -91,7 +91,7 @@ contract CardPaymentProcessor is
 
     /**
      * @dev Contains parameters of a payment canceling operation.
-     * 
+     *
      * For internal use only.
      */
     struct CancelingOperation {
@@ -104,7 +104,7 @@ contract CardPaymentProcessor is
 
     /**
      * @dev Contains parameters of a payment refunding operation.
-     * 
+     *
      * For internal use only.
      */
     struct RefundingOperation {
