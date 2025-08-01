@@ -48,6 +48,17 @@ interface ICardPaymentProcessorTypes {
     }
 
     /**
+     * @dev Kind of a payment updating operation as an enum.
+     *
+     * The possible values:
+     * - Full = 0 -- The operation is executed fully regardless of the new values of the base amount and extra amount.
+     * - Lazy = 1 -- The operation is executed only if the new amounts differ from the current ones of the payment.
+     */
+    enum UpdatingOperationKind {
+        Full,
+        Lazy
+    }
+    /**
      * @dev The data of a single payment.
      *
      * Fields:
@@ -73,18 +84,6 @@ interface ICardPaymentProcessorTypes {
         uint256 extraAmount;
         address sponsor;
         uint256 subsidyLimit;
-    }
-
-    /**
-     * @dev Kind of a payment updating operation as an enum.
-     *
-     * The possible values:
-     * - Full = 0 -- The operation is executed fully regardless of the new values of the base amount and extra amount.
-     * - Lazy = 1 -- The operation is executed only if the new amounts differ from the current ones of the payment.
-     */
-    enum UpdatingOperationKind {
-        Full,
-        Lazy
     }
 
     /// @dev Contains parameters of a payment making operation.
@@ -931,4 +930,6 @@ interface ICardPaymentProcessor is
     ICardPaymentProcessorPrimary,
     ICardPaymentProcessorConfiguration,
     ICardPaymentProcessorErrors
-{}
+{
+
+}
