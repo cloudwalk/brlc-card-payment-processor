@@ -13,8 +13,10 @@ import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.
 import { Versionable } from "./base/Versionable.sol";
 
 import { CardPaymentProcessorStorage } from "./CardPaymentProcessorStorage.sol";
-import { ICardPaymentProcessor, ICardPaymentProcessorPrimary, ICardPaymentProcessorConfiguration } from "./interfaces/ICardPaymentProcessor.sol";
-import { ICardPaymentCashback, ICardPaymentCashbackPrimary, ICardPaymentCashbackConfiguration } from "./interfaces/ICardPaymentCashback.sol";
+import { ICardPaymentProcessor, ICardPaymentProcessorPrimary } from "./interfaces/ICardPaymentProcessor.sol";
+import { ICardPaymentProcessorConfiguration } from "./interfaces/ICardPaymentProcessor.sol";
+import { ICardPaymentCashback, ICardPaymentCashbackPrimary } from "./interfaces/ICardPaymentCashback.sol";
+import { ICardPaymentCashbackConfiguration } from "./interfaces/ICardPaymentCashback.sol";
 import { ICashbackDistributor, ICashbackDistributorTypes } from "./interfaces/ICashbackDistributor.sol";
 
 /**
