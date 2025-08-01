@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 /**
  * @title ICardPaymentProcessorTypes interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the types used in the wrapper contract for the card payment operations.
+ * @dev The custom types used in the wrapper contract for the card payment operations.
  */
 interface ICardPaymentProcessorTypes {
     /**
@@ -67,9 +67,7 @@ interface ICardPaymentProcessorTypes {
 /**
  * @title ICardPaymentProcessorPrimary interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev The primary part of the card payment processor smart contract interface.
- *
- * See details about the contract in the comments of the {ICardPaymentProcessor} interface.
+ * @dev The primary interface of the wrapper contract for the card payment operations.
  */
 interface ICardPaymentProcessorPrimary is ICardPaymentProcessorTypes {
     // ------------------ Events ---------------------------------- //
@@ -731,7 +729,7 @@ interface ICardPaymentProcessorPrimary is ICardPaymentProcessorTypes {
 /**
  * @title ICardPaymentProcessorConfiguration interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev The configuration part of the card payment processor smart contract interface.
+ * @dev The configuration interface of the wrapper contract for the card payment operations.
  */
 interface ICardPaymentProcessorConfiguration {
     // ------------------ Events ---------------------------------- //
@@ -779,9 +777,7 @@ interface ICardPaymentProcessorConfiguration {
 /**
  * @title ICardPaymentProcessorErrors interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the custom errors used in the card payment processor contract.
- *
- * The errors are ordered alphabetically.
+ * @dev The custom errors used in the wrapper contract for the card payment operations.
  */
 interface ICardPaymentProcessorErrors is ICardPaymentProcessorTypes {
     /// @dev The zero token address has been passed as a function argument.
@@ -845,7 +841,7 @@ interface ICardPaymentProcessorErrors is ICardPaymentProcessorTypes {
 /**
  * @title ICardPaymentProcessor interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the interface of the wrapper contract for the card payment operations.
+ * @dev The full interface of the wrapper contract for the card payment operations.
  */
 interface ICardPaymentProcessor is
     ICardPaymentProcessorPrimary,

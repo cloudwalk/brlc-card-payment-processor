@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 /**
  * @title ICashbackDistributorTypes interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the types used in the wrapper contract for the cashback operations.
+ * @dev The custom types used in the wrapper contract for the cashback operations.
  */
 interface ICashbackDistributorTypes {
     /**
@@ -123,7 +123,7 @@ interface ICashbackDistributorTypes {
 /**
  * @title ICashbackDistributorPrimary interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the primary interface of the wrapper contract for the cashback operations.
+ * @dev The primary interface of the wrapper contract for the cashback operations.
  */
 interface ICashbackDistributorPrimary is ICashbackDistributorTypes {
     // ------------------ Events ---------------------------------- //
@@ -351,7 +351,7 @@ interface ICashbackDistributorPrimary is ICashbackDistributorTypes {
 /**
  * @title ICashbackDistributorConfiguration interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the configuration interface of the wrapper contract for the cashback operations.
+ * @dev The configuration interface of the wrapper contract for the cashback operations.
  */
 interface ICashbackDistributorConfiguration {
     // ------------------ Events ---------------------------------- //
@@ -393,7 +393,7 @@ interface ICashbackDistributorConfiguration {
 /**
  * @title ICashbackDistributorErrors interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the errors interface of the wrapper contract for the cashback operations.
+ * @dev The custom errors used in the wrapper contract for the cashback operations.
  */
 interface ICashbackDistributorErrors {
     /// @dev The cashback operations are already disabled.

@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 /**
  * @title ICardPaymentCashbackTypes interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the types used in the wrapper contract for the card payment cashback operations.
+ * @dev The custom types used in the wrapper contract for the card payment cashback operations.
  */
 interface ICardPaymentCashbackTypes {
     /**
@@ -23,7 +23,7 @@ interface ICardPaymentCashbackTypes {
 /**
  * @title ICardPaymentCashbackPrimary interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the primary interface of the wrapper contract for the card payment cashback operations.
+ * @dev The primary interface of the wrapper contract for the card payment cashback operations.
  */
 interface ICardPaymentCashbackPrimary is ICardPaymentCashbackTypes {
     // ------------------ Events ---------------------------------- //
@@ -103,7 +103,7 @@ interface ICardPaymentCashbackPrimary is ICardPaymentCashbackTypes {
 /**
  * @title ICardPaymentCashbackConfiguration interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the configuration interface of the wrapper contract for the card payment cashback operations.
+ * @dev The configuration interface of the wrapper contract for the card payment cashback operations.
  */
 interface ICardPaymentCashbackConfiguration {
     // ------------------ Events ---------------------------------- //
@@ -166,7 +166,7 @@ interface ICardPaymentCashbackConfiguration {
 /**
  * @title ICardPaymentCashbackErrors interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the errors interface of the wrapper contract for the card payment cashback operations.
+ * @dev The custom errors used in the wrapper contract for the card payment cashback operations.
  */
 interface ICardPaymentCashbackErrors {
     /// @dev The cashback operations are already disabled.
@@ -194,7 +194,7 @@ interface ICardPaymentCashbackErrors {
 /**
  * @title ICardPaymentCashback interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the interface of the wrapper contract for the card payment cashback operations.
+ * @dev The full interface of the wrapper contract for the card payment cashback operations.
  */
 interface ICardPaymentCashback is
     ICardPaymentCashbackPrimary,
