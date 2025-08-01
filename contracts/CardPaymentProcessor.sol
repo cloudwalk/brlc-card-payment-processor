@@ -48,6 +48,7 @@ contract CardPaymentProcessor is
         Full,
         Lazy
     }
+
     /// @dev Contains parameters of a payment making operation.
     struct MakingOperation {
         address sender;
@@ -103,6 +104,7 @@ contract CardPaymentProcessor is
         uint256 totalSentAmount;
         uint256 revokedCashbackAmount;
     }
+
     // ------------------ Constants ------------------------------- //
 
     /// @dev The role of an executor that is allowed to execute the card payment operations.
