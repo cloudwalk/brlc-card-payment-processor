@@ -36,17 +36,6 @@ interface ICardPaymentProcessorTypes {
     }
 
     /**
-     * @dev Kind of a payment updating operation as an enum.
-     *
-     * The possible values:
-     * - Full = 0 -- The operation is executed fully regardless of the new values of the base amount and extra amount.
-     * - Lazy = 1 -- The operation is executed only if the new amounts differ from the current ones of the payment.
-     */
-    enum UpdatingOperationKind {
-        Full,
-        Lazy
-    }
-    /**
      * @dev The data of a single payment.
      *
      * Fields:
@@ -72,62 +61,6 @@ interface ICardPaymentProcessorTypes {
         uint256 extraAmount;
         address sponsor;
         uint256 subsidyLimit;
-    }
-
-    /// @dev Contains parameters of a payment making operation.
-    struct MakingOperation {
-        address sender;
-        address account;
-        uint256 baseAmount;
-        uint256 extraAmount;
-        bytes16 authorizationId;
-        bytes16 correlationId;
-        address sponsor;
-        uint256 subsidyLimit;
-        int16 cashbackRateInPermil;
-    }
-
-    /// @dev Contains parameters for a payment updating operation.
-    struct UpdatingOperation {
-        uint256 oldPaymentSumAmount;
-        uint256 newPaymentSumAmount;
-        uint256 oldSponsorSumAmount;
-        uint256 newSponsorSumAmount;
-        uint256 oldPaymentBaseAmount;
-        uint256 newPaymentBaseAmount;
-        uint256 oldCompensationAmount;
-        uint256 paymentTotalAmountChange;
-        uint256 accountBalanceChange;
-        uint256 sponsorBalanceChange;
-        uint256 cashbackAmountChange;
-        bool paymentSumAmountDecreased;
-        bool cashbackDecreased;
-    }
-
-    /// @dev Contains parameters of a payment canceling operation.
-    struct CancelingOperation {
-        uint256 paymentTotalAmount;
-        uint256 accountSentAmount;
-        uint256 sponsorSentAmount;
-        uint256 totalSentAmount;
-        uint256 revokedCashbackAmount;
-    }
-
-    /// @dev Contains parameters of a payment refunding operation.
-    struct RefundingOperation {
-        uint256 paymentRefundAmount; // It is for local use only to avoid the "Stack too deep" error.
-        uint256 sponsorRefundAmount;
-        uint256 newPaymentRefundAmount;
-        uint256 newPaymentSumAmount;
-        uint256 paymentTotalAmountDiff;
-        uint256 oldCashbackAmount; // It is for local use only to avoid the "Stack too deep" error.
-        uint256 newCashbackAmount; // It is for local use only to avoid the "Stack too deep" error.
-        uint256 oldCompensationAmount; // It is for local use only to avoid the "Stack too deep" error.
-        uint256 newCompensationAmount;
-        uint256 accountSentAmount;
-        uint256 sponsorSentAmount;
-        uint256 totalSentAmount;
-        uint256 revokedCashbackAmount;
     }
 }
 
@@ -918,6 +851,4 @@ interface ICardPaymentProcessor is
     ICardPaymentProcessorPrimary,
     ICardPaymentProcessorConfiguration,
     ICardPaymentProcessorErrors
-{
-
-}
+{}
