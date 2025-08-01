@@ -21,6 +21,86 @@ interface ICardPaymentCashbackTypes {
 }
 
 /**
+ * @title ICardPaymentCashbackPrimary interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the primary interface of the wrapper contract for the card payment cashback operations.
+ */
+interface ICardPaymentCashbackPrimary is ICardPaymentCashbackTypes {
+    // ------------------ Events ---------------------------------- //
+
+    /**
+     * @dev Emitted when a cashback send request succeeded.
+     * @param cashbackDistributor The address of the cashback distributor.
+     * @param amount The actual amount of the sent cashback.
+     * @param nonce The nonce of the cashback.
+     */
+    event SendCashbackSuccess(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
+
+    /**
+     * @dev Emitted when a cashback send request failed.
+     * @param cashbackDistributor The address of the cashback distributor.
+     * @param amount The requested amount of cashback to send.
+     * @param nonce The nonce of the cashback.
+     */
+    event SendCashbackFailure(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
+
+    /**
+     * @dev Emitted when a cashback revocation request succeeded.
+     * @param cashbackDistributor The address of the cashback distributor.
+     * @param amount The actual amount of the revoked cashback.
+     * @param nonce The nonce of the cashback.
+     */
+    event RevokeCashbackSuccess(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
+
+    /**
+     * @dev Emitted when a cashback revocation request failed.
+     * @param cashbackDistributor The address of the cashback distributor.
+     * @param amount The requested amount of cashback to revoke.
+     * @param nonce The nonce of the cashback.
+     */
+    event RevokeCashbackFailure(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
+
+    /**
+     * @dev Emitted when a cashback increase request succeeded.
+     * @param cashbackDistributor The address of the cashback distributor.
+     * @param amount The actual amount of the cashback increase.
+     * @param nonce The nonce of the cashback.
+     */
+    event IncreaseCashbackSuccess(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
+
+    /**
+     * @dev Emitted when a cashback increase request failed.
+     * @param cashbackDistributor The address of the cashback distributor.
+     * @param amount The requested amount of cashback to increase.
+     * @param nonce The nonce of the cashback.
+     */
+    event IncreaseCashbackFailure(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
+
+    // ------------------ View functions ------------------------ //
+
+    /**
+     * @dev Returns the address of the cashback distributor contract.
+     */
+    function cashbackDistributor() external view returns (address);
+
+    /**
+     * @dev Checks if the cashback operations are enabled.
+     */
+    function cashbackEnabled() external view returns (bool);
+
+    /**
+     * @dev Returns the current cashback rate in permil.
+     */
+    function cashbackRate() external view returns (uint256);
+
+    /**
+     * @dev Returns the cashback details for the transaction authorization ID.
+     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
+     */
+    function getCashback(bytes16 authorizationId) external view returns (Cashback memory);
+}
+
+/**
  * @title ICardPaymentCashbackConfiguration interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Defines the configuration interface of the wrapper contract for the card payment cashback operations.
@@ -109,86 +189,6 @@ interface ICardPaymentCashbackErrors {
 
     /// @dev The cashback distributor contract is already configured.
     error CashbackDistributorAlreadyConfigured();
-}
-
-/**
- * @title ICardPaymentCashbackPrimary interface
- * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the primary interface of the wrapper contract for the card payment cashback operations.
- */
-interface ICardPaymentCashbackPrimary is ICardPaymentCashbackTypes {
-    // ------------------ Events ---------------------------------- //
-
-    /**
-     * @dev Emitted when a cashback send request succeeded.
-     * @param cashbackDistributor The address of the cashback distributor.
-     * @param amount The actual amount of the sent cashback.
-     * @param nonce The nonce of the cashback.
-     */
-    event SendCashbackSuccess(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
-
-    /**
-     * @dev Emitted when a cashback send request failed.
-     * @param cashbackDistributor The address of the cashback distributor.
-     * @param amount The requested amount of cashback to send.
-     * @param nonce The nonce of the cashback.
-     */
-    event SendCashbackFailure(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
-
-    /**
-     * @dev Emitted when a cashback revocation request succeeded.
-     * @param cashbackDistributor The address of the cashback distributor.
-     * @param amount The actual amount of the revoked cashback.
-     * @param nonce The nonce of the cashback.
-     */
-    event RevokeCashbackSuccess(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
-
-    /**
-     * @dev Emitted when a cashback revocation request failed.
-     * @param cashbackDistributor The address of the cashback distributor.
-     * @param amount The requested amount of cashback to revoke.
-     * @param nonce The nonce of the cashback.
-     */
-    event RevokeCashbackFailure(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
-
-    /**
-     * @dev Emitted when a cashback increase request succeeded.
-     * @param cashbackDistributor The address of the cashback distributor.
-     * @param amount The actual amount of the cashback increase.
-     * @param nonce The nonce of the cashback.
-     */
-    event IncreaseCashbackSuccess(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
-
-    /**
-     * @dev Emitted when a cashback increase request failed.
-     * @param cashbackDistributor The address of the cashback distributor.
-     * @param amount The requested amount of cashback to increase.
-     * @param nonce The nonce of the cashback.
-     */
-    event IncreaseCashbackFailure(address indexed cashbackDistributor, uint256 amount, uint256 nonce);
-
-    // ------------------ View functions ------------------------ //
-
-    /**
-     * @dev Returns the address of the cashback distributor contract.
-     */
-    function cashbackDistributor() external view returns (address);
-
-    /**
-     * @dev Checks if the cashback operations are enabled.
-     */
-    function cashbackEnabled() external view returns (bool);
-
-    /**
-     * @dev Returns the current cashback rate in permil.
-     */
-    function cashbackRate() external view returns (uint256);
-
-    /**
-     * @dev Returns the cashback details for the transaction authorization ID.
-     * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
-     */
-    function getCashback(bytes16 authorizationId) external view returns (Cashback memory);
 }
 
 /**

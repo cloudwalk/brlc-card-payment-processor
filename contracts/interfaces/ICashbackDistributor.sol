@@ -132,28 +132,6 @@ interface ICashbackDistributorTypes {
 }
 
 /**
- * @title ICashbackDistributorErrors interface
- * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the errors interface of the wrapper contract for the cashback operations.
- */
-interface ICashbackDistributorErrors {
-    /// @dev The cashback operations are already enabled.
-    error CashbackAlreadyEnabled();
-
-    /// @dev The cashback operations are already disabled.
-    error CashbackAlreadyDisabled();
-
-    /// @dev The zero token address has been passed as a function argument.
-    error ZeroTokenAddress();
-
-    /// @dev Zero external identifier has been passed as a function argument.
-    error ZeroExternalId();
-
-    /// @dev The zero account address has been passed as a function argument.
-    error ZeroRecipientAddress();
-}
-
-/**
  * @title ICashbackDistributorPrimary interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Defines the primary interface of the wrapper contract for the cashback operations.
@@ -422,6 +400,27 @@ interface ICashbackDistributorConfiguration {
      * Emits a {Disable} event.
      */
     function disable() external;
+}
+/**
+ * @title ICashbackDistributorErrors interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the errors interface of the wrapper contract for the cashback operations.
+ */
+interface ICashbackDistributorErrors {
+    /// @dev The cashback operations are already enabled.
+    error CashbackAlreadyEnabled();
+
+    /// @dev The cashback operations are already disabled.
+    error CashbackAlreadyDisabled();
+
+    /// @dev The zero token address has been passed as a function argument.
+    error ZeroTokenAddress();
+
+    /// @dev Zero external identifier has been passed as a function argument.
+    error ZeroExternalId();
+
+    /// @dev The zero account address has been passed as a function argument.
+    error ZeroRecipientAddress();
 }
 
 /**
