@@ -863,14 +863,27 @@ interface ICardPaymentProcessorConfiguration {
  * The errors are ordered alphabetically.
  */
 interface ICardPaymentProcessorErrors is ICardPaymentProcessorTypes {
-    /// @dev The zero token address has been passed as a function argument.
-    error ZeroTokenAddress();
+    /// @dev A new cash-out account is the same as the previously set one.
+    error CashOutAccountUnchanged();
 
-    /// @dev The zero account address has been passed as a function argument.
-    error ZeroAccount();
+    /// @dev Empty array of authorization IDs has been passed as a function argument.
+    error EmptyAuthorizationIdsArray();
 
-    /// @dev Zero authorization ID has been passed as a function argument.
-    error ZeroAuthorizationId();
+    /// @dev The new extra amount of the payment does not meet the requirements.
+    error InappropriateNewExtraPaymentAmount();
+
+    /// @dev The new amount of the payment does not meet the requirements.
+    error InappropriateNewBasePaymentAmount();
+
+    /// @dev The payment with the provided authorization ID has an inappropriate status.
+    /// @param currentStatus The current status of payment with the provided authorization ID.
+    error InappropriatePaymentStatus(PaymentStatus currentStatus);
+
+    /// @dev The requested refund amount does not meet the requirements.
+    error InappropriateRefundAmount();
+
+    /// @dev Payment with the provided authorization ID is cleared, but it must be uncleared.
+    error PaymentAlreadyCleared();
 
     /// @dev The payment with the provided authorization ID already exists and is not revoked.
     error PaymentAlreadyExists();
@@ -878,47 +891,30 @@ interface ICardPaymentProcessorErrors is ICardPaymentProcessorTypes {
     /// @dev Payment with the provided authorization ID is uncleared, but it must be cleared.
     error PaymentAlreadyUncleared();
 
-    /// @dev Payment with the provided authorization ID is cleared, but it must be uncleared.
-    error PaymentAlreadyCleared();
-
     /// @dev The payment with the provided authorization ID does not exist.
     error PaymentNotExist();
 
-    /// @dev Empty array of authorization IDs has been passed as a function argument.
-    error EmptyAuthorizationIdsArray();
+    /// @dev Revocation counter of the payment reached the configured limit.
+    /// @param configuredRevocationLimit The configured revocation limit.
+    error RevocationLimitReached(uint8 configuredRevocationLimit);
 
-    /// @dev Zero parent transaction hash has been passed as a function argument.
-    error ZeroParentTransactionHash();
+    /// @dev The function cannot be executed for a subsidized payment with the non-zero refund amount.
+    error SubsidizedPaymentWithNonZeroRefundAmount();
+
+    /// @dev The zero account address has been passed as a function argument.
+    error ZeroAccount();
+
+    /// @dev Zero authorization ID has been passed as a function argument.
+    error ZeroAuthorizationId();
 
     /// @dev The cash-out account is not configured.
     error ZeroCashOutAccount();
 
-    /**
-     * @dev The payment with the provided authorization ID has an inappropriate status.
-     * @param currentStatus The current status of payment with the provided authorization ID.
-     */
-    error InappropriatePaymentStatus(PaymentStatus currentStatus);
+    /// @dev Zero parent transaction hash has been passed as a function argument.
+    error ZeroParentTransactionHash();
 
-    /**
-     * @dev Revocation counter of the payment reached the configured limit.
-     * @param configuredRevocationLimit The configured revocation limit.
-     */
-    error RevocationLimitReached(uint8 configuredRevocationLimit);
-
-    /// @dev A new cash-out account is the same as the previously set one.
-    error CashOutAccountUnchanged();
-
-    /// @dev The requested refund amount does not meet the requirements.
-    error InappropriateRefundAmount();
-
-    /// @dev The new amount of the payment does not meet the requirements.
-    error InappropriateNewBasePaymentAmount();
-
-    /// @dev The new extra amount of the payment does not meet the requirements.
-    error InappropriateNewExtraPaymentAmount();
-
-    /// @dev The function cannot be executed for a subsidized payment with the non-zero refund amount.
-    error SubsidizedPaymentWithNonZeroRefundAmount();
+    /// @dev The zero token address has been passed as a function argument.
+    error ZeroTokenAddress();
 }
 
 /**
