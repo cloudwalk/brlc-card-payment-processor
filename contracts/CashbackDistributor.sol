@@ -14,7 +14,8 @@ import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.
 import { Versionable } from "./base/Versionable.sol";
 
 import { CashbackDistributorStorage } from "./CashbackDistributorStorage.sol";
-import { ICashbackDistributor } from "./interfaces/ICashbackDistributor.sol";
+import { ICashbackDistributor, ICashbackDistributorPrimary } from "./interfaces/ICashbackDistributor.sol";
+import { ICashbackDistributorConfiguration } from "./interfaces/ICashbackDistributor.sol";
 
 /**
  * @title CashbackDistributor contract
@@ -36,7 +37,11 @@ contract CashbackDistributor is
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
 
-    /// @dev A helper structure to store context of function execution and avoid stack overflow error.
+    /**
+     * @dev A helper structure to store context of function execution and avoid stack overflow error.
+     *
+     * For internal use only.
+     */
     struct ExecutionContext {
         address token;
         CashbackStatus cashbackStatus;
@@ -51,23 +56,6 @@ contract CashbackDistributor is
 
     /// @dev The role of a distributor that is allowed to execute the cashback operations.
     bytes32 public constant DISTRIBUTOR_ROLE = keccak256("DISTRIBUTOR_ROLE");
-
-    // ------------------ Errors ---------------------------------- //
-
-    /// @dev The cashback operations are already enabled.
-    error CashbackAlreadyEnabled();
-
-    /// @dev The cashback operations are already disabled.
-    error CashbackAlreadyDisabled();
-
-    /// @dev The zero token address has been passed as a function argument.
-    error ZeroTokenAddress();
-
-    /// @dev Zero external identifier has been passed as a function argument.
-    error ZeroExternalId();
-
-    /// @dev The zero account address has been passed as a function argument.
-    error ZeroRecipientAddress();
 
     // ------------------ Constructor ----------------------------- //
 
@@ -106,7 +94,7 @@ contract CashbackDistributor is
     // ------------------ Transactional functions ----------------- //
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Requirements:
      *
@@ -186,7 +174,7 @@ contract CashbackDistributor is
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Requirements:
      *
@@ -246,7 +234,7 @@ contract CashbackDistributor is
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Requirements:
      *
@@ -315,7 +303,7 @@ contract CashbackDistributor is
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorConfiguration
      *
      * @dev Requirements:
      *
@@ -332,7 +320,7 @@ contract CashbackDistributor is
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorConfiguration
      *
      * @dev Requirements:
      *
@@ -351,28 +339,28 @@ contract CashbackDistributor is
     // ------------------ View functions -------------------------- //
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      */
     function enabled() external view returns (bool) {
         return _enabled;
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      */
     function nextNonce() external view returns (uint256) {
         return _nextNonce;
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      */
     function getCashback(uint256 nonce) external view returns (Cashback memory cashback) {
         cashback = _cashbacks[nonce];
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      */
     function getCashbacks(uint256[] calldata nonces) external view returns (Cashback[] memory cashbacks) {
         uint256 len = nonces.length;
@@ -383,7 +371,7 @@ contract CashbackDistributor is
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      */
     function getCashbackNonces(
         bytes32 externalId,
@@ -408,35 +396,35 @@ contract CashbackDistributor is
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      */
     function getTotalCashbackByTokenAndExternalId(address token, bytes32 externalId) external view returns (uint256) {
         return _totalCashbackByTokenAndExternalId[token][externalId];
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      */
     function getTotalCashbackByTokenAndRecipient(address token, address recipient) external view returns (uint256) {
         return _totalCashbackByTokenAndRecipient[token][recipient];
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      */
     function getCashbackSinceLastReset(address token, address recipient) external view returns (uint256) {
         return _cashbackSinceLastReset[token][recipient];
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      */
     function getCashbackLastTimeReset(address token, address recipient) external view returns (uint256) {
         return _cashbackLastTimeReset[token][recipient];
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      */
     function previewCashbackCap(
         address token,

@@ -13,8 +13,10 @@ import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.
 import { Versionable } from "./base/Versionable.sol";
 
 import { CardPaymentProcessorStorage } from "./CardPaymentProcessorStorage.sol";
-import { ICardPaymentProcessor } from "./interfaces/ICardPaymentProcessor.sol";
-import { ICardPaymentCashback } from "./interfaces/ICardPaymentCashback.sol";
+import { ICardPaymentProcessor, ICardPaymentProcessorPrimary } from "./interfaces/ICardPaymentProcessor.sol";
+import { ICardPaymentProcessorConfiguration } from "./interfaces/ICardPaymentProcessor.sol";
+import { ICardPaymentCashback, ICardPaymentCashbackPrimary } from "./interfaces/ICardPaymentCashback.sol";
+import { ICardPaymentCashbackConfiguration } from "./interfaces/ICardPaymentCashback.sol";
 import { ICashbackDistributor, ICashbackDistributorTypes } from "./interfaces/ICashbackDistributor.sol";
 
 /**
@@ -49,7 +51,11 @@ contract CardPaymentProcessor is
         Lazy
     }
 
-    /// @dev Contains parameters of a payment making operation.
+    /**
+     * @dev Contains parameters of a payment making operation.
+     *
+     * Used as parameter of the {_makePayment} function.
+     */
     struct MakingOperation {
         address sender;
         address account;
@@ -62,7 +68,11 @@ contract CardPaymentProcessor is
         int16 cashbackRateInPermil;
     }
 
-    /// @dev Contains parameters for a payment updating operation.
+    /**
+     * @dev Contains parameters for a payment updating operation.
+     *
+     * For internal use only.
+     */
     struct UpdatingOperation {
         uint256 oldPaymentSumAmount;
         uint256 newPaymentSumAmount;
@@ -79,7 +89,11 @@ contract CardPaymentProcessor is
         bool cashbackDecreased;
     }
 
-    /// @dev Contains parameters of a payment canceling operation.
+    /**
+     * @dev Contains parameters of a payment canceling operation.
+     *
+     * For internal use only.
+     */
     struct CancelingOperation {
         uint256 paymentTotalAmount;
         uint256 accountSentAmount;
@@ -88,7 +102,11 @@ contract CardPaymentProcessor is
         uint256 revokedCashbackAmount;
     }
 
-    /// @dev Contains parameters of a payment refunding operation.
+    /**
+     * @dev Contains parameters of a payment refunding operation.
+     *
+     * For internal use only.
+     */
     struct RefundingOperation {
         uint256 paymentRefundAmount; // It is for local use only to avoid the "Stack too deep" error.
         uint256 sponsorRefundAmount;
@@ -119,95 +137,6 @@ contract CardPaymentProcessor is
      * Currently, it can only be changed by deploying a new implementation of the contract.
      */
     uint16 public constant CASHBACK_ROUNDING_COEF = 10000;
-
-    // ------------------ Events ---------------------------------- //
-
-    /**
-     * @dev Emitted when the revocation limit is changed.
-     * @param oldLimit The old value of the revocation limit.
-     * @param newLimit The new value of the revocation limit.
-     */
-    event SetRevocationLimit(uint8 oldLimit, uint8 newLimit);
-
-    // ------------------ Errors ---------------------------------- //
-
-    /// @dev The zero token address has been passed as a function argument.
-    error ZeroTokenAddress();
-
-    /// @dev The zero account address has been passed as a function argument.
-    error ZeroAccount();
-
-    /// @dev Zero authorization ID has been passed as a function argument.
-    error ZeroAuthorizationId();
-
-    /// @dev The payment with the provided authorization ID already exists and is not revoked.
-    error PaymentAlreadyExists();
-
-    /// @dev Payment with the provided authorization ID is uncleared, but it must be cleared.
-    error PaymentAlreadyUncleared();
-
-    /// @dev Payment with the provided authorization ID is cleared, but it must be uncleared.
-    error PaymentAlreadyCleared();
-
-    /// @dev The payment with the provided authorization ID does not exist.
-    error PaymentNotExist();
-
-    /// @dev Empty array of authorization IDs has been passed as a function argument.
-    error EmptyAuthorizationIdsArray();
-
-    /// @dev Zero parent transaction hash has been passed as a function argument.
-    error ZeroParentTransactionHash();
-
-    /// @dev The cash-out account is not configured.
-    error ZeroCashOutAccount();
-
-    /**
-     * @dev The payment with the provided authorization ID has an inappropriate status.
-     * @param currentStatus The current status of payment with the provided authorization ID.
-     */
-    error InappropriatePaymentStatus(PaymentStatus currentStatus);
-
-    /**
-     * @dev Revocation counter of the payment reached the configured limit.
-     * @param configuredRevocationLimit The configured revocation limit.
-     */
-    error RevocationLimitReached(uint8 configuredRevocationLimit);
-
-    /// @dev A new cash-out account is the same as the previously set one.
-    error CashOutAccountUnchanged();
-
-    /// @dev A new cashback rate is the same as previously set one.
-    error CashbackRateUnchanged();
-
-    /// @dev The provided cashback rate exceeds the allowed maximum.
-    error CashbackRateExcess();
-
-    /// @dev The cashback operations are already enabled.
-    error CashbackAlreadyEnabled();
-
-    /// @dev The cashback operations are already disabled.
-    error CashbackAlreadyDisabled();
-
-    /// @dev The zero cashback distributor address has been passed as a function argument.
-    error CashbackDistributorZeroAddress();
-
-    /// @dev The cashback distributor contract is not configured.
-    error CashbackDistributorNotConfigured();
-
-    /// @dev The cashback distributor contract is already configured.
-    error CashbackDistributorAlreadyConfigured();
-
-    /// @dev The requested refund amount does not meet the requirements.
-    error InappropriateRefundAmount();
-
-    /// @dev The new amount of the payment does not meet the requirements.
-    error InappropriateNewBasePaymentAmount();
-
-    /// @dev The new extra amount of the payment does not meet the requirements.
-    error InappropriateNewExtraPaymentAmount();
-
-    /// @dev The function cannot be executed for a subsidized payment with the non-zero refund amount.
-    error SubsidizedPaymentWithNonZeroRefundAmount();
 
     // ------------------ Constructor ----------------------------- //
 
@@ -257,7 +186,7 @@ contract CardPaymentProcessor is
     // ------------------ Transactional functions ----------------- //
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorConfiguration
      *
      * @dev Requirements:
      *
@@ -277,7 +206,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorConfiguration
      *
      * @dev Requirements:
      *
@@ -294,7 +223,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -326,7 +255,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -369,7 +298,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -398,7 +327,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -415,7 +344,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -441,7 +370,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -458,7 +387,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -484,7 +413,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -502,7 +431,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -525,7 +454,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -541,7 +470,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -566,7 +495,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -580,7 +509,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -611,7 +540,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -642,7 +571,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -672,7 +601,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      *
      * @dev Requirements:
      *
@@ -697,7 +626,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackConfiguration
      *
      * @dev Requirements:
      *
@@ -723,7 +652,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackConfiguration
      *
      * @dev Requirements:
      *
@@ -746,7 +675,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackConfiguration
      *
      * @dev Requirements:
      *
@@ -768,7 +697,7 @@ contract CardPaymentProcessor is
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackConfiguration
      *
      * @dev Requirements:
      *
@@ -788,98 +717,98 @@ contract CardPaymentProcessor is
     // ------------------ View functions -------------------------- //
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function cashOutAccount() external view returns (address) {
         return _cashOutAccount;
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function underlyingToken() external view returns (address) {
         return _token;
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function totalUnclearedBalance() external view returns (uint256) {
         return _totalUnclearedBalance;
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function totalClearedBalance() external view returns (uint256) {
         return _totalClearedBalance;
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function unclearedBalanceOf(address account) external view returns (uint256) {
         return _unclearedBalances[account];
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function clearedBalanceOf(address account) external view returns (uint256) {
         return _clearedBalances[account];
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function paymentFor(bytes16 authorizationId) external view returns (Payment memory) {
         return _payments[authorizationId];
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function isPaymentRevoked(bytes32 parentTxHash) external view returns (bool) {
         return _paymentRevocationFlags[parentTxHash];
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function isPaymentReversed(bytes32 parentTxHash) external view returns (bool) {
         return _paymentReversionFlags[parentTxHash];
     }
 
     /**
-     * @inheritdoc ICardPaymentProcessor
+     * @inheritdoc ICardPaymentProcessorPrimary
      */
     function revocationLimit() external view returns (uint8) {
         return _revocationLimit;
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackPrimary
      */
     function cashbackDistributor() external view returns (address) {
         return _cashbackDistributor;
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackPrimary
      */
     function cashbackEnabled() external view returns (bool) {
         return _cashbackEnabled;
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackPrimary
      */
     function cashbackRate() external view returns (uint256) {
         return _cashbackRateInPermil;
     }
 
     /**
-     * @inheritdoc ICardPaymentCashback
+     * @inheritdoc ICardPaymentCashbackPrimary
      */
     function getCashback(bytes16 authorizationId) external view returns (Cashback memory) {
         return _cashbacks[authorizationId];

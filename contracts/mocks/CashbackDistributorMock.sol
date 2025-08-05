@@ -4,7 +4,7 @@ pragma solidity ^0.8.9;
 
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
-import { ICashbackDistributor } from "../interfaces/ICashbackDistributor.sol";
+import { ICashbackDistributor, ICashbackDistributorPrimary, ICashbackDistributorConfiguration } from "../interfaces/ICashbackDistributor.sol";
 
 /**
  * @title CashbackDistributorMock contract
@@ -106,7 +106,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
     // ------------------ Pure functions ------------------------ //
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Just a stub for testing. Always returns `true`.
      */
@@ -115,7 +115,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Just a stub for testing. Always returns zero.
      */
@@ -124,7 +124,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Just a stub for testing. Always returns an empty structure.
      */
@@ -134,7 +134,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Just a stub for testing. Always returns an empty array.
      */
@@ -144,7 +144,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Just a stub for testing. Always returns an empty array.
      */
@@ -160,7 +160,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Just a stub for testing. Always returns zero.
      */
@@ -171,7 +171,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Just a stub for testing. Always returns zero.
      */
@@ -182,7 +182,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Just a stub for testing. Always returns zero.
      */
@@ -193,7 +193,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Just a stub for testing. Always returns zero.
      */
@@ -204,7 +204,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Just a stub for testing. Always returns zeros.
      */
@@ -221,21 +221,21 @@ contract CashbackDistributorMock is ICashbackDistributor {
     // ------------------ Transactional functions ----------------- //
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorConfiguration
      *
      * @dev Just a stub for testing. Does nothing.
      */
     function enable() public {}
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorConfiguration
      *
      * @dev Just a stub for testing. Does nothing.
      */
     function disable() public {}
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Returns the previously set values and emits an event with provided arguments.
      * Stores `token`, `msg.sender` and `recipient` for further usage.
@@ -265,7 +265,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Returns the previously set value and emits an event with provided arguments.
      * If the returned value is `true` sends the provided amount of tokens from `msg.sender` to this contract.
@@ -279,7 +279,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
-     * @inheritdoc ICashbackDistributor
+     * @inheritdoc ICashbackDistributorPrimary
      *
      * @dev Returns the previously set value and emits an event with provided arguments.
      * If the returned value is `true` sends the provided amount of tokens

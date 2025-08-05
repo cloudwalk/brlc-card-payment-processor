@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 /**
  * @title ICardPaymentProcessorTypes interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the types used in the wrapper contract for the card payment operations.
+ * @dev The custom types used in the wrapper contract for the card payment operations.
  */
 interface ICardPaymentProcessorTypes {
     /**
@@ -33,18 +33,6 @@ interface ICardPaymentProcessorTypes {
         Revoked,
         Reversed,
         Confirmed
-    }
-
-    /**
-     * @dev Possible kinds of a payment as an enum.
-     *
-     * The possible values:
-     * - Common = 0 ------ The payment is not subsidized.
-     * - Subsidized = 1 -- The payment is subsidized.
-     */
-    enum PaymentKind {
-        Common,
-        Subsidized
     }
 
     /**
@@ -77,11 +65,11 @@ interface ICardPaymentProcessorTypes {
 }
 
 /**
- * @title ICardPaymentProcessor interface
+ * @title ICardPaymentProcessorPrimary interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the interface of the wrapper contract for the card payment operations.
+ * @dev The primary interface of the wrapper contract for the card payment operations.
  */
-interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
+interface ICardPaymentProcessorPrimary is ICardPaymentProcessorTypes {
     // ------------------ Events ---------------------------------- //
 
     /**
@@ -392,37 +380,7 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
         uint256 refundAmount
     );
 
-    /**
-     * @dev Emitted when the cash-out account is changed.
-     * @param oldCashOutAccount The old address of the cash-out account.
-     * @param newCashOutAccount The new address of the cash-out account.
-     */
-    event SetCashOutAccount(
-        address oldCashOutAccount, // Tools: prevent Prettier one-liner
-        address newCashOutAccount
-    );
-
     // ------------------ Transactional functions --------------- //
-
-    /**
-     * @dev Sets the cash-out account that will receive cleared tokens of confirmed payments.
-     *
-     * Emits a {SetCashOutAccount} event if the new account differs from the old one.
-     *
-     * @param newCashOutAccount The new address of the cash-out account.
-     */
-    function setCashOutAccount(address newCashOutAccount) external;
-
-    /**
-     * @dev Sets a new value for the revocation limit.
-     *
-     * If the limit equals 0 or 1 a payment with the same authorization ID cannot be repeated after the revocation.
-     *
-     * Emits a {SetRevocationLimit} event if the new limit differs from the old value.
-     *
-     * @param newLimit The new revocation limit value to be set.
-     */
-    function setRevocationLimit(uint8 newLimit) external;
 
     /**
      * @dev Makes a card payment.
@@ -767,3 +725,126 @@ interface ICardPaymentProcessor is ICardPaymentProcessorTypes {
      */
     function revocationLimit() external view returns (uint8);
 }
+
+/**
+ * @title ICardPaymentProcessorConfiguration interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev The configuration interface of the wrapper contract for the card payment operations.
+ */
+interface ICardPaymentProcessorConfiguration {
+    // ------------------ Events ---------------------------------- //
+
+    /**
+     * @dev Emitted when the cash-out account is changed.
+     * @param oldCashOutAccount The old address of the cash-out account.
+     * @param newCashOutAccount The new address of the cash-out account.
+     */
+    event SetCashOutAccount(
+        address oldCashOutAccount, // Tools: prevent Prettier one-liner
+        address newCashOutAccount
+    );
+
+    /**
+     * @dev Emitted when the revocation limit is changed.
+     * @param oldLimit The old value of the revocation limit.
+     * @param newLimit The new value of the revocation limit.
+     */
+    event SetRevocationLimit(uint8 oldLimit, uint8 newLimit);
+
+    // ------------------ Transactional functions --------------- //
+
+    /**
+     * @dev Sets the cash-out account that will receive cleared tokens of confirmed payments.
+     *
+     * Emits a {SetCashOutAccount} event if the new account differs from the old one.
+     *
+     * @param newCashOutAccount The new address of the cash-out account.
+     */
+    function setCashOutAccount(address newCashOutAccount) external;
+
+    /**
+     * @dev Sets a new value for the revocation limit.
+     *
+     * If the limit equals 0 or 1 a payment with the same authorization ID cannot be repeated after the revocation.
+     *
+     * Emits a {SetRevocationLimit} event if the new limit differs from the old value.
+     *
+     * @param newLimit The new revocation limit value to be set.
+     */
+    function setRevocationLimit(uint8 newLimit) external;
+}
+
+/**
+ * @title ICardPaymentProcessorErrors interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev The custom errors used in the wrapper contract for the card payment operations.
+ */
+interface ICardPaymentProcessorErrors is ICardPaymentProcessorTypes {
+    /// @dev The zero token address has been passed as a function argument.
+    error ZeroTokenAddress();
+
+    /// @dev The zero account address has been passed as a function argument.
+    error ZeroAccount();
+
+    /// @dev Zero authorization ID has been passed as a function argument.
+    error ZeroAuthorizationId();
+
+    /// @dev The payment with the provided authorization ID already exists and is not revoked.
+    error PaymentAlreadyExists();
+
+    /// @dev Payment with the provided authorization ID is uncleared, but it must be cleared.
+    error PaymentAlreadyUncleared();
+
+    /// @dev Payment with the provided authorization ID is cleared, but it must be uncleared.
+    error PaymentAlreadyCleared();
+
+    /// @dev The payment with the provided authorization ID does not exist.
+    error PaymentNotExist();
+
+    /// @dev Empty array of authorization IDs has been passed as a function argument.
+    error EmptyAuthorizationIdsArray();
+
+    /// @dev Zero parent transaction hash has been passed as a function argument.
+    error ZeroParentTransactionHash();
+
+    /// @dev The cash-out account is not configured.
+    error ZeroCashOutAccount();
+
+    /**
+     * @dev The payment with the provided authorization ID has an inappropriate status.
+     * @param currentStatus The current status of payment with the provided authorization ID.
+     */
+    error InappropriatePaymentStatus(PaymentStatus currentStatus);
+
+    /**
+     * @dev Revocation counter of the payment reached the configured limit.
+     * @param configuredRevocationLimit The configured revocation limit.
+     */
+    error RevocationLimitReached(uint8 configuredRevocationLimit);
+
+    /// @dev A new cash-out account is the same as the previously set one.
+    error CashOutAccountUnchanged();
+
+    /// @dev The requested refund amount does not meet the requirements.
+    error InappropriateRefundAmount();
+
+    /// @dev The new amount of the payment does not meet the requirements.
+    error InappropriateNewBasePaymentAmount();
+
+    /// @dev The new extra amount of the payment does not meet the requirements.
+    error InappropriateNewExtraPaymentAmount();
+
+    /// @dev The function cannot be executed for a subsidized payment with the non-zero refund amount.
+    error SubsidizedPaymentWithNonZeroRefundAmount();
+}
+
+/**
+ * @title ICardPaymentProcessor interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev The full interface of the wrapper contract for the card payment operations.
+ */
+interface ICardPaymentProcessor is
+    ICardPaymentProcessorPrimary,
+    ICardPaymentProcessorConfiguration,
+    ICardPaymentProcessorErrors
+{}

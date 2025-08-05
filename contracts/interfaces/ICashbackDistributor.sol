@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 /**
  * @title ICashbackDistributorTypes interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the types used in the wrapper contract for the cashback operations.
+ * @dev The custom types used in the wrapper contract for the cashback operations.
  */
 interface ICashbackDistributorTypes {
     /**
@@ -121,11 +121,11 @@ interface ICashbackDistributorTypes {
 }
 
 /**
- * @title ICashbackDistributor interface
+ * @title ICashbackDistributorPrimary interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev Defines the interface of the wrapper contract for the cashback operations.
+ * @dev The primary interface of the wrapper contract for the cashback operations.
  */
-interface ICashbackDistributor is ICashbackDistributorTypes {
+interface ICashbackDistributorPrimary is ICashbackDistributorTypes {
     // ------------------ Events ---------------------------------- //
 
     /**
@@ -212,18 +212,6 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
         uint256 nonce
     );
 
-    /**
-     * @dev Emitted when cashback operations are enabled.
-     * @param sender The account that enabled the operations.
-     */
-    event Enable(address sender);
-
-    /**
-     * @dev Emitted when cashback operations are disabled.
-     * @param sender The account that disabled the operations.
-     */
-    event Disable(address sender);
-
     // ------------------ Transactional functions --------------- //
 
     /**
@@ -282,26 +270,6 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
      * @return sentAmount The amount of the actual cashback increase.
      */
     function increaseCashback(uint256 nonce, uint256 amount) external returns (bool success, uint256 sentAmount);
-
-    /**
-     * @dev Enables the cashback operations.
-     *
-     * This function is expected to be called by a limited number of accounts
-     * that are allowed to control cashback operations.
-     *
-     * Emits an {Enable} event.
-     */
-    function enable() external;
-
-    /**
-     * @dev Disables the cashback operations.
-     *
-     * This function is expected to be called by a limited number of accounts
-     * that are allowed to control cashback operations.
-     *
-     * Emits a {Disable} event.
-     */
-    function disable() external;
 
     // ------------------ View functions ------------------------ //
 
@@ -379,3 +347,78 @@ interface ICashbackDistributor is ICashbackDistributorTypes {
         address recipient
     ) external view returns (uint256 cashbackPeriodStart, uint256 overallCashbackForPeriod);
 }
+
+/**
+ * @title ICashbackDistributorConfiguration interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev The configuration interface of the wrapper contract for the cashback operations.
+ */
+interface ICashbackDistributorConfiguration {
+    // ------------------ Events ---------------------------------- //
+
+    /**
+     * @dev Emitted when cashback operations are enabled.
+     * @param sender The account that enabled the operations.
+     */
+    event Enable(address sender);
+
+    /**
+     * @dev Emitted when cashback operations are disabled.
+     * @param sender The account that disabled the operations.
+     */
+    event Disable(address sender);
+
+    // ------------------ Transactional functions --------------- //
+
+    /**
+     * @dev Enables the cashback operations.
+     *
+     * This function is expected to be called by a limited number of accounts
+     * that are allowed to control cashback operations.
+     *
+     * Emits an {Enable} event.
+     */
+    function enable() external;
+
+    /**
+     * @dev Disables the cashback operations.
+     *
+     * This function is expected to be called by a limited number of accounts
+     * that are allowed to control cashback operations.
+     *
+     * Emits a {Disable} event.
+     */
+    function disable() external;
+}
+/**
+ * @title ICashbackDistributorErrors interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev The custom errors used in the wrapper contract for the cashback operations.
+ */
+interface ICashbackDistributorErrors {
+    /// @dev The cashback operations are already disabled.
+    error CashbackAlreadyDisabled();
+
+    /// @dev The cashback operations are already enabled.
+    error CashbackAlreadyEnabled();
+
+    /// @dev Zero external identifier has been passed as a function argument.
+    error ZeroExternalId();
+
+    /// @dev The zero account address has been passed as a function argument.
+    error ZeroRecipientAddress();
+
+    /// @dev The zero token address has been passed as a function argument.
+    error ZeroTokenAddress();
+}
+
+/**
+ * @title ICashbackDistributor interface
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Defines the interface of the wrapper contract for the cashback operations.
+ */
+interface ICashbackDistributor is
+    ICashbackDistributorPrimary,
+    ICashbackDistributorConfiguration,
+    ICashbackDistributorErrors
+{}

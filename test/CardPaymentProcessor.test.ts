@@ -1907,7 +1907,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const EXPECTED_VERSION: Version = {
     major: 1,
     minor: 2,
-    patch: 0
+    patch: 1
   };
 
   // Error messages of the library contracts

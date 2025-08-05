@@ -352,7 +352,7 @@ abstract contract BlueprintStorageLayout is IBlueprintTypes {
     /**
      * @dev Defines the contract storage structure.
      *
-     * The fields:
+     * Fields:
      *
      * - token ---------------- The address of the underlying token.
      * - operationalTreasury -- The address of the operational treasury.
@@ -938,7 +938,7 @@ interface IBlueprintTypes {
     /**
      * @dev The data of a single operation of the blueprint smart-contract.
      *
-     * The fields:
+     * Fields:
      *
      * - status --- The status of the operation according to the {OperationStatus} enum.
      * - account -- The address of the account involved in the operation.
@@ -954,7 +954,7 @@ interface IBlueprintTypes {
     /**
      * @dev The state of a single account within the blueprint smart-contract.
      *
-     * The fields:
+     * Fields:
      *
      * - lastOpId -------- The identifier of the last operation related to the account.
      * - balance --------- The balance of the account.
@@ -991,7 +991,7 @@ interface IVersionable {
     /**
      * @dev Defines the version of a contract.
      *
-     * The fields:
+     * Fields:
      *
      * - major -- The major version of the contract.
      * - minor -- The minor version of the contract.
@@ -1037,7 +1037,7 @@ contract AccessControlExtUpgradeableMock is AccessControlExtUpgradeable, UUPSUpg
     // ------------------ Initializers ---------------------------- //
 
     /**
-     * @dev The initialize function of the upgradeable contract.
+     * @dev Initializer of the upgradeable contract.
      *
      * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
      */
@@ -1090,7 +1090,7 @@ contract PausableExtUpgradeableMock is PausableExtUpgradeable, UUPSUpgradeable {
     // ------------------ Initializers ---------------------------- //
 
     /**
-     * @dev The initialize function of the upgradeable contract.
+     * @dev Initializer of the upgradeable contract.
      *
      * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
      */
@@ -1143,7 +1143,7 @@ contract RescuableUpgradeableMock is RescuableUpgradeable, UUPSUpgradeable {
     // ------------------ Initializers ---------------------------- //
 
     /**
-     * @dev The initialize function of the upgradeable contract.
+     * @dev Initializer of the upgradeable contract.
      *
      * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
      */
@@ -1199,7 +1199,7 @@ contract UUPSExtUpgradeableMock is UUPSExtUpgradeable {
     // ------------------ Initializers ---------------------------- //
 
     /**
-     * @dev The initialize function of the upgradeable contract.
+     * @dev Initializer of the upgradeable contract.
      *
      * See details: https://docs.openzeppelin.com/upgrades-plugins/writing-upgradeable
      */

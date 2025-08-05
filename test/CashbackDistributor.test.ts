@@ -178,7 +178,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   const EXPECTED_VERSION: Version = {
     major: 1,
     minor: 2,
-    patch: 0
+    patch: 1
   };
 
   // Events of the contract under test
