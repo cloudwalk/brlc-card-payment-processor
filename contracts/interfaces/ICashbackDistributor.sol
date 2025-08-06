@@ -212,6 +212,48 @@ interface ICashbackDistributorPrimary is ICashbackDistributorTypes {
         uint256 nonce
     );
 
+    /**
+     * @dev Emitted when claimable mode is enabled or disabled.
+     * @param enabled Whether claimable mode is enabled.
+     */
+    event SetClaimableMode(bool enabled);
+
+    /**
+     * @dev Emitted when cashback is stored as claimable instead of being sent immediately.
+     * @param token The token contract of the cashback operation.
+     * @param kind The kind of the cashback operation.
+     * @param externalId The external identifier of the cashback operation.
+     * @param recipient The account for which cashback is stored.
+     * @param amount The amount of cashback stored as claimable.
+     * @param totalClaimableBalance The total claimable balance for the recipient after this operation.
+     * @param sender The account that initiated the cashback operation.
+     * @param nonce The nonce of the cashback operation.
+     */
+    event StoreCashbackAsClaimable(
+        address token,
+        CashbackKind kind,
+        bytes32 indexed externalId,
+        address indexed recipient,
+        uint256 amount,
+        uint256 totalClaimableBalance,
+        address sender,
+        uint256 nonce
+    );
+
+    /**
+     * @dev Emitted when claimable cashback is claimed for a recipient.
+     * @param token The token contract of the claim operation.
+     * @param recipient The account for which cashback was claimed.
+     * @param amount The amount of cashback claimed.
+     * @param remainingBalance The remaining claimable balance after the claim.
+     */
+    event ClaimCashback(
+        address indexed token,
+        address indexed recipient,
+        uint256 amount,
+        uint256 remainingBalance
+    );
+
     // ------------------ Transactional functions --------------- //
 
     /**
@@ -270,6 +312,44 @@ interface ICashbackDistributorPrimary is ICashbackDistributorTypes {
      * @return sentAmount The amount of the actual cashback increase.
      */
     function increaseCashback(uint256 nonce, uint256 amount) external returns (bool success, uint256 sentAmount);
+
+    /**
+     * @dev Claims claimable cashback for a recipient.
+     *
+     * Transfers tokens from the contract to the recipient.
+     * This function can only be called by accounts with the {DISTRIBUTOR_ROLE} role.
+     * Reverts if insufficient balance, recipient is blocklisted, or contract lacks funds.
+     *
+     * Emits a {ClaimCashback} event.
+     *
+     * @param token The address of the token to claim.
+     * @param recipient The account for which to claim cashback.
+     * @param amount The amount of cashback to claim.
+     * @return claimedAmount The amount claimed (equals amount if successful).
+     */
+    function claimCashback(
+        address token,
+        address recipient,
+        uint256 amount
+    ) external returns (uint256 claimedAmount);
+
+    /**
+     * @dev Claims all available claimable cashback for a recipient.
+     *
+     * Transfers all available claimable tokens from the contract to the recipient.
+     * This function can only be called by accounts with the {DISTRIBUTOR_ROLE} role.
+     * Reverts if no balance available, recipient is blocklisted, or contract lacks funds.
+     *
+     * Emits a {ClaimCashback} event.
+     *
+     * @param token The address of the token to claim.
+     * @param recipient The account for which to claim all available cashback.
+     * @return claimedAmount The amount claimed.
+     */
+    function claimAllCashback(
+        address token,
+        address recipient
+    ) external returns (uint256 claimedAmount);
 
     // ------------------ View functions ------------------------ //
 
@@ -346,6 +426,38 @@ interface ICashbackDistributorPrimary is ICashbackDistributorTypes {
         address token,
         address recipient
     ) external view returns (uint256 cashbackPeriodStart, uint256 overallCashbackForPeriod);
+
+    /**
+     * @dev Returns whether claimable mode is enabled.
+     */
+    function claimableModeEnabled() external view returns (bool);
+
+    /**
+     * @dev Returns the claimable cashback balance for a recipient and token.
+     * @param token The token contract address.
+     * @param recipient The recipient address.
+     */
+    function getClaimableCashbackBalance(address token, address recipient) external view returns (uint256);
+
+    /**
+     * @dev Returns the claimable cashback balances for multiple recipients and a token.
+     * @param token The token contract address.
+     * @param recipients The recipient addresses.
+     */
+    function getClaimableCashbackBalances(
+        address token,
+        address[] calldata recipients
+    ) external view returns (uint256[] memory balances);
+
+    /**
+     * @dev Returns the total claimable cashback amount for a token and external ID.
+     * @param token The token contract address.
+     * @param externalId The external identifier.
+     */
+    function getTotalClaimableCashbackByTokenAndExternalId(
+        address token,
+        bytes32 externalId
+    ) external view returns (uint256);
 }
 
 /**
@@ -389,6 +501,18 @@ interface ICashbackDistributorConfiguration {
      * Emits a {Disable} event.
      */
     function disable() external;
+
+    /**
+     * @dev Enables or disables claimable mode.
+     *
+     * When enabled, new cashback operations will store cashback as claimable instead of transferring immediately.
+     * This function can only be called by accounts with the {OWNER_ROLE} role.
+     *
+     * Emits a {SetClaimableMode} event.
+     *
+     * @param enabled Whether to enable claimable mode.
+     */
+    function setClaimableMode(bool enabled) external;
 }
 /**
  * @title ICashbackDistributorErrors interface
@@ -410,6 +534,24 @@ interface ICashbackDistributorErrors {
 
     /// @dev The zero token address has been passed as a function argument.
     error ZeroTokenAddress();
+
+    /// @dev The claimable mode state is already set to the requested value.
+    error ClaimableModeUnchanged();
+
+    /// @dev The claim amount is zero.
+    error ZeroClaimAmount();
+
+    /// @dev The claim amount exceeds the available claimable balance.
+    error InsufficientClaimableBalance();
+
+    /// @dev The contract does not have sufficient token balance for the operation.
+    error InsufficientContractBalance();
+
+    /// @dev The arrays length mismatch in batch operations.
+    error ArrayLengthMismatch();
+
+    /// @dev Empty arrays provided in batch operations.
+    error EmptyArrays();
 }
 
 /**

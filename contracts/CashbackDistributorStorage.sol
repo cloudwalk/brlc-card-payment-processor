@@ -54,6 +54,25 @@ abstract contract CashbackDistributorStorageV2 {
 }
 
 /**
+ * @title CashbackDistributor storage version 3
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Storage extension for claimable cashback functionality.
+ */
+abstract contract CashbackDistributorStorageV3 {
+    /// @dev Flag indicating whether claimable mode is enabled globally.
+    bool internal _claimableModeEnabled;
+
+    /// @dev Mapping of claimable cashback balances: token => recipient => amount.
+    mapping(address => mapping(address => uint256)) internal _claimableCashbackBalances;
+
+    /// @dev Mapping to track total claimable cashback by token and external ID.
+    mapping(address => mapping(bytes32 => uint256)) internal _totalClaimableCashbackByTokenAndExternalId;
+
+    /// @dev Storage gap for future upgrades.
+    uint256[47] private __gap;
+}
+
+/**
  * @title CashbackDistributor storage
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Contains storage variables of the {CashbackDistributor} contract.
@@ -62,4 +81,8 @@ abstract contract CashbackDistributorStorageV2 {
  * e.g. CashbackDistributorStorage<versionNumber>, so finally it would look like
  * "contract CashbackDistributorStorage is CashbackDistributorStorageV1, CashbackDistributorStorageV2".
  */
-abstract contract CashbackDistributorStorage is CashbackDistributorStorageV1, CashbackDistributorStorageV2 {}
+abstract contract CashbackDistributorStorage is
+    CashbackDistributorStorageV1,
+    CashbackDistributorStorageV2,
+    CashbackDistributorStorageV3
+{}

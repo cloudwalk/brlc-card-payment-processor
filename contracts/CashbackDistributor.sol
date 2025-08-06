@@ -122,12 +122,14 @@ contract CashbackDistributor is
         }
 
         CashbackStatus status = CashbackStatus.Success;
+        bool useClaimableMode = _claimableModeEnabled;
 
         if (!_enabled) {
             status = CashbackStatus.Disabled;
         } else if (isBlocklisted(recipient)) {
             status = CashbackStatus.Blocklisted;
-        } else if (IERC20Upgradeable(token).balanceOf(address(this)) < amount) {
+        } else if (!useClaimableMode && IERC20Upgradeable(token).balanceOf(address(this)) < amount) {
+            // Only check contract balance for immediate mode
             status = CashbackStatus.OutOfFunds;
         } else {
             (bool accepted, uint256 acceptedAmount) = _updateCashbackCap(token, recipient, amount);
@@ -167,8 +169,28 @@ contract CashbackDistributor is
         if (status == CashbackStatus.Success || status == CashbackStatus.Partial) {
             _totalCashbackByTokenAndRecipient[token][recipient] += amount;
             _totalCashbackByTokenAndExternalId[token][externalId] += amount;
-            IERC20Upgradeable(token).safeTransfer(recipient, amount);
-            sentAmount = amount;
+
+            if (useClaimableMode) {
+                // Store as claimable
+                _claimableCashbackBalances[token][recipient] += amount;
+                _totalClaimableCashbackByTokenAndExternalId[token][externalId] += amount;
+
+                emit StoreCashbackAsClaimable(
+                    token,
+                    kind,
+                    externalId,
+                    recipient,
+                    amount,
+                    _claimableCashbackBalances[token][recipient],
+                    sender,
+                    nonce
+                );
+            } else {
+                // Send immediately (original behavior)
+                IERC20Upgradeable(token).safeTransfer(recipient, amount);
+            }
+
+            sentAmount = amount; // Sent amount is returned to the CPP contract. Decide if `sentAmount` should be set to 0 in claimable mode.
             success = true;
         }
     }
@@ -200,14 +222,27 @@ contract CashbackDistributor is
 
         if (context.cashbackStatus != CashbackStatus.Success && context.cashbackStatus != CashbackStatus.Partial) {
             revocationStatus = RevocationStatus.Inapplicable;
-        } else if (amount > IERC20Upgradeable(context.token).balanceOf(context.sender)) {
-            revocationStatus = RevocationStatus.OutOfFunds;
-        } else if (amount > IERC20Upgradeable(context.token).allowance(context.sender, address(this))) {
-            revocationStatus = RevocationStatus.OutOfAllowance;
         } else if (amount > cashback.amount - context.newAmount) {
             revocationStatus = RevocationStatus.OutOfBalance;
         } else {
-            context.newAmount += amount;
+            // Check if this is claimable cashback
+            uint256 claimableBalance = _claimableCashbackBalances[context.token][context.recipient];
+
+            if (claimableBalance >= amount) {
+                // Revoke from claimable balance (no token transfer needed)
+                _claimableCashbackBalances[context.token][context.recipient] -= amount;
+                _totalClaimableCashbackByTokenAndExternalId[context.token][context.externalId] -= amount;
+                context.newAmount += amount;
+            } else {
+                // Traditional revocation - require tokens from sender
+                if (amount > IERC20Upgradeable(context.token).balanceOf(context.sender)) {
+                    revocationStatus = RevocationStatus.OutOfFunds;
+                } else if (amount > IERC20Upgradeable(context.token).allowance(context.sender, address(this))) {
+                    revocationStatus = RevocationStatus.OutOfAllowance;
+                } else {
+                    context.newAmount += amount;
+                }
+            }
         }
 
         emit RevokeCashback(
@@ -228,7 +263,13 @@ contract CashbackDistributor is
             _reduceOverallCashback(context.token, context.recipient, amount);
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] -= amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] -= amount;
-            IERC20Upgradeable(context.token).safeTransferFrom(context.sender, address(this), amount);
+
+            // Only transfer tokens if not revoking from claimable balance
+            uint256 claimableBalance = _claimableCashbackBalances[context.token][context.recipient];
+            if (claimableBalance < amount) {
+                IERC20Upgradeable(context.token).safeTransferFrom(context.sender, address(this), amount);
+            }
+
             success = true;
         }
     }
@@ -257,6 +298,7 @@ contract CashbackDistributor is
         });
 
         IncreaseStatus status = IncreaseStatus.Success;
+        bool useClaimableMode = _claimableModeEnabled;
 
         if (context.cashbackStatus != CashbackStatus.Success) {
             status = IncreaseStatus.Inapplicable;
@@ -264,7 +306,7 @@ contract CashbackDistributor is
             status = IncreaseStatus.Disabled;
         } else if (isBlocklisted(context.recipient)) {
             status = IncreaseStatus.Blocklisted;
-        } else if (IERC20Upgradeable(context.token).balanceOf(address(this)) < amount) {
+        } else if (!useClaimableMode && IERC20Upgradeable(context.token).balanceOf(address(this)) < amount) {
             status = IncreaseStatus.OutOfFunds;
         } else {
             (bool accepted, uint256 acceptedAmount) = _updateCashbackCap(context.token, context.recipient, amount);
@@ -296,8 +338,29 @@ contract CashbackDistributor is
             cashback.amount = context.newAmount;
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] += amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] += amount;
-            IERC20Upgradeable(context.token).safeTransfer(context.recipient, amount);
-            sentAmount = amount;
+
+            if (useClaimableMode) {
+                // Store increase as claimable
+                _claimableCashbackBalances[context.token][context.recipient] += amount;
+                _totalClaimableCashbackByTokenAndExternalId[context.token][context.externalId] += amount;
+
+                emit StoreCashbackAsClaimable(
+                    context.token,
+                    cashback.kind,
+                    context.externalId,
+                    context.recipient,
+                    amount,
+                    _claimableCashbackBalances[context.token][context.recipient],
+                    context.sender,
+                    context.nonce
+                );
+                sentAmount = 0;
+            } else {
+                // Send immediately
+                IERC20Upgradeable(context.token).safeTransfer(context.recipient, amount);
+            }
+
+            sentAmount = amount; // Sent amount is returned to the CPP contract. Decide if `sentAmount` should be set to 0 in claimable mode.
             success = true;
         }
     }
@@ -334,6 +397,81 @@ contract CashbackDistributor is
         _enabled = false;
 
         emit Disable(_msgSender());
+    }
+
+    /**
+     * @inheritdoc ICashbackDistributorConfiguration
+     *
+     * @dev Requirements:
+     *
+     * - The caller must have the {OWNER_ROLE} role.
+     */
+    function setClaimableMode(bool enabled) external onlyRole(OWNER_ROLE) {
+        if (_claimableModeEnabled == enabled) {
+            revert ClaimableModeUnchanged();
+        }
+
+        _claimableModeEnabled = enabled;
+
+        emit SetClaimableMode(enabled);
+    }
+
+    /**
+     * @inheritdoc ICashbackDistributorPrimary
+     *
+     * @dev Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {DISTRIBUTOR_ROLE} role.
+     * - The token address must not be zero.
+     * - The recipient address must not be zero.
+     * - The amount must be greater than zero.
+     */
+    function claimCashback(
+        address token,
+        address recipient,
+        uint256 amount
+    ) external whenNotPaused onlyRole(DISTRIBUTOR_ROLE) returns (uint256 claimedAmount) {
+        if (token == address(0)) {
+            revert ZeroTokenAddress();
+        }
+        if (recipient == address(0)) {
+            revert ZeroRecipientAddress();
+        }
+        if (amount == 0) {
+            revert ZeroClaimAmount();
+        }
+
+        claimedAmount = _claimCashbackCore(token, recipient, amount);
+    }
+
+    /**
+     * @inheritdoc ICashbackDistributorPrimary
+     *
+     * @dev Requirements:
+     *
+     * - The contract must not be paused.
+     * - The caller must have the {DISTRIBUTOR_ROLE} role.
+     * - The token address must not be zero.
+     * - The recipient address must not be zero.
+     */
+    function claimAllCashback(
+        address token,
+        address recipient
+    ) external whenNotPaused onlyRole(DISTRIBUTOR_ROLE) returns (uint256 claimedAmount) {
+        if (token == address(0)) {
+            revert ZeroTokenAddress();
+        }
+        if (recipient == address(0)) {
+            revert ZeroRecipientAddress();
+        }
+
+        uint256 availableBalance = _claimableCashbackBalances[token][recipient];
+        if (availableBalance == 0) {
+            revert ZeroClaimAmount();
+        }
+
+        return _claimCashbackCore(token, recipient, availableBalance);
     }
 
     // ------------------ View functions -------------------------- //
@@ -433,6 +571,44 @@ contract CashbackDistributor is
         (cashbackPeriodStart, overallCashbackForPeriod, ) = _previewCashbackCap(token, recipient);
     }
 
+    /**
+     * @inheritdoc ICashbackDistributorPrimary
+     */
+    function claimableModeEnabled() external view returns (bool) {
+        return _claimableModeEnabled;
+    }
+
+    /**
+     * @inheritdoc ICashbackDistributorPrimary
+     */
+    function getClaimableCashbackBalance(address token, address recipient) external view returns (uint256) {
+        return _claimableCashbackBalances[token][recipient];
+    }
+
+    /**
+     * @inheritdoc ICashbackDistributorPrimary
+     */
+    function getClaimableCashbackBalances(
+        address token,
+        address[] calldata recipients
+    ) external view returns (uint256[] memory balances) {
+        uint256 len = recipients.length;
+        balances = new uint256[](len);
+        for (uint256 i = 0; i < len; i++) {
+            balances[i] = _claimableCashbackBalances[token][recipients[i]];
+        }
+    }
+
+    /**
+     * @inheritdoc ICashbackDistributorPrimary
+     */
+    function getTotalClaimableCashbackByTokenAndExternalId(
+        address token,
+        bytes32 externalId
+    ) external view returns (uint256) {
+        return _totalClaimableCashbackByTokenAndExternalId[token][externalId];
+    }
+
     // ------------------ Internal functions ---------------------- //
 
     /**
@@ -503,5 +679,39 @@ contract CashbackDistributor is
             overallCashback = 0;
         }
         _cashbackSinceLastReset[token][recipient] = overallCashback;
+    }
+
+    /**
+     * @dev Internal core function to claim cashback with all validations.
+     */
+    function _claimCashbackCore(
+        address token,
+        address recipient,
+        uint256 amount
+    ) internal returns (uint256 claimedAmount) {
+        uint256 availableBalance = _claimableCashbackBalances[token][recipient];
+
+        // Revert on error conditions
+        if (amount > availableBalance) {
+            revert InsufficientClaimableBalance();
+        }
+        if (isBlocklisted(recipient)) {
+            revert BlocklistedAccount(recipient);
+        }
+        if (IERC20Upgradeable(token).balanceOf(address(this)) < amount) {
+            revert InsufficientContractBalance();
+        }
+
+        // Execute the claim
+        _claimableCashbackBalances[token][recipient] -= amount;
+        IERC20Upgradeable(token).safeTransfer(recipient, amount);
+        claimedAmount = amount;
+
+        emit ClaimCashback(
+            token,
+            recipient,
+            amount,
+            availableBalance - amount // remainingBalance
+        );
     }
 }

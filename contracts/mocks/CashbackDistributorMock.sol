@@ -44,6 +44,18 @@ contract CashbackDistributorMock is ICashbackDistributor {
     /// @dev The token address of the last call of the {sendCashback} function.
     address public lastCashbackToken;
 
+    /// @dev Mock flag for claimable mode status.
+    bool public claimableModeEnabledResult;
+
+    /// @dev Mock claimable cashback balances: token => recipient => amount.
+    mapping(address => mapping(address => uint256)) public claimableCashbackBalances;
+
+    /// @dev Mock total claimable cashback by token and external ID.
+    mapping(address => mapping(bytes32 => uint256)) public totalClaimableCashbackByTokenAndExternalId;
+
+    /// @dev The result of claim functions to return next time.
+    uint256 public claimCashbackResult;
+
     // ------------------ Events -------------------------------- //
 
     /**
@@ -68,6 +80,21 @@ contract CashbackDistributorMock is ICashbackDistributor {
      */
     event IncreaseCashbackMock(address sender, uint256 nonce, uint256 amount);
 
+    /**
+     * @dev Emitted when the 'setClaimableMode()' function is called
+     */
+    event SetClaimableModeMock(bool enabled);
+
+    /**
+     * @dev Emitted when the 'claimCashback()' function is called
+     */
+    event ClaimCashbackMock(
+        address token,
+        address recipient,
+        uint256 amount,
+        uint256 remainingBalance
+    );
+
     // ------------------ Constructor --------------------------- //
 
     /**
@@ -87,6 +114,8 @@ contract CashbackDistributorMock is ICashbackDistributor {
         revokeCashbackSuccessResult = revokeCashbackSuccessResult_;
         increaseCashbackSuccessResult = increaseCashbackSuccessResult_;
         increaseCashbackAmountResult = increaseCashbackAmountResult_;
+        claimableModeEnabledResult = false;
+        claimCashbackResult = 100; // Default claim amount for testing
 
         // Calling stub functions just to provide 100% coverage
         enabled();
@@ -218,6 +247,51 @@ contract CashbackDistributorMock is ICashbackDistributor {
         overallCashbackForPeriod = 0;
     }
 
+    /**
+     * @inheritdoc ICashbackDistributorPrimary
+     *
+     * @dev Just a stub for testing. Returns the stored mock value.
+     */
+    function claimableModeEnabled() public view returns (bool) {
+        return claimableModeEnabledResult;
+    }
+
+    /**
+     * @inheritdoc ICashbackDistributorPrimary
+     *
+     * @dev Just a stub for testing. Returns the stored mock balance.
+     */
+    function getClaimableCashbackBalance(address token, address recipient) public view returns (uint256) {
+        return claimableCashbackBalances[token][recipient];
+    }
+
+    /**
+     * @inheritdoc ICashbackDistributorPrimary
+     *
+     * @dev Just a stub for testing. Returns an array of stored mock balances.
+     */
+    function getClaimableCashbackBalances(
+        address token,
+        address[] memory recipients
+    ) public view returns (uint256[] memory balances) {
+        balances = new uint256[](recipients.length);
+        for (uint256 i = 0; i < recipients.length; i++) {
+            balances[i] = claimableCashbackBalances[token][recipients[i]];
+        }
+    }
+
+    /**
+     * @inheritdoc ICashbackDistributorPrimary
+     *
+     * @dev Just a stub for testing. Returns the stored mock total.
+     */
+    function getTotalClaimableCashbackByTokenAndExternalId(
+        address token,
+        bytes32 externalId
+    ) public view returns (uint256) {
+        return totalClaimableCashbackByTokenAndExternalId[token][externalId];
+    }
+
     // ------------------ Transactional functions ----------------- //
 
     /**
@@ -299,6 +373,64 @@ contract CashbackDistributorMock is ICashbackDistributor {
     }
 
     /**
+     * @inheritdoc ICashbackDistributorConfiguration
+     *
+     * @dev Sets the claimable mode flag and emits a mock event.
+     */
+    function setClaimableMode(bool enabled_) external {
+        claimableModeEnabledResult = enabled_;
+        emit SetClaimableModeMock(enabled_);
+    }
+
+    /**
+     * @inheritdoc ICashbackDistributorPrimary
+     *
+     * @dev Returns the stored mock claim amount and emits a mock event.
+     * Transfers tokens if the mock balance is sufficient.
+     */
+    function claimCashback(
+        address token,
+        address recipient,
+        uint256 amount
+    ) external returns (uint256 claimedAmount) {
+        uint256 availableBalance = claimableCashbackBalances[token][recipient];
+
+        if (availableBalance >= amount) {
+            claimedAmount = amount;
+            claimableCashbackBalances[token][recipient] -= amount;
+            IERC20Upgradeable(token).transfer(recipient, amount);
+        } else {
+            claimedAmount = claimCashbackResult;
+        }
+
+        emit ClaimCashbackMock(
+            token,
+            recipient,
+            claimedAmount,
+            claimableCashbackBalances[token][recipient]
+        );
+    }
+
+    /**
+     * @inheritdoc ICashbackDistributorPrimary
+     *
+     * @dev Claims all available mock balance for the recipient.
+     */
+    function claimAllCashback(
+        address token,
+        address recipient
+    ) external returns (uint256 claimedAmount) {
+        claimedAmount = claimableCashbackBalances[token][recipient];
+
+        if (claimedAmount > 0) {
+            claimableCashbackBalances[token][recipient] = 0;
+            IERC20Upgradeable(token).transfer(recipient, claimedAmount);
+        }
+
+        emit ClaimCashbackMock(token, recipient, claimedAmount, 0);
+    }
+
+    /**
      * @dev Sets a new value for the success part of the `sendCashback()` function result.
      * @param newSendCashbackSuccessResult The new value for the success part of the `sendCashback()` function result.
      */
@@ -337,5 +469,45 @@ contract CashbackDistributorMock is ICashbackDistributor {
      */
     function setIncreaseCashbackAmountResult(int256 newIncreaseCashbackAmountResult) external {
         increaseCashbackAmountResult = newIncreaseCashbackAmountResult;
+    }
+
+    /**
+     * @dev Sets a new value for the claimable mode enabled result.
+     * @param newClaimableModeEnabledResult The new value for the claimable mode enabled result.
+     */
+    function setClaimableModeEnabledResult(bool newClaimableModeEnabledResult) external {
+        claimableModeEnabledResult = newClaimableModeEnabledResult;
+    }
+
+    /**
+     * @dev Sets a new value for the claim cashback result.
+     * @param newClaimCashbackResult The new value for the claim cashback result.
+     */
+    function setClaimCashbackResult(uint256 newClaimCashbackResult) external {
+        claimCashbackResult = newClaimCashbackResult;
+    }
+
+    /**
+     * @dev Sets a claimable cashback balance for testing purposes.
+     * @param token The token address.
+     * @param recipient The recipient address.
+     * @param balance The balance to set.
+     */
+    function setClaimableCashbackBalance(address token, address recipient, uint256 balance) external {
+        claimableCashbackBalances[token][recipient] = balance;
+    }
+
+    /**
+     * @dev Sets a total claimable cashback by token and external ID for testing purposes.
+     * @param token The token address.
+     * @param externalId The external ID.
+     * @param total The total to set.
+     */
+    function setTotalClaimableCashbackByTokenAndExternalId(
+        address token,
+        bytes32 externalId,
+        uint256 total
+    ) external {
+        totalClaimableCashbackByTokenAndExternalId[token][externalId] = total;
     }
 }
