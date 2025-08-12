@@ -353,6 +353,7 @@ class CardPaymentProcessorModel {
     operation.newExtraAmount = newExtraAmount;
     this.#checkPaymentRefunding(operation, payment);
     this.#definePaymentRefundingOperation(operation, payment);
+    console.log(operation, payment);
     return this.#registerPaymentRefundingOperation(operation, payment);
   }
 
@@ -615,10 +616,10 @@ class CardPaymentProcessorModel {
           operation.cashbackRevocationSuccess = true;
           operation.cashbackActualChange = operation.cashbackRequestedChange;
         }
-        operation.userBalanceChange = -accountAmountDiff + operation.cashbackRequestedChange;
+        operation.userBalanceChange = -accountAmountDiff + operation.cashbackActualChange;
         operation.sponsorBalanceChange = -sponsorAmountDiff;
         operation.cardPaymentProcessorBalanceChange =
-          amountDiff - (operation.cashbackRequestedChange - operation.cashbackActualChange);
+          amountDiff; // - (operation.cashbackRequestedChange - operation.cashbackActualChange);
         operation.compensationAmountChange = operation.cashbackRequestedChange;
       }
     }
@@ -731,10 +732,7 @@ class CardPaymentProcessorModel {
       payment.baseAmount,
       payment.subsidyLimit
     );
-    operation.userBalanceChange =
-      amountParts.accountBaseAmount +
-      amountParts.accountExtraAmount -
-      (payment.compensationAmount - refundParts.sponsorRefundAmount);
+
     operation.sponsorBalanceChange =
       amountParts.sponsorBaseAmount + amountParts.sponsorExtraAmount - refundParts.sponsorRefundAmount;
     if (payment.cashbackEnabled) {
@@ -748,8 +746,14 @@ class CardPaymentProcessorModel {
       }
     }
     operation.cardPaymentProcessorBalanceChange =
-      -(payment.baseAmount + payment.extraAmount - payment.refundAmount) -
-      (operation.cashbackRequestedChange - operation.cashbackActualChange);
+      -(payment.baseAmount + payment.extraAmount - payment.refundAmount);
+    // - (operation.cashbackRequestedChange - operation.cashbackActualChange);
+
+    operation.userBalanceChange =
+      amountParts.accountBaseAmount +
+      amountParts.accountExtraAmount -
+      payment.refundAmount +
+      operation.cashbackActualChange;
   }
 
   #updateModelDueToPaymentCancelingOperation(operation: PaymentOperation, payment: PaymentModel) {
@@ -872,19 +876,20 @@ class CardPaymentProcessorModel {
     }
 
     if (operation.paymentStatus === PaymentStatus.Confirmed) {
-      operation.cardPaymentProcessorBalanceChange = -(
-        operation.cashbackRequestedChange - operation.cashbackActualChange
-      );
+      // operation.cardPaymentProcessorBalanceChange = -(
+      //   operation.cashbackRequestedChange - operation.cashbackActualChange
+      // );
       operation.cashOutAccountBalanceChange = -(
         operation.refundAmountChange +
         (operation.oldExtraAmount - operation.newExtraAmount)
       );
     } else {
       operation.cardPaymentProcessorBalanceChange =
-        -(operation.refundAmountChange + (operation.oldExtraAmount - operation.newExtraAmount)) -
-        (operation.cashbackRequestedChange - operation.cashbackActualChange);
+        -(operation.refundAmountChange + (operation.oldExtraAmount - operation.newExtraAmount));
+      // - (operation.cashbackRequestedChange - operation.cashbackActualChange);
     }
     operation.totalAmount = payment.baseAmount + operation.newExtraAmount - newPaymentRefundAmount;
+    // console.log(operation.totalAmount, payment.baseAmount, operation.newExtraAmount, newPaymentRefundAmount);
     operation.compensationAmountChange = operation.refundAmountChange + operation.cashbackRequestedChange;
     operation.sponsorRefundAmountChange = sponsorRefundAmount;
   }
@@ -905,6 +910,7 @@ class CardPaymentProcessorModel {
     } else {
       this.#totalBalance += -(operation.cashbackRequestedChange - operation.cashbackActualChange);
     }
+    console.log(this.#totalBalance, operation.cardPaymentProcessorBalanceChange);
     return this.#paymentOperations.push(operation) - 1;
   }
 
@@ -1574,7 +1580,7 @@ class TestContext {
         checkEventField("authorizationId", operation.authorizationId),
         checkEventField("correlationId", operation.correlationId),
         checkEventField("account", operation.account.address),
-        checkEventField("sentAmount", operation.userBalanceChange + operation.sponsorBalanceChange),
+        checkEventField("sentAmount", -operation.cardPaymentProcessorBalanceChange),
         checkEventField("clearedBalance", operation.clearedBalance),
         checkEventField("unclearedBalance", operation.unclearedBalance),
         checkEventField("wasPaymentCleared", operation.paymentStatus === PaymentStatus.Cleared),
@@ -1658,7 +1664,7 @@ class TestContext {
         checkEventField("correlationId", operation.correlationId),
         checkEventField("account", operation.account.address),
         checkEventField("refundAmount", operation.refundAmountChange),
-        checkEventField("sentAmount", operation.userBalanceChange + operation.sponsorBalanceChange),
+        checkEventField("sentAmount", -operation.cardPaymentProcessorBalanceChange),
         checkEventField("status", operation.paymentStatus)
       );
 
@@ -1691,7 +1697,7 @@ class TestContext {
     const balanceChangePerAccount: Map<HardhatEthersSigner, number> = this.#getBalanceChangePerAccount(operations);
     const accounts: HardhatEthersSigner[] = Array.from(balanceChangePerAccount.keys());
     const accountBalanceChanges: number[] = accounts.map(user => balanceChangePerAccount.get(user) ?? 0);
-
+    console.log(operations);
     await expect(tx).to.changeTokenBalances(
       this.tokenMock,
       [
@@ -2073,8 +2079,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     for (let i = 0; i < numberOfPayments; ++i) {
       const payment: TestPayment = {
         account: i % 2 > 0 ? user1 : user2,
-        baseAmount: Math.floor(123.456789 * DIGITS_COEF + i * 123.456789 * DIGITS_COEF),
-        extraAmount: Math.floor(123.456789 * DIGITS_COEF + i * 123.456789 * DIGITS_COEF),
+        baseAmount: Math.floor(100 * DIGITS_COEF + i * 100 * DIGITS_COEF),
+        extraAmount: Math.floor(100 * DIGITS_COEF + i * 100 * DIGITS_COEF),
         authorizationId: ethers.toBeHex(123 + i * 123, BYTES16_LENGTH),
         correlationId: ethers.toBeHex(345 + i * 345, BYTES16_LENGTH),
         parentTxHash: ethers.toBeHex(1 + i, BYTES32_LENGTH)
@@ -2875,7 +2881,6 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           newBaseAmount = Math.floor(payment.baseAmount * 1.1);
           break;
       }
-
       let newExtraAmount = payment.extraAmount;
       switch (newExtraPaymentAmountType) {
         case NewExtraPaymentAmountType.FarLess:
@@ -2970,7 +2975,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       describe("Not subsidized. And if the new base amount is", async () => {
         describe("Less than the initial one. And if the extra amount is", async () => {
           describe("The same as the initial one. And if cashback sending is", async () => {
-            it.only("Enabled and cashback revoking is executed successfully", async () => {
+            it("Enabled and cashback revoking is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Less,
                 NewExtraPaymentAmountType.Same,

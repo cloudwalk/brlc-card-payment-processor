@@ -1352,7 +1352,7 @@ contract CardPaymentProcessor is
         uint256 paymentSumAmount = paymentBaseAmount + payment.extraAmount;
         (uint256 accountSumAmount, uint256 sponsorSumAmount) = _defineSumAmountParts(paymentSumAmount, subsidyLimit);
         uint256 paymentTotalAmount = paymentSumAmount - paymentRefundAmount;
-        uint256 accountSentAmount = accountSumAmount - (payment.compensationAmount - sponsorRefundAmount);
+        uint256 accountSentAmount = accountSumAmount - (paymentRefundAmount - sponsorRefundAmount);
         uint256 sponsorSentAmount = sponsorSumAmount - sponsorRefundAmount;
 
         CancelingOperation memory operation = CancelingOperation({
@@ -1360,7 +1360,7 @@ contract CardPaymentProcessor is
             accountSentAmount: accountSentAmount,
             sponsorSentAmount: sponsorSentAmount,
             totalSentAmount: accountSentAmount + sponsorSentAmount,
-            revokedCashbackAmount: paymentTotalAmount - accountSentAmount - sponsorSentAmount
+            revokedCashbackAmount: payment.compensationAmount - paymentRefundAmount
         });
 
         return operation;
@@ -1526,7 +1526,8 @@ contract CardPaymentProcessor is
             operation.newCompensationAmount -
             operation.oldCompensationAmount -
             newSponsorRefundAmount +
-            accountExtraAmountChange;
+            accountExtraAmountChange +
+            operation.revokedCashbackAmount;
         operation.sponsorSentAmount =
             operation.sponsorRefundAmount +
             paymentExtraAmountChange -
