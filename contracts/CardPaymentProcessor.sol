@@ -1075,18 +1075,10 @@ contract CardPaymentProcessor is
             operation.paymentTotalAmountChange = oldPaymentSumAmount - newPaymentSumAmount;
             operation.sponsorBalanceChange = oldSponsorSumAmount - newSponsorSumAmount;
             operation.accountBalanceChange = oldAccountSumAmount - newAccountSumAmount;
-
-            if (operation.cashbackDecreased) {
-                operation.accountBalanceChange -= operation.cashbackAmountChange;
-            }
         } else {
             operation.paymentTotalAmountChange = newPaymentSumAmount - oldPaymentSumAmount;
             operation.sponsorBalanceChange = newSponsorSumAmount - oldSponsorSumAmount;
             operation.accountBalanceChange = newAccountSumAmount - oldAccountSumAmount;
-
-            if (operation.cashbackDecreased) {
-                operation.accountBalanceChange += operation.cashbackAmountChange;
-            }
         }
         return operation;
     }

@@ -7,7 +7,6 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { checkEquality as checkInterfaceEquality } from "../test-utils/checkers";
 import { createRevertMessageDueToMissingRole, setUpFixture } from "../test-utils/common";
 
-const MAX_UINT256 = ethers.MaxUint256;
 const MAX_INT256 = ethers.MaxInt256;
 const ZERO_ADDRESS = ethers.ZeroAddress;
 const ZERO_HASH = ethers.ZeroHash;
@@ -39,7 +38,7 @@ enum RevocationStatus {
   Success = 1,
   Inapplicable = 2,
   OutOfFunds = 3,
-  OutOfAllowance = 4,
+  _gap = 4, // OutOfAllowance = 4,
   OutOfBalance = 5
 }
 
@@ -254,6 +253,9 @@ describe("Contract 'CashbackDistributor'", async () => {
     const { cashbackDistributor } = await deployCashbackDistributor();
     const tokenMock1 = await deployTokenMock("1");
     const tokenMock2 = await deployTokenMock("2");
+
+    await proveTx(tokenMock1.setTrustedAccount(getAddress(cashbackDistributor), true));
+    await proveTx(tokenMock2.setTrustedAccount(getAddress(cashbackDistributor), true));
 
     await proveTx(cashbackDistributor.grantRole(GRANTOR_ROLE, deployer.address));
     await proveTx(cashbackDistributor.grantRole(BLOCKLISTER_ROLE, deployer.address));
@@ -843,7 +845,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       await expect(tx).to.changeTokenBalances(
         cashback.token,
         [cashbackDistributor, cashback.recipient, cashback.sender],
-        [+contractBalanceChange, 0, -contractBalanceChange]
+        [+contractBalanceChange, -contractBalanceChange, 0]
       );
       await expect(tx).to.emit(cashbackDistributor, EVENT_NAME_REVOKE_CASHBACK).withArgs(
         getAddress(cashback.token),
@@ -873,7 +875,6 @@ describe("Contract 'CashbackDistributor'", async () => {
         cashback.sentAmount = MAX_CASHBACK_FOR_PERIOD;
       }
       await proveTx(cashback.token.mint(distributor.address, cashback.revokedAmount));
-      await proveTx(connect(cashback.token, distributor).approve(getAddress(cashbackDistributor), MAX_UINT256));
     }
 
     describe("Executes as expected and emits the correct event if the revocation", async () => {
@@ -920,46 +921,53 @@ describe("Contract 'CashbackDistributor'", async () => {
       });
 
       describe("Fails because", async () => {
-        it("The caller has not enough tokens", async () => {
+        it("The recipient has not enough tokens", async () => {
           const context = await beforeSendingCashback();
           const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
           await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Success);
           cashback.revokedAmount = Math.floor(cashback.requestedAmount * 0.1);
-          await proveTx(cashback.token.mint(distributor.address, (cashback.revokedAmount || 0) - 1));
-          await proveTx(connect(cashback.token, distributor).approve(getAddress(cashbackDistributor), MAX_UINT256));
+          const recipientBalance = await cashback.token.balanceOf(cashback.recipient);
+          // recipient spends almost all his balance
+          await proveTx(
+            connect(cashback.token, cashback.recipient)
+              .transfer(distributor.address, Number(recipientBalance) - cashback.revokedAmount + 1)
+          );
           await checkRevoking(RevocationStatus.OutOfFunds, context);
         });
 
-        it("The caller has not enough tokens and the initial sending operation is partially successful", async () => {
+        it("The recipient has not enough tokens and the initial sending operation is partially successful", async () => {
           const context = await beforeSendingCashback({ cashbackRequestedAmount: MAX_CASHBACK_FOR_PERIOD + 1 });
           const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
           await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Partial);
           cashback.sentAmount = MAX_CASHBACK_FOR_PERIOD;
-          cashback.revokedAmount = Math.floor(MAX_CASHBACK_FOR_PERIOD * 0.1);
-          await proveTx(cashback.token.mint(distributor.address, (cashback.revokedAmount || 0) - 1));
-          await proveTx(connect(cashback.token, distributor).approve(getAddress(cashbackDistributor), MAX_UINT256));
+          cashback.revokedAmount = Math.floor(MAX_CASHBACK_FOR_PERIOD * 0.1);// recipient spends almost all his balance
+          const recipientBalance = await cashback.token.balanceOf(cashback.recipient);
+          await proveTx(
+            connect(cashback.token, cashback.recipient)
+              .transfer(distributor.address, Number(recipientBalance) - cashback.revokedAmount + 1)
+          );
           await checkRevoking(RevocationStatus.OutOfFunds, context);
         });
 
-        it("The cashback distributor has not enough allowance from the caller", async () => {
-          const context = await beforeSendingCashback();
-          const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
-          await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Success);
-          cashback.revokedAmount = Math.floor(cashback.requestedAmount * 0.1);
-          await proveTx(cashback.token.mint(distributor.address, cashback.revokedAmount));
-          await proveTx(connect(cashback.token, distributor).approve(
-            getAddress(cashbackDistributor),
-            (cashback.revokedAmount ?? 0) - 1
-          ));
-          await checkRevoking(RevocationStatus.OutOfAllowance, context);
-        });
+        // it("The cashback distributor has not enough allowance from the caller", async () => {
+        //   const context = await beforeSendingCashback();
+        //   const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
+        //   await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Success);
+        //   cashback.revokedAmount = Math.floor(cashback.requestedAmount * 0.1);
+        //   await proveTx(cashback.token.mint(distributor.address, cashback.revokedAmount));
+        //   await proveTx(connect(cashback.token, distributor).approve(
+        //     getAddress(cashbackDistributor),
+        //     (cashback.revokedAmount ?? 0) - 1
+        //   ));
+        //   await checkRevoking(RevocationStatus.OutOfAllowance, context);
+        // });
 
         it("The initial cashback amount is less than revocation amount", async () => {
           const context = await beforeSendingCashback();
           const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
+          // distributor here IS cashback.sender
           await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Success);
-          await proveTx(cashback.token.mint(distributor.address, cashback.requestedAmount + 1));
-          await proveTx(connect(cashback.token, distributor).approve(getAddress(cashbackDistributor), MAX_UINT256));
+          await proveTx(cashback.token.mint(cashback.recipient, cashback.requestedAmount + 1));
           cashback.revokedAmount = cashback.requestedAmount + 1;
           await checkRevoking(RevocationStatus.OutOfBalance, context);
         });
@@ -1238,9 +1246,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       );
       const context: TestContext = { fixture, cashbacks, cashbackDistributorInitialBalanceByToken };
       await proveTx(tokenMock1.mint(distributor.address, MAX_INT256));
-      await proveTx(connect(tokenMock1, distributor).approve(getAddress(cashbackDistributor), MAX_UINT256));
       await proveTx(tokenMock2.mint(distributor.address, MAX_INT256));
-      await proveTx(connect(tokenMock2, distributor).approve(getAddress(cashbackDistributor), MAX_UINT256));
 
       await sendCashbacks(cashbackDistributor, cashbacks, CashbackStatus.Success);
       await checkCashbackDistributorState(context);
@@ -1287,7 +1293,6 @@ describe("Contract 'CashbackDistributor'", async () => {
       );
       const context: TestContext = { fixture, cashbacks, cashbackDistributorInitialBalanceByToken };
       await proveTx(tokenMock.mint(distributor.address, MAX_INT256));
-      await proveTx(connect(tokenMock, distributor).approve(getAddress(cashbackDistributor), MAX_UINT256));
 
       async function checkPeriodCapRelatedValues(props: {
         expectedLastTimeReset: number;

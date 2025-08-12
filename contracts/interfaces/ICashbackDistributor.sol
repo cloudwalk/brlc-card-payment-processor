@@ -51,9 +51,7 @@ interface ICashbackDistributorTypes {
      * - Unknown = 0 --------- The operation has not been initiated (the default value).
      * - Success = 1 --------- The operation has been successfully executed.
      * - Inapplicable = 2 ---- The operation has been failed because the cashback does not have a relevant status.
-     * - OutOfFunds = 3 ------ The operation has been failed because the caller does not have enough tokens.
-     * - OutOfAllowance = 4 -- The operation has been failed because
-     *                         the caller does not have enough allowance for the contract.
+     * - OutOfFunds = 3 ------ The operation has been failed because the recipient does not have enough tokens.
      * - OutOfBalance = 5 ---- The operation has been failed because the revocation amount exceeds the cashback amount.
      */
     enum RevocationStatus {
@@ -61,7 +59,7 @@ interface ICashbackDistributorTypes {
         Success,
         Inapplicable,
         OutOfFunds,
-        OutOfAllowance,
+        _gap,
         OutOfBalance
     }
 

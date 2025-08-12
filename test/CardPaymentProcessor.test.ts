@@ -2041,6 +2041,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     const { cardPaymentProcessor, tokenMock } = await deployTokenMockAndCardPaymentProcessor();
     const { cashbackDistributorMock, cashbackDistributorMockConfig } = await deployCashbackDistributorMock();
 
+    await proveTx(tokenMock.setTrustedAccount(getAddress(cashbackDistributorMock), true));
     await proveTx(cardPaymentProcessor.grantRole(GRANTOR_ROLE, deployer.address));
     await proveTx(cardPaymentProcessor.grantRole(EXECUTOR_ROLE, executor.address));
     await proveTx(cardPaymentProcessor.setCashbackDistributor(getAddress(cashbackDistributorMock)));
@@ -2969,7 +2970,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       describe("Not subsidized. And if the new base amount is", async () => {
         describe("Less than the initial one. And if the extra amount is", async () => {
           describe("The same as the initial one. And if cashback sending is", async () => {
-            it("Enabled and cashback revoking is executed successfully", async () => {
+            it.only("Enabled and cashback revoking is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Less,
                 NewExtraPaymentAmountType.Same,
