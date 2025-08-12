@@ -952,6 +952,19 @@ describe("Contract 'CashbackDistributor'", async () => {
           await checkRevoking(RevocationStatus.OutOfFunds, context);
         });
 
+        it("The cashback distributor has not enough allowance from the caller", async () => {
+          const context = await beforeSendingCashback();
+          const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
+          await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Success);
+          cashback.revokedAmount = Math.floor(cashback.requestedAmount * 0.1);
+          await proveTx(cashback.token.mint(user.address, cashback.revokedAmount));
+          await proveTx(connect(cashback.token, user).approve(
+            getAddress(cashbackDistributor),
+            (cashback.revokedAmount ?? 0) - 1
+          ));
+          await checkRevoking(RevocationStatus.OutOfAllowance, context);
+        });
+
         it("The initial cashback amount is less than revocation amount", async () => {
           const context = await beforeSendingCashback();
           const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
