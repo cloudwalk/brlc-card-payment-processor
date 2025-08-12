@@ -1428,7 +1428,6 @@ contract CardPaymentProcessor is
             if (sponsor != address(0)) {
                 token.safeTransferFrom(cashOutAccount_, sponsor, operation.sponsorSentAmount);
             }
-            // token.safeTransferFrom(cashOutAccount_, address(this), operation.revokedCashbackAmount);
         }
 
         _revokeCashback(authorizationId, operation.revokedCashbackAmount);

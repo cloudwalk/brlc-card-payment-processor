@@ -7,6 +7,7 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { checkEquality as checkInterfaceEquality } from "../test-utils/checkers";
 import { createRevertMessageDueToMissingRole, setUpFixture } from "../test-utils/common";
 
+const MAX_UINT256 = ethers.MaxUint256;
 const MAX_INT256 = ethers.MaxInt256;
 const ZERO_ADDRESS = ethers.ZeroAddress;
 const ZERO_HASH = ethers.ZeroHash;
@@ -38,7 +39,7 @@ enum RevocationStatus {
   Success = 1,
   Inapplicable = 2,
   OutOfFunds = 3,
-  _gap = 4, // OutOfAllowance = 4,
+  OutOfAllowance = 4,
   OutOfBalance = 5
 }
 
@@ -253,9 +254,6 @@ describe("Contract 'CashbackDistributor'", async () => {
     const { cashbackDistributor } = await deployCashbackDistributor();
     const tokenMock1 = await deployTokenMock("1");
     const tokenMock2 = await deployTokenMock("2");
-
-    await proveTx(tokenMock1.setTrustedAccount(getAddress(cashbackDistributor), true));
-    await proveTx(tokenMock2.setTrustedAccount(getAddress(cashbackDistributor), true));
 
     await proveTx(cashbackDistributor.grantRole(GRANTOR_ROLE, deployer.address));
     await proveTx(cashbackDistributor.grantRole(BLOCKLISTER_ROLE, deployer.address));
@@ -875,6 +873,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         cashback.sentAmount = MAX_CASHBACK_FOR_PERIOD;
       }
       await proveTx(cashback.token.mint(distributor.address, cashback.revokedAmount));
+      await proveTx(connect(cashback.token, distributor).approve(getAddress(cashbackDistributor), MAX_UINT256));
     }
 
     describe("Executes as expected and emits the correct event if the revocation", async () => {
@@ -952,7 +951,6 @@ describe("Contract 'CashbackDistributor'", async () => {
         it("The initial cashback amount is less than revocation amount", async () => {
           const context = await beforeSendingCashback();
           const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
-          // distributor here IS cashback.sender
           await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Success);
           await proveTx(cashback.token.mint(cashback.recipient, cashback.requestedAmount + 1));
           cashback.revokedAmount = cashback.requestedAmount + 1;

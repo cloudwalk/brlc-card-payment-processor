@@ -49,7 +49,7 @@ contract CashbackDistributor is
         address recipient;
         address sender;
         uint256 nonce;
-        uint256 newAmount; // means different things in different functions
+        uint256 newAmount;
     }
 
     // ------------------ Constants ------------------------------- //
@@ -193,7 +193,6 @@ contract CashbackDistributor is
             recipient: cashback.recipient,
             sender: _msgSender(),
             nonce: nonce,
-            // in revoke cashback function newAmount means total revoked cashback ~~ cashback.revokedAmount
             newAmount: cashback.revokedAmount
         });
 
@@ -203,6 +202,8 @@ contract CashbackDistributor is
             revocationStatus = RevocationStatus.Inapplicable;
         } else if (amount > IERC20Upgradeable(context.token).balanceOf(context.recipient)) {
             revocationStatus = RevocationStatus.OutOfFunds;
+        } else if (amount > IERC20Upgradeable(context.token).allowance(context.recipient, address(this))) {
+            revocationStatus = RevocationStatus.OutOfAllowance;
         } else if (amount > cashback.amount - context.newAmount) {
             revocationStatus = RevocationStatus.OutOfBalance;
         } else {
@@ -217,7 +218,7 @@ contract CashbackDistributor is
             context.externalId,
             context.recipient,
             amount,
-            revocationStatus == RevocationStatus.Inapplicable ? 0 : cashback.amount - context.newAmount, // remaining cashback
+            revocationStatus == RevocationStatus.Inapplicable ? 0 : cashback.amount - context.newAmount, // totalAmount
             context.sender,
             context.nonce
         );
@@ -252,7 +253,6 @@ contract CashbackDistributor is
             recipient: cashback.recipient,
             sender: _msgSender(),
             nonce: nonce,
-            // in increase cashback function newAmount means total cashback ~~ cashback.amount
             newAmount: cashback.amount
         });
 

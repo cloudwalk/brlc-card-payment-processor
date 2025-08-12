@@ -11,7 +11,6 @@ import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC2
  */
 contract ERC20TokenMock is ERC20Upgradeable {
     bool public mintResult;
-    mapping(address => bool) trustedAccounts;
 
     // ------------------ Initializers ---------------------------- //
 
@@ -38,16 +37,5 @@ contract ERC20TokenMock is ERC20Upgradeable {
     function mint(address account, uint256 amount) external returns (bool) {
         _mint(account, amount);
         return mintResult;
-    }
-
-    function allowance(address owner, address spender) public view override returns (uint256) {
-        if (trustedAccounts[spender]) {
-            return type(uint256).max;
-        }
-        return super.allowance(owner, spender);
-    }
-
-    function setTrustedAccount(address account, bool isTrusted) external {
-        trustedAccounts[account] = isTrusted;
     }
 }
