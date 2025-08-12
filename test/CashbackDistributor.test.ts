@@ -255,6 +255,10 @@ describe("Contract 'CashbackDistributor'", async () => {
     const tokenMock1 = await deployTokenMock("1");
     const tokenMock2 = await deployTokenMock("2");
 
+    await proveTx(connect(tokenMock1, deployer).approve(getAddress(cashbackDistributor), MAX_UINT256));
+    await proveTx(connect(tokenMock2, deployer).approve(getAddress(cashbackDistributor), MAX_UINT256));
+    await proveTx(connect(tokenMock1, user).approve(getAddress(cashbackDistributor), MAX_UINT256));
+    await proveTx(connect(tokenMock2, user).approve(getAddress(cashbackDistributor), MAX_UINT256));
     await proveTx(cashbackDistributor.grantRole(GRANTOR_ROLE, deployer.address));
     await proveTx(cashbackDistributor.grantRole(BLOCKLISTER_ROLE, deployer.address));
     await proveTx(cashbackDistributor.grantRole(DISTRIBUTOR_ROLE, distributor.address));
