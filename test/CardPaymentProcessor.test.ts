@@ -1410,6 +1410,10 @@ class TestContext {
         account.address,
         getAddress(this.cardPaymentProcessorShell.contract)
       );
+
+      await proveTx(
+        connect(this.tokenMock, account).approve(getAddress(this.cashbackDistributorMockShell.contract), MAX_UINT256)
+      );
       if (allowance < MAX_UINT256) {
         await proveTx(
           connect(this.tokenMock, account).approve(getAddress(this.cardPaymentProcessorShell.contract), MAX_UINT256)
