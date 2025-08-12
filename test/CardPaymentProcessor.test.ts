@@ -752,7 +752,7 @@ class CardPaymentProcessorModel {
     operation.userBalanceChange =
       amountParts.accountBaseAmount +
       amountParts.accountExtraAmount -
-      payment.refundAmount +
+      refundParts.accountRefundAmount +
       operation.cashbackActualChange;
   }
 
@@ -1664,7 +1664,7 @@ class TestContext {
         checkEventField("correlationId", operation.correlationId),
         checkEventField("account", operation.account.address),
         checkEventField("refundAmount", operation.refundAmountChange),
-        checkEventField("sentAmount", -operation.cardPaymentProcessorBalanceChange),
+        checkEventField("sentAmount", -(operation.cashOutAccountBalanceChange + operation.cardPaymentProcessorBalanceChange)),
         checkEventField("status", operation.paymentStatus)
       );
 
