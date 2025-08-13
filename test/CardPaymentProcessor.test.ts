@@ -5606,6 +5606,30 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await context.checkPaymentOperationsForTx(operationResult.tx);
       await context.checkCardPaymentProcessorState();
     });
+
+    it("Several refund operations execute as expected if cashback is enabled", async () => {
+      const context = await beforeMakingPayments();
+      const { cardPaymentProcessorShell, payments: [payment] } = context;
+      payment.baseAmount = 1200 * DIGITS_COEF;
+      payment.extraAmount = 600 * DIGITS_COEF;
+      const subsidiLimit = 800 * DIGITS_COEF;
+      expect(payment).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
+
+      await cardPaymentProcessorShell.enableCashback();
+      await cardPaymentProcessorShell.makePaymentFor(payment, sponsor, subsidiLimit);
+
+      await context.checkCardPaymentProcessorState();
+
+      await cardPaymentProcessorShell.refundPayment(payment, Math.floor(payment.baseAmount * 0.1));
+      await context.checkCardPaymentProcessorState();
+
+      await cardPaymentProcessorShell.refundPayment(
+        payment,
+        Math.floor(payment.baseAmount * 0.2),
+        Math.floor(payment.extraAmount * 0.1)
+      );
+      await context.checkCardPaymentProcessorState();
+    });
   });
 
   describe("Token transfer demonstration scenarios", async () => {
