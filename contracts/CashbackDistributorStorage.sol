@@ -54,6 +54,18 @@ abstract contract CashbackDistributorStorageV2 {
 }
 
 /**
+ * @title CashbackDistributor storage version 3
+ * @author CloudWalk Inc. (See https://www.cloudwalk.io)
+ * @dev Storage extension for claimable cashback functionality.
+ */
+abstract contract CashbackDistributorStorageV3 {
+    /// @dev The address of the cashback vault.
+    address internal _cashbackVault;
+
+    /// @dev Storage gap for future upgrades.
+    uint256[49] private __gap;
+}
+/**
  * @title CashbackDistributor storage
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Contains storage variables of the {CashbackDistributor} contract.
@@ -62,4 +74,4 @@ abstract contract CashbackDistributorStorageV2 {
  * e.g. CashbackDistributorStorage<versionNumber>, so finally it would look like
  * "contract CashbackDistributorStorage is CashbackDistributorStorageV1, CashbackDistributorStorageV2".
  */
-abstract contract CashbackDistributorStorage is CashbackDistributorStorageV1, CashbackDistributorStorageV2 {}
+abstract contract CashbackDistributorStorage is CashbackDistributorStorageV1, CashbackDistributorStorageV2, CashbackDistributorStorageV3 {}

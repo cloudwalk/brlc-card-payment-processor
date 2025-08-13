@@ -16,6 +16,7 @@ import { Versionable } from "./base/Versionable.sol";
 import { CashbackDistributorStorage } from "./CashbackDistributorStorage.sol";
 import { ICashbackDistributor, ICashbackDistributorPrimary } from "./interfaces/ICashbackDistributor.sol";
 import { ICashbackDistributorConfiguration } from "./interfaces/ICashbackDistributor.sol";
+import { ICashbackVault } from "./interfaces/ICashbackVault.sol";
 
 /**
  * @title CashbackDistributor contract
@@ -167,7 +168,7 @@ contract CashbackDistributor is
         if (status == CashbackStatus.Success || status == CashbackStatus.Partial) {
             _totalCashbackByTokenAndRecipient[token][recipient] += amount;
             _totalCashbackByTokenAndExternalId[token][externalId] += amount;
-            IERC20Upgradeable(token).safeTransfer(recipient, amount);
+            _transferCashback(token, recipient, amount);
             sentAmount = amount;
             success = true;
         }
@@ -228,7 +229,7 @@ contract CashbackDistributor is
             _reduceOverallCashback(context.token, context.recipient, amount);
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] -= amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] -= amount;
-            IERC20Upgradeable(context.token).safeTransferFrom(context.recipient, address(this), amount);
+            _clawbackCashback(context.token, context.recipient, amount);
             success = true;
         }
     }
@@ -296,10 +297,21 @@ contract CashbackDistributor is
             cashback.amount = context.newAmount;
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] += amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] += amount;
-            IERC20Upgradeable(context.token).safeTransfer(context.recipient, amount);
+            _transferCashback(context.token, context.recipient, amount);
             sentAmount = amount;
             success = true;
         }
+    }
+
+    /**
+     * @inheritdoc ICashbackDistributorConfiguration
+     *
+     * @dev Requirements:
+     *
+     * - The caller must have the {OWNER_ROLE} role.
+     */
+    function setCashbackVault(address cashbackVault) external onlyRole(OWNER_ROLE) {
+        _cashbackVault = cashbackVault;
     }
 
     /**
@@ -435,6 +447,31 @@ contract CashbackDistributor is
 
     // ------------------ Internal functions ---------------------- //
 
+    function _transferCashback(address token, address recipient, uint256 amount) internal {
+        if (_cashbackVault != address(0)) {
+            ICashbackVault(_cashbackVault).grantCashback(recipient, amount);
+        } else {
+            IERC20Upgradeable(token).safeTransfer(recipient, amount);
+        }
+    }
+
+    function _clawbackCashback(address token, address recipient, uint256 amount) internal {
+        uint256 clawbackFromUserBalance = amount;
+        if (_cashbackVault != address(0)) {
+            // first try decrease users cashback in the vault
+            uint256 vaultBalance = ICashbackVault(_cashbackVault).getCashbackBalance(recipient);
+            uint256 vaultRevokeAmount = vaultBalance >= amount ? amount : vaultBalance;
+            clawbackFromUserBalance -= vaultRevokeAmount;
+            if (vaultRevokeAmount > 0) {
+                ICashbackVault(_cashbackVault).revokeCashback(recipient, vaultRevokeAmount);
+            }
+        }
+
+        if (clawbackFromUserBalance > 0) {
+            // TODO check balance first?????? we didnot check it before but .....
+            IERC20Upgradeable(token).safeTransferFrom(recipient, address(this), clawbackFromUserBalance);
+        }
+    }
     /**
      * @dev Previews the cashback cap.
      *

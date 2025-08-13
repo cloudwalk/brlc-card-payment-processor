@@ -389,6 +389,12 @@ interface ICashbackDistributorConfiguration {
      * Emits a {Disable} event.
      */
     function disable() external;
+
+    /**
+     * @dev Sets the address of the cashback vault.
+     * @param cashbackVault The address of the cashback vault maybe zero address if the claimable mode is disabled.
+     */
+    function setCashbackVault(address cashbackVault) external;
 }
 /**
  * @title ICashbackDistributorErrors interface
