@@ -243,7 +243,7 @@ interface ICashbackDistributorPrimary is ICashbackDistributorTypes {
     /**
      * @dev Revokes a previously sent cashback.
      *
-     * Transfers the underlying tokens from the caller to the contract.
+     * Transfers the underlying tokens from the recipient to the contract.
      * This function is expected to be called by a limited number of accounts
      * that are allowed to execute cashback operations.
      *
