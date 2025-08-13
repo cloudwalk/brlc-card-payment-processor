@@ -1522,11 +1522,9 @@ contract CardPaymentProcessor is
         uint256 paymentExtraAmountChange = oldPaymentExtraAmount - newPaymentExtraAmount;
         uint256 accountExtraAmountChange = oldAccountExtraAmount - newAccountExtraAmount;
         operation.accountSentAmount =
-            operation.newCompensationAmount -
-            operation.oldCompensationAmount -
-            newSponsorRefundAmount +
-            accountExtraAmountChange +
-            operation.revokedCashbackAmount;
+            operation.paymentRefundAmount -
+            operation.sponsorRefundAmount +
+            accountExtraAmountChange;
         operation.sponsorSentAmount =
             operation.sponsorRefundAmount +
             paymentExtraAmountChange -
