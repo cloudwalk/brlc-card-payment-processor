@@ -899,7 +899,7 @@ class CardPaymentProcessorModel {
       this.#totalClearedBalance += balanceChange;
       this.#totalBalance += operation.cardPaymentProcessorBalanceChange;
     } else {
-      this.#totalBalance += -(operation.cashbackRequestedChange - operation.cashbackActualChange);
+      // operation.paymentStatus == PaymentStatus.Confirmed
     }
     return this.#paymentOperations.push(operation) - 1;
   }
