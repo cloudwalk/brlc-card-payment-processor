@@ -503,7 +503,8 @@ describe("Contract 'CashbackDistributor'", async () => {
     return { fixture, cashback };
   }
 
-  async function beforeSendingCashback(options?: { cashbackRequestedAmount?: number }): Promise<TestContext> {
+  // we change this function to variable to be able to monkey patch it
+  let beforeSendingCashback = async (options?: { cashbackRequestedAmount?: number }): Promise<TestContext> => {
     const { fixture, cashback } = await prepareForSingleCashback(options?.cashbackRequestedAmount);
     const { cashbackDistributorInitialBalanceByToken } = await setUpContractsForSendingCashbacks(
       fixture.cashbackDistributor,
@@ -511,7 +512,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     );
 
     return { fixture, cashbacks: [cashback], cashbackDistributorInitialBalanceByToken };
-  }
+  };
 
   describe("Function 'initialize()'", async () => {
     it("Configures the contract as expected", async () => {
@@ -626,8 +627,32 @@ describe("Contract 'CashbackDistributor'", async () => {
     });
   });
 
-  for (const useCashbackVault of [true, false]) {
+  for (const useCashbackVault of [false, true]) {
     describe(`The cashback vault is ${useCashbackVault ? "set" : "not set"}`, async () => {
+      let cashbackVault: Contract;
+      if (useCashbackVault) {
+        // I am sorry for this, but I don't want to refactor the whole test
+        let originalBeforeSendingCashback: typeof beforeSendingCashback;
+        before(() => {
+          originalBeforeSendingCashback = beforeSendingCashback;
+          beforeSendingCashback = async (...args: Parameters<typeof beforeSendingCashback>) => {
+            const context = await originalBeforeSendingCashback(...args);
+            const { fixture: { cashbackDistributor, tokenMocks: [token] } } = context;
+
+            cashbackVault = await (await ethers.getContractFactory("CashbackVaultMock"))
+              .deploy(await token.getAddress());
+            await cashbackVault.waitForDeployment();
+            cashbackVault = connect(cashbackVault, deployer);
+            const cashbackVaultAddress = await cashbackVault.getAddress();
+            await proveTx(cashbackDistributor.setCashbackVault(await token.getAddress(), cashbackVaultAddress));
+
+            return context;
+          };
+        });
+        after(() => {
+          beforeSendingCashback = originalBeforeSendingCashback;
+        });
+      }
       describe("Function 'sendCashback()'", async () => {
         async function checkSending(context: TestContext) {
           const { fixture: { cashbackDistributor }, cashbacks } = context;
