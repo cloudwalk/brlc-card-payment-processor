@@ -938,7 +938,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           await checkRevoking(RevocationStatus.OutOfFunds, context);
         });
 
-        it("The recipient has not enough tokens and the initial sending operation is partially successful", async () => {
+        it("The recipient has not enough tokens and the initial sending op is partially successful", async () => {
           const context = await beforeSendingCashback({ cashbackRequestedAmount: MAX_CASHBACK_FOR_PERIOD + 1 });
           const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
           await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Partial);

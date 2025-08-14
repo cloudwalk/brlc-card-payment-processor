@@ -226,10 +226,18 @@ interface ICardPaymentProcessorPrimary is ICardPaymentProcessorTypes {
 
     /**
      * @dev Emitted when a payment is revoked.
+     *
+     * Legacy Notes:
+     *
+     * - Before v.1.3: The `sentAmount` parameter took the cashback into account and the formula was
+     *   `sentAmount = accountSumAmount - accountRefundAmount - cashbackAmount`. The new formula is:
+     *   `sentAmount = accountSumAmount - accountRefundAmount` and cashback is revoked separately by the
+     *   CashbackDistributor contract.
+     *
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param account The account that made the payment.
-     * @param sentAmount The amount of tokens sent back to the account.
+     * @param sentAmount The amount of tokens sent back to the account before the cashback revocation if any.
      * @param clearedBalance The balance of cleared tokens of the account.
      * @param unclearedBalance The balance of uncleared tokens of the account.
      * @param wasPaymentCleared Whether the payment was cleared before revocation.
@@ -266,10 +274,15 @@ interface ICardPaymentProcessorPrimary is ICardPaymentProcessorTypes {
 
     /**
      * @dev Emitted when a payment is reversed.
+     *
+     * Legacy Notes:
+     *
+     * - Before v.1.3: See the same note for the {RevokePayment} event.
+     *
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param account The account that made the payment.
-     * @param sentAmount The amount of tokens sent back to the account.
+     * @param sentAmount The amount of tokens sent back to the account before the cashback revocation if any.
      * @param clearedBalance The balance of cleared tokens of the account.
      * @param unclearedBalance The balance of uncleared tokens of the account.
      * @param wasPaymentCleared Whether the payment was cleared before reversal.
@@ -334,11 +347,21 @@ interface ICardPaymentProcessorPrimary is ICardPaymentProcessorTypes {
 
     /**
      * @dev Emitted when a payment is refunded.
+     *
+     * Legacy Notes:
+     *
+     * - Before v.1.3: The `sentAmount` parameter took the cashback into account and the formula was
+     *   `sentAmount = accountRefundAmountDiff - accountExtraAmountDiff - revokedCashbackAmount`. The new formula is:
+     *   `sentAmount = accountRefundAmountDiff - accountExtraAmountDiff` and cashback is revoked separately by the
+     *   CashbackDistributor contract.
+     *   In the formulas above: `accountRefundAmountDiff` = newAccountRefundAmount - oldAccountRefundAmount,
+     *   `accountExtraAmountDiff` = newAccountExtraAmount - oldAccountExtraAmount.
+     *
      * @param authorizationId The card transaction authorization ID from the off-chain card processing backend.
      * @param correlationId The ID that is correlated to this function call in the off-chain card processing backend.
      * @param account The account to be refunded.
      * @param refundAmount The amount of tokens refunded to the account.
-     * @param sentAmount The amount of tokens sent back to the account.
+     * @param sentAmount The amount of tokens sent back to the account before the cashback revocation if any.
      * @param status The status of the payment.
      */
     event RefundPayment(
