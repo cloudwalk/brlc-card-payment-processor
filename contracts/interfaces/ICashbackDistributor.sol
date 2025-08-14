@@ -247,6 +247,10 @@ interface ICashbackDistributorPrimary is ICashbackDistributorTypes {
      * This function is expected to be called by a limited number of accounts
      * that are allowed to execute cashback operations.
      *
+     * Legacy Notes:
+     *
+     * - Before v.1.3: The function transfers the underlying tokens from the caller to the contract.
+     *
      * Emits a {RevokeCashback} event if the cashback is successfully revoked.
      *
      * @param nonce The nonce of the cashback operation.
