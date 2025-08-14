@@ -1399,7 +1399,7 @@ contract CardPaymentProcessor is
             revert InappropriateNewExtraPaymentAmount();
         }
 
-        RefundingOperation memory operation =   _defineRefundingOperation(refundAmount, newExtraAmount, payment);
+        RefundingOperation memory operation = _defineRefundingOperation(refundAmount, newExtraAmount, payment);
 
         payment.refundAmount = operation.newPaymentRefundAmount;
         payment.compensationAmount = operation.newCompensationAmount;
