@@ -1658,7 +1658,10 @@ class TestContext {
         checkEventField("correlationId", operation.correlationId),
         checkEventField("account", operation.account.address),
         checkEventField("refundAmount", operation.refundAmountChange),
-        checkEventField("sentAmount", -(operation.cashOutAccountBalanceChange + operation.cardPaymentProcessorBalanceChange)),
+        checkEventField(
+          "sentAmount",
+          -(operation.cashOutAccountBalanceChange + operation.cardPaymentProcessorBalanceChange)
+        ),
         checkEventField("status", operation.paymentStatus)
       );
 
