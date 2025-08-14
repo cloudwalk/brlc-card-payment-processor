@@ -61,9 +61,6 @@ abstract contract CashbackDistributorStorageV2 {
 abstract contract CashbackDistributorStorageV3 {
     /// @dev The address of the cashback vault.
     address internal _cashbackVault;
-
-    /// @dev Storage gap for future upgrades.
-    uint256[49] private __gap;
 }
 /**
  * @title CashbackDistributor storage
