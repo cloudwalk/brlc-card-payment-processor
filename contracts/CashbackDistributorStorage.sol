@@ -59,8 +59,8 @@ abstract contract CashbackDistributorStorageV2 {
  * @dev Storage extension for claimable cashback functionality.
  */
 abstract contract CashbackDistributorStorageV3 {
-    /// @dev The address of the cashback vault.
-    address internal _cashbackVault;
+    /// @dev The mapping of the cashback vault for a given token.
+    mapping(address => address) internal _cashbackVaults;
 }
 /**
  * @title CashbackDistributor storage

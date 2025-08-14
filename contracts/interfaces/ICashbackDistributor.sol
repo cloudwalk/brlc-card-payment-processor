@@ -397,9 +397,10 @@ interface ICashbackDistributorConfiguration {
 
     /**
      * @dev Sets the address of the cashback vault.
+     * @param token The address of the token to set the cashback vault for.
      * @param cashbackVault The address of the cashback vault maybe zero address if the claimable mode is disabled.
      */
-    function setCashbackVault(address cashbackVault) external;
+    function setCashbackVault(address token, address cashbackVault) external;
 }
 /**
  * @title ICashbackDistributorErrors interface

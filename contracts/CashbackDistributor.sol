@@ -310,8 +310,17 @@ contract CashbackDistributor is
      *
      * - The caller must have the {OWNER_ROLE} role.
      */
-    function setCashbackVault(address cashbackVault) external onlyRole(OWNER_ROLE) {
-        _cashbackVault = cashbackVault;
+    function setCashbackVault(address token, address cashbackVault) external onlyRole(OWNER_ROLE) {
+        address oldCashbackVault = _cashbackVaults[token];
+        if (oldCashbackVault != address(0)) {
+            // remove approval for the old cashback vault
+            IERC20Upgradeable(token).approve(oldCashbackVault, 0);
+        }
+        if (cashbackVault != address(0)) {
+            ICashbackVault(cashbackVault).proveCashbackVault();
+            IERC20Upgradeable(token).approve(cashbackVault, type(uint256).max);
+        }
+        _cashbackVaults[token] = cashbackVault;
     }
 
     /**
@@ -448,8 +457,9 @@ contract CashbackDistributor is
     // ------------------ Internal functions ---------------------- //
 
     function _transferCashback(address token, address recipient, uint256 amount) internal {
-        if (_cashbackVault != address(0)) {
-            ICashbackVault(_cashbackVault).grantCashback(recipient, amount);
+        address cashbackVault = _cashbackVaults[token];
+        if (cashbackVault != address(0)) {
+            ICashbackVault(cashbackVault).grantCashback(recipient, amount);
         } else {
             IERC20Upgradeable(token).safeTransfer(recipient, amount);
         }
@@ -457,13 +467,14 @@ contract CashbackDistributor is
 
     function _clawbackCashback(address token, address recipient, uint256 amount) internal {
         uint256 clawbackFromUserBalance = amount;
-        if (_cashbackVault != address(0)) {
+        address cashbackVault = _cashbackVaults[token];
+        if (cashbackVault != address(0)) {
             // first try decrease users cashback in the vault
-            uint256 vaultBalance = ICashbackVault(_cashbackVault).getCashbackBalance(recipient);
+            uint256 vaultBalance = ICashbackVault(cashbackVault).getCashbackBalance(recipient);
             uint256 vaultRevokeAmount = vaultBalance >= amount ? amount : vaultBalance;
             clawbackFromUserBalance -= vaultRevokeAmount;
             if (vaultRevokeAmount > 0) {
-                ICashbackVault(_cashbackVault).revokeCashback(recipient, vaultRevokeAmount);
+                ICashbackVault(cashbackVault).revokeCashback(recipient, vaultRevokeAmount);
             }
         }
 

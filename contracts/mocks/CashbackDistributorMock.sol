@@ -227,7 +227,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
      *
      * - The caller must have the {OWNER_ROLE} role.
      */
-    function setCashbackVault(address cashbackVault) external {}
+    function setCashbackVault(address token, address cashbackVault) external {}
 
     /**
      * @inheritdoc ICashbackDistributorConfiguration
