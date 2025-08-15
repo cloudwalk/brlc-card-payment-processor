@@ -17,6 +17,7 @@ import { CashbackDistributorStorage } from "./CashbackDistributorStorage.sol";
 import { ICashbackDistributor, ICashbackDistributorPrimary } from "./interfaces/ICashbackDistributor.sol";
 import { ICashbackDistributorConfiguration } from "./interfaces/ICashbackDistributor.sol";
 import { ICashbackVault } from "./interfaces/ICashbackVault.sol";
+import { console } from "hardhat/console.sol";
 
 /**
  * @title CashbackDistributor contract
@@ -236,8 +237,12 @@ contract CashbackDistributor is
             _reduceOverallCashback(context.token, context.recipient, amount);
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] -= amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] -= amount;
-            if (vaultRevokeAmount > 0) {
-                ICashbackVault(context.token).revokeCashback(context.recipient, vaultRevokeAmount);
+            console.log("vaultRevokeAmount", vaultRevokeAmount);
+            console.log("CV balance of user", ICashbackVault(_cashbackVaults[context.token]).getAccountCashbackBalance(context.recipient));
+            console.log("CV balance of contract", IERC20Upgradeable(context.token).balanceOf(_cashbackVaults[context.token]));
+            console.log("accountRevokeAmount", accountRevokeAmount);
+            if (vaultRevokeAmount > 0 && _cashbackVaults[context.token] != address(0)) {
+                ICashbackVault(_cashbackVaults[context.token]).revokeCashback(context.recipient, vaultRevokeAmount);
             }
             if (accountRevokeAmount > 0) {
                 IERC20Upgradeable(context.token).safeTransferFrom(context.recipient, address(this), accountRevokeAmount);
@@ -506,7 +511,7 @@ contract CashbackDistributor is
         address cashbackVault,
         address recipient,
         uint256 amount
-    ) internal returns (uint256 vaultRevokeAmount, uint256 accountRevokeAmount) {
+    ) internal view returns (uint256 vaultRevokeAmount, uint256 accountRevokeAmount) {
         if (cashbackVault == address(0)) {
             return (0, amount);
         }

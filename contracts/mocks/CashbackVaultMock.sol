@@ -20,7 +20,7 @@ contract CashbackVaultMock is ICashbackVault {
     }
 
     function grantCashback(address user, uint256 amount) external {
-        IERC20Upgradeable(token).transferFrom(msg.sender, user, amount);
+        IERC20Upgradeable(token).transferFrom(msg.sender, address(this), amount);
         cashbackBalances[user] += amount;
     }
 
