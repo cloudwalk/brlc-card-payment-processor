@@ -199,11 +199,17 @@ contract CashbackDistributor is
 
         RevocationStatus revocationStatus = RevocationStatus.Success;
 
+        (uint256 vaultRevokeAmount, uint256 accountRevokeAmount) = _calculateRevokeAmounts(
+            _cashbackVaults[context.token],
+            context.recipient,
+            amount
+        );
+
         if (context.cashbackStatus != CashbackStatus.Success && context.cashbackStatus != CashbackStatus.Partial) {
             revocationStatus = RevocationStatus.Inapplicable;
-        } else if (amount > IERC20Upgradeable(context.token).balanceOf(context.recipient)) {
+        } else if (accountRevokeAmount > IERC20Upgradeable(context.token).balanceOf(context.recipient)) {
             revocationStatus = RevocationStatus.OutOfFunds;
-        } else if (amount > IERC20Upgradeable(context.token).allowance(context.recipient, address(this))) {
+        } else if (accountRevokeAmount > IERC20Upgradeable(context.token).allowance(context.recipient, address(this))) {
             revocationStatus = RevocationStatus.OutOfAllowance;
         } else if (amount > cashback.amount - context.newAmount) {
             revocationStatus = RevocationStatus.OutOfBalance;
@@ -225,11 +231,17 @@ contract CashbackDistributor is
         );
 
         if (revocationStatus == RevocationStatus.Success) {
+            // TODO: here we OR take all cashback or nothing like in previouse version
             cashback.revokedAmount = context.newAmount;
             _reduceOverallCashback(context.token, context.recipient, amount);
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] -= amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] -= amount;
-            _clawbackCashback(context.token, context.recipient, amount);
+            if (vaultRevokeAmount > 0) {
+                ICashbackVault(context.token).revokeCashback(context.recipient, vaultRevokeAmount);
+            }
+            if (accountRevokeAmount > 0) {
+                IERC20Upgradeable(context.token).safeTransferFrom(context.recipient, address(this), accountRevokeAmount);
+            }
             success = true;
         }
     }
@@ -482,23 +494,28 @@ contract CashbackDistributor is
         }
     }
 
-    function _clawbackCashback(address token, address recipient, uint256 amount) internal {
-        uint256 clawbackFromUserBalance = amount;
-        address cashbackVault = _cashbackVaults[token];
-        if (cashbackVault != address(0)) {
-            // first try decrease users cashback in the vault
-            uint256 vaultBalance = ICashbackVault(cashbackVault).getAccountCashbackBalance(recipient);
-            uint256 vaultRevokeAmount = vaultBalance >= amount ? amount : vaultBalance;
-            clawbackFromUserBalance -= vaultRevokeAmount;
-            if (vaultRevokeAmount > 0) {
-                ICashbackVault(cashbackVault).revokeCashback(recipient, vaultRevokeAmount);
-            }
+    /**
+     * @dev Calculates the amounts to revoke from the vault and the account.
+     * Uses CV balance first, then account balance.
+     *
+     * @param cashbackVault The cashback vault interface.
+     * @param recipient The recipient address.
+     * @param amount The amount to revoke.
+     */
+    function _calculateRevokeAmounts(
+        address cashbackVault,
+        address recipient,
+        uint256 amount
+    ) internal returns (uint256 vaultRevokeAmount, uint256 accountRevokeAmount) {
+        if (cashbackVault == address(0)) {
+            return (0, amount);
         }
 
-        if (clawbackFromUserBalance > 0) {
-            // TODO check balance first?????? we didnot check it before but .....
-            IERC20Upgradeable(token).safeTransferFrom(recipient, address(this), clawbackFromUserBalance);
-        }
+        accountRevokeAmount = amount;
+        // first try decrease users cashback in the vault
+        uint256 vaultAccountBalance = ICashbackVault(cashbackVault).getAccountCashbackBalance(recipient);
+        vaultRevokeAmount = vaultAccountBalance >= amount ? amount : vaultAccountBalance;
+        accountRevokeAmount -= vaultRevokeAmount;
     }
 
     /**
