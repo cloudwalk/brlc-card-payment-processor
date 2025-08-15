@@ -29,9 +29,13 @@ contract CashbackVaultMock is ICashbackVault {
         cashbackBalances[user] -= amount;
     }
 
-    function getCashbackBalance(address user) external view returns (uint256) {
+    function getAccountCashbackBalance(address user) external view returns (uint256) {
         return cashbackBalances[user];
     }
 
     function proveCashbackVault() external pure {}
+
+    function underlyingToken() external view returns (address) {
+        return token;
+    }
 }
