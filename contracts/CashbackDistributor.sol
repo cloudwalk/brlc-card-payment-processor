@@ -334,11 +334,7 @@ contract CashbackDistributor is
             try cv.proveCashbackVault() {} catch {
                 revert InvalidCashbackVault();
             }
-            try cv.underlyingToken() returns (address underlyingToken) {
-                if (underlyingToken != token) {
-                    revert InvalidCashbackVault();
-                }
-            } catch {
+            if (cv.underlyingToken() != token) {
                 revert InvalidCashbackVault();
             }
 
