@@ -373,6 +373,13 @@ interface ICashbackDistributorConfiguration {
      */
     event Disable(address sender);
 
+    /**
+     * @dev Emitted when the cashback vault is set.
+     * @param token The address of the token to set the cashback vault for.
+     * @param cashbackVault The address of the cashback vault maybe zero address if the claimable mode is disabled for the token.
+     */
+    event CashbackVaultUpdated(address token, address cashbackVault);
+
     // ------------------ Transactional functions --------------- //
 
     /**
@@ -422,6 +429,12 @@ interface ICashbackDistributorErrors {
 
     /// @dev The zero token address has been passed as a function argument.
     error ZeroTokenAddress();
+
+    /// @dev The cashback vault address provided is identical to the current vault for the token.
+    error CashbackVaultUnchanged();
+
+    /// @dev The provided cashback vault contract is not a valid cashback vault or the token is different.
+    error InvalidCashbackVault();
 }
 
 /**

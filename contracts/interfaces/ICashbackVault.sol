@@ -20,5 +20,8 @@ interface ICashbackVault {
      * @return The current cashback balance of the user.
      */
     function getCashbackBalance(address user) external view returns (uint256);
+
     function proveCashbackVault() external pure;
+
+    function underlyingToken() external view returns (address);
 }

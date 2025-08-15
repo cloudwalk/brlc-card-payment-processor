@@ -312,15 +312,32 @@ contract CashbackDistributor is
      */
     function setCashbackVault(address token, address cashbackVault) external onlyRole(OWNER_ROLE) {
         address oldCashbackVault = _cashbackVaults[token];
-        if (oldCashbackVault != address(0)) {
-            // remove approval for the old cashback vault
-            IERC20Upgradeable(token).approve(oldCashbackVault, 0);
+        IERC20Upgradeable t = IERC20Upgradeable(token);
+        ICashbackVault cv = ICashbackVault(cashbackVault);
+        if (oldCashbackVault == cashbackVault) {
+            revert CashbackVaultUnchanged();
         }
         if (cashbackVault != address(0)) {
-            ICashbackVault(cashbackVault).proveCashbackVault();
-            IERC20Upgradeable(token).approve(cashbackVault, type(uint256).max);
+            try cv.proveCashbackVault() {} catch {
+                revert InvalidCashbackVault();
+            }
+            try cv.underlyingToken() returns (address underlyingToken) {
+                if (underlyingToken != token) {
+                    revert InvalidCashbackVault();
+                }
+            } catch {
+                revert InvalidCashbackVault();
+            }
+
+            t.approve(cashbackVault, type(uint256).max);
+        }
+
+        if (oldCashbackVault != address(0)) {
+            t.approve(oldCashbackVault, 0);
         }
         _cashbackVaults[token] = cashbackVault;
+
+        emit CashbackVaultUpdated(token, cashbackVault);
     }
 
     /**
@@ -483,6 +500,7 @@ contract CashbackDistributor is
             IERC20Upgradeable(token).safeTransferFrom(recipient, address(this), clawbackFromUserBalance);
         }
     }
+
     /**
      * @dev Previews the cashback cap.
      *
