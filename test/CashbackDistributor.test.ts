@@ -627,7 +627,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     });
   });
 
-  for (const useCashbackVault of [false]) {
+  for (const useCashbackVault of [false, true]) {
     describe(`The cashback vault is ${useCashbackVault ? "set" : "not set"}`, async () => {
       let cashbackVault: Contract;
       if (useCashbackVault) {
@@ -674,11 +674,21 @@ describe("Contract 'CashbackDistributor'", async () => {
             cashback.recipient.address,
             cashback.requestedAmount
           );
-          await expect(tx).to.changeTokenBalances(
-            cashback.token,
-            [cashbackDistributor, cashback.recipient, cashback.sender],
-            [-recipientBalanceChange, +recipientBalanceChange, 0]
-          );
+          if (useCashbackVault) {
+            // here we also check CV balance changes
+            await expect(tx).to.changeTokenBalances(
+              cashback.token,
+              [cashbackDistributor, cashback.recipient, cashback.sender, await cashbackVault.getAddress()],
+              [-recipientBalanceChange, 0, 0, +recipientBalanceChange]
+            );
+          } else {
+            // ignore CV balance changes
+            await expect(tx).to.changeTokenBalances(
+              cashback.token,
+              [cashbackDistributor, cashback.recipient, cashback.sender],
+              [-recipientBalanceChange, +recipientBalanceChange, 0]
+            );
+          }
           await expect(tx).to.emit(cashbackDistributor, EVENT_NAME_SEND_CASHBACK).withArgs(
             getAddress(cashback.token),
             cashback.kind,
@@ -871,11 +881,20 @@ describe("Contract 'CashbackDistributor'", async () => {
           );
 
           const tx = connect(cashbackDistributor, distributor).revokeCashback(cashback.nonce, cashback.revokedAmount);
-          await expect(tx).to.changeTokenBalances(
-            cashback.token,
-            [cashbackDistributor, cashback.recipient, cashback.sender],
-            [+contractBalanceChange, -contractBalanceChange, 0]
-          );
+          if (useCashbackVault) {
+            // here we also check CV balance changes
+            await expect(tx).to.changeTokenBalances(
+              cashback.token,
+              [cashbackDistributor, cashback.recipient, cashback.sender, await cashbackVault.getAddress()],
+              [+contractBalanceChange, 0, 0, -contractBalanceChange]
+            );
+          } else {
+            await expect(tx).to.changeTokenBalances(
+              cashback.token,
+              [cashbackDistributor, cashback.recipient, cashback.sender],
+              [+contractBalanceChange, -contractBalanceChange, 0]
+            );
+          }
           await expect(tx).to.emit(cashbackDistributor, EVENT_NAME_REVOKE_CASHBACK).withArgs(
             getAddress(cashback.token),
             cashback.kind,
