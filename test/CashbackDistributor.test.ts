@@ -970,11 +970,14 @@ describe("Contract 'CashbackDistributor'", async () => {
           });
 
           describe("Fails because", async () => {
-            (useCashbackVault ? it.skip : it)("The recipient has not enough tokens", async () => {
+            it("The recipient has not enough tokens", async () => {
               const context = await beforeSendingCashback();
               const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
               await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Success);
               cashback.revokedAmount = Math.floor(cashback.requestedAmount * 0.1);
+              if (useCashbackVault) {
+                await proveTx(cashbackVault.claim(cashback.recipient.address, cashback.sentAmount));
+              }
               const recipientBalance = await cashback.token.balanceOf(cashback.recipient);
               // recipient spends almost all his balance
               await proveTx(
@@ -984,12 +987,15 @@ describe("Contract 'CashbackDistributor'", async () => {
               await checkRevoking(RevocationStatus.OutOfFunds, context);
             });
 
-            (useCashbackVault ? it.skip : it)("The recipient has not enough tokens and the initial sending op is partially successful", async () => {
+            it("The recipient has not enough tokens and the initial sending op is partially successful", async () => {
               const context = await beforeSendingCashback({ cashbackRequestedAmount: MAX_CASHBACK_FOR_PERIOD + 1 });
               const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
               await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Partial);
               cashback.sentAmount = MAX_CASHBACK_FOR_PERIOD;
               cashback.revokedAmount = Math.floor(MAX_CASHBACK_FOR_PERIOD * 0.1);// recipient spends almost all his balance
+              if (useCashbackVault) {
+                await proveTx(cashbackVault.claim(cashback.recipient.address, cashback.sentAmount));
+              }
               const recipientBalance = await cashback.token.balanceOf(cashback.recipient);
               await proveTx(
                 connect(cashback.token, cashback.recipient)
@@ -998,11 +1004,14 @@ describe("Contract 'CashbackDistributor'", async () => {
               await checkRevoking(RevocationStatus.OutOfFunds, context);
             })
 
-            (useCashbackVault ? it.skip : it)("The cashback distributor has not enough allowance from the caller", async () => {
+            it("The cashback distributor has not enough allowance from the caller", async () => {
               const context = await beforeSendingCashback();
               const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
               await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Success);
               cashback.revokedAmount = Math.floor(cashback.requestedAmount * 0.1);
+              if (useCashbackVault) {
+                await proveTx(cashbackVault.claim(cashback.recipient.address, cashback.sentAmount));
+              }
               await proveTx(cashback.token.mint(user.address, cashback.revokedAmount));
               await proveTx(connect(cashback.token, user).approve(
                 getAddress(cashbackDistributor),
