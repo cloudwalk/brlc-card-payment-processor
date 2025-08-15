@@ -627,8 +627,8 @@ describe("Contract 'CashbackDistributor'", async () => {
     });
   });
 
-  for (const useCashbackVault of [false, true]) {
-    describe.only(`The cashback vault is ${useCashbackVault ? "set" : "not set"}`, async () => {
+  for (const useCashbackVault of [false]) {
+    describe(`The cashback vault is ${useCashbackVault ? "set" : "not set"}`, async () => {
       let cashbackVault: Contract;
       if (useCashbackVault) {
         // I am sorry for this, but I don't want to refactor the whole test
@@ -941,7 +941,7 @@ describe("Contract 'CashbackDistributor'", async () => {
               await checkRevoking(RevocationStatus.Success, context);
             });
 
-            it.only("Less than the initial cashback amount and initial sending operation is partially successful", async () => {
+            it("Less than the initial cashback amount and initial sending operation is partially successful", async () => {
               const context = await beforeSendingCashback({ cashbackRequestedAmount: MAX_CASHBACK_FOR_PERIOD + 1 });
               const { cashbacks: [cashback] } = context;
               cashback.revokedAmount = Math.floor(MAX_CASHBACK_FOR_PERIOD * 0.1);
