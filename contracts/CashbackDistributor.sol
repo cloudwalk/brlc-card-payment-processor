@@ -237,12 +237,6 @@ contract CashbackDistributor is
             _reduceOverallCashback(context.token, context.recipient, amount);
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] -= amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] -= amount;
-            console.log("vaultRevokeAmount", vaultRevokeAmount);
-            if (_cashbackVaults[context.token] != address(0)) {
-                console.log("CV balance of user", ICashbackVault(_cashbackVaults[context.token]).getAccountCashbackBalance(context.recipient));
-                console.log("CV balance of contract", IERC20Upgradeable(context.token).balanceOf(_cashbackVaults[context.token]));
-            }
-            console.log("accountRevokeAmount", accountRevokeAmount);
             if (vaultRevokeAmount > 0 && _cashbackVaults[context.token] != address(0)) {
                 ICashbackVault(_cashbackVaults[context.token]).revokeCashback(context.recipient, vaultRevokeAmount);
             }

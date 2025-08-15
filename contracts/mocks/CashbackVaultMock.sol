@@ -3,6 +3,7 @@
 pragma solidity ^0.8.9;
 
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import { console } from "hardhat/console.sol";
 
 import { ICashbackVault } from "../interfaces/ICashbackVault.sol";
 
@@ -37,5 +38,10 @@ contract CashbackVaultMock is ICashbackVault {
 
     function underlyingToken() external view returns (address) {
         return token;
+    }
+
+    function claim(address account, uint256 amount) external {
+        cashbackBalances[account] -= amount;
+        IERC20Upgradeable(token).transfer(account, amount);
     }
 }
