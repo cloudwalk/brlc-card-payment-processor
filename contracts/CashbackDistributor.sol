@@ -169,7 +169,7 @@ contract CashbackDistributor is
         if (status == CashbackStatus.Success || status == CashbackStatus.Partial) {
             _totalCashbackByTokenAndRecipient[token][recipient] += amount;
             _totalCashbackByTokenAndExternalId[token][externalId] += amount;
-            _transferCashback(token, recipient, amount);
+            _grantCashback(token, recipient, amount);
             sentAmount = amount;
             success = true;
         }
@@ -310,7 +310,7 @@ contract CashbackDistributor is
             cashback.amount = context.newAmount;
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] += amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] += amount;
-            _transferCashback(context.token, context.recipient, amount);
+            _grantCashback(context.token, context.recipient, amount);
             sentAmount = amount;
             success = true;
         }
@@ -486,7 +486,7 @@ contract CashbackDistributor is
 
     // ------------------ Internal functions ---------------------- //
 
-    function _transferCashback(address token, address recipient, uint256 amount) internal {
+    function _grantCashback(address token, address recipient, uint256 amount) internal {
         address cashbackVault = _cashbackVaults[token];
         if (cashbackVault != address(0)) {
             ICashbackVault(cashbackVault).grantCashback(recipient, amount);
