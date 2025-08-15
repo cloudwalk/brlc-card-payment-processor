@@ -12,14 +12,7 @@ interface ICashbackVault {
 
     function revokeCashback(address user, uint256 amount) external;
 
-    // --- View functions ----- //
-
-    /**
-     * @dev Returns the cashback balance of a specific user.
-     * @param user The user to check the cashback balance of.
-     * @return The current cashback balance of the user.
-     */
-    function getCashbackBalance(address user) external view returns (uint256);
+    function getAccountCashbackBalance(address account) external view returns (uint256);
 
     function proveCashbackVault() external pure;
 

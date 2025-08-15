@@ -487,7 +487,7 @@ contract CashbackDistributor is
         address cashbackVault = _cashbackVaults[token];
         if (cashbackVault != address(0)) {
             // first try decrease users cashback in the vault
-            uint256 vaultBalance = ICashbackVault(cashbackVault).getCashbackBalance(recipient);
+            uint256 vaultBalance = ICashbackVault(cashbackVault).getAccountCashbackBalance(recipient);
             uint256 vaultRevokeAmount = vaultBalance >= amount ? amount : vaultBalance;
             clawbackFromUserBalance -= vaultRevokeAmount;
             if (vaultRevokeAmount > 0) {
