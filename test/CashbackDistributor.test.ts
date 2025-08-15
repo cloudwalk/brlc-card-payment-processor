@@ -1063,11 +1063,19 @@ describe("Contract 'CashbackDistributor'", async () => {
             cashback.nonce,
             cashback.increaseRequestedAmount
           );
-          await expect(tx).to.changeTokenBalances(
-            cashback.token,
-            [cashbackDistributor, cashback.recipient, cashback.sender],
-            [-recipientBalanceChange, +recipientBalanceChange, 0]
-          );
+          if (useCashbackVault) {
+            await expect(tx).to.changeTokenBalances(
+              cashback.token,
+              [cashbackDistributor, cashback.recipient, cashback.sender, await cashbackVault.getAddress()],
+              [-recipientBalanceChange, 0, 0, +recipientBalanceChange]
+            );
+          } else {
+            await expect(tx).to.changeTokenBalances(
+              cashback.token,
+              [cashbackDistributor, cashback.recipient, cashback.sender],
+              [-recipientBalanceChange, +recipientBalanceChange, 0]
+            );
+           }
           await expect(tx).to.emit(cashbackDistributor, EVENT_NAME_INCREASE_CASHBACK).withArgs(
             getAddress(cashback.token),
             cashback.kind,
@@ -1103,8 +1111,7 @@ describe("Contract 'CashbackDistributor'", async () => {
 
         describe("Executes as expected and emits the correct event if the increase", async () => {
           describe("Succeeds and the increase amount is", async () => {
-            (useCashbackVault ? it.skip : it)
-            ("Nonzero and less than the value that is needed to reach the period cap", async () => {
+            it("Nonzero and less than the value that is needed to reach the period cap", async () => {
               const context = await beforeSendingCashback();
               const { cashbacks: [cashback] } = context;
               cashback.increaseRequestedAmount = MAX_CASHBACK_FOR_PERIOD - cashback.requestedAmount - 1;
@@ -1113,8 +1120,7 @@ describe("Contract 'CashbackDistributor'", async () => {
               await checkIncreasing(IncreaseStatus.Success, context);
             });
 
-            (useCashbackVault ? it.skip : it)
-            ("Nonzero and equals the value that is needed to reach the period cap", async () => {
+            it("Nonzero and equals the value that is needed to reach the period cap", async () => {
               const context = await beforeSendingCashback();
               const { cashbacks: [cashback] } = context;
               cashback.increaseRequestedAmount = MAX_CASHBACK_FOR_PERIOD - cashback.requestedAmount;
@@ -1123,8 +1129,7 @@ describe("Contract 'CashbackDistributor'", async () => {
               await checkIncreasing(IncreaseStatus.Success, context);
             });
 
-            (useCashbackVault ? it.skip : it)
-            ("Nonzero and higher than the value that is needed to reach the period cap", async () => {
+            it("Nonzero and higher than the value that is needed to reach the period cap", async () => {
               const context = await beforeSendingCashback();
               const { cashbacks: [cashback] } = context;
               cashback.increaseRequestedAmount = MAX_CASHBACK_FOR_PERIOD - cashback.requestedAmount + 1;
