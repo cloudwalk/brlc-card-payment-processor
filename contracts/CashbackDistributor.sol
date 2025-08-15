@@ -237,7 +237,7 @@ contract CashbackDistributor is
             _reduceOverallCashback(context.token, context.recipient, amount);
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] -= amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] -= amount;
-            if (vaultRevokeAmount > 0 && _cashbackVaults[context.token] != address(0)) {
+            if (vaultRevokeAmount > 0) {
                 ICashbackVault(_cashbackVaults[context.token]).revokeCashback(context.recipient, vaultRevokeAmount);
             }
             if (accountRevokeAmount > 0) {
