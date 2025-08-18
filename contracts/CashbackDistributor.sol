@@ -199,9 +199,10 @@ contract CashbackDistributor is
         });
 
         RevocationStatus revocationStatus = RevocationStatus.Success;
+        address cashbackVault = _cashbackVaults[context.token];
 
         (uint256 vaultRevokeAmount, uint256 accountRevokeAmount) = _calculateRevokeAmounts(
-            _cashbackVaults[context.token],
+            cashbackVault,
             context.recipient,
             amount
         );
@@ -237,7 +238,7 @@ contract CashbackDistributor is
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] -= amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] -= amount;
             if (vaultRevokeAmount > 0) {
-                ICashbackVault(_cashbackVaults[context.token]).revokeCashback(context.recipient, vaultRevokeAmount);
+                ICashbackVault(cashbackVault).revokeCashback(context.recipient, vaultRevokeAmount);
             }
             if (accountRevokeAmount > 0) {
                 IERC20Upgradeable(context.token).safeTransferFrom(context.recipient, address(this), accountRevokeAmount);
