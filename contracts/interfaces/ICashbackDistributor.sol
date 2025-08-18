@@ -435,8 +435,11 @@ interface ICashbackDistributorErrors {
     /// @dev The provided cashback vault address is identical to the current one for the token.
     error CashbackVaultUnchanged();
 
-    /// @dev The provided cashback vault contract is not a valid cashback vault or its token is different.
-    error InvalidCashbackVault();
+    /// @dev The provided cashback vault contract is not a valid one.
+    error CashbackVaultInvalid();
+
+    /// @dev The token of the provided cashback vault does not match the expected one.
+    error CashbackVaultTokenMismatch();
 }
 
 /**

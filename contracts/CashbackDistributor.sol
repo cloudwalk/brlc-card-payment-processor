@@ -332,10 +332,10 @@ contract CashbackDistributor is
         }
         if (cashbackVault != address(0)) {
             try cv.proveCashbackVault() {} catch {
-                revert InvalidCashbackVault();
+                revert CashbackVaultInvalid();
             }
             if (cv.underlyingToken() != token) {
-                revert InvalidCashbackVault();
+                revert CashbackVaultTokenMismatch();
             }
 
             t.approve(cashbackVault, type(uint256).max);
