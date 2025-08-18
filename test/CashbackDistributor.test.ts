@@ -7,6 +7,8 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { checkEquality as checkInterfaceEquality } from "../test-utils/checkers";
 import { createRevertMessageDueToMissingRole, setUpFixture } from "../test-utils/common";
 
+// TODO: Check linter warnings
+
 const MAX_UINT256 = ethers.MaxUint256;
 const MAX_INT256 = ethers.MaxInt256;
 const ZERO_ADDRESS = ethers.ZeroAddress;
@@ -627,6 +629,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     });
   });
 
+  // TODO: Please create a task ot review this approach and maybe rework the tests.
   for (const useCashbackVault of [false, true]) {
     describe(`The cashback vault is ${useCashbackVault ? "set" : "not set"}`, async () => {
       let cashbackVault: Contract;
@@ -652,6 +655,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           beforeSendingCashback = originalBeforeSendingCashback;
         });
       }
+
       describe("Function 'sendCashback()'", async () => {
         async function checkSending(context: TestContext) {
           const { fixture: { cashbackDistributor }, cashbacks } = context;
@@ -867,6 +871,9 @@ describe("Contract 'CashbackDistributor'", async () => {
       });
 
       describe("Function 'revokeCashback()'", async () => {
+
+        // TODO: We need tests with partial revocation from the vault ant from the receiver. Both positive and negative.
+
         async function checkRevoking(targetRevocationStatus: RevocationStatus, context: TestContext) {
           const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
           const contractBalanceChange =
