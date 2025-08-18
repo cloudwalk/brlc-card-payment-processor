@@ -374,10 +374,11 @@ interface ICashbackDistributorConfiguration {
     event Disable(address sender);
 
     /**
-     * @dev Emitted when the cashback vault is set.
+     * @dev Emitted when the cashback vault is updated for a selected token.
      * @param token The address of the token to set the cashback vault for.
-     * @param cashbackVault The address of the cashback vault maybe zero address if the claimable mode is disabled for the token.
+     * @param cashbackVault The address of the cashback vault. If zero the claimable mode is disabled.
      */
+    // TODO: Describe the cashback modes somewhere in the code and provide a link like See {Somewhere} for details.
     event CashbackVaultUpdated(address token, address cashbackVault);
 
     // ------------------ Transactional functions --------------- //
@@ -403,10 +404,11 @@ interface ICashbackDistributorConfiguration {
     function disable() external;
 
     /**
-     * @dev Sets the address of the cashback vault.
+     * @dev Sets the address of the cashback vault for a given token,
      * @param token The address of the token to set the cashback vault for.
-     * @param cashbackVault The address of the cashback vault maybe zero address if the claimable mode is disabled.
+     * @param cashbackVault The address of the cashback vault to set. If zero the claimable mode is disabled.
      */
+    // TODO: Describe the cashback modes somewhere in the code and provide a link like See {Somewhere} for details.
     function setCashbackVault(address token, address cashbackVault) external;
 }
 /**
@@ -430,10 +432,10 @@ interface ICashbackDistributorErrors {
     /// @dev The zero token address has been passed as a function argument.
     error ZeroTokenAddress();
 
-    /// @dev The cashback vault address provided is identical to the current vault for the token.
+    /// @dev The provided cashback vault address is identical to the current one for the token.
     error CashbackVaultUnchanged();
 
-    /// @dev The provided cashback vault contract is not a valid cashback vault or the token is different.
+    /// @dev The provided cashback vault contract is not a valid cashback vault or its token is different.
     error InvalidCashbackVault();
 }
 
