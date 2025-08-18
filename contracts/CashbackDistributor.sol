@@ -232,7 +232,6 @@ contract CashbackDistributor is
         );
 
         if (revocationStatus == RevocationStatus.Success) {
-            // TODO: here we OR take all cashback or nothing like in previouse version
             cashback.revokedAmount = context.newAmount;
             _reduceOverallCashback(context.token, context.recipient, amount);
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] -= amount;
