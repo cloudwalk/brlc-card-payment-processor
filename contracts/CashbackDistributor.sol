@@ -479,6 +479,13 @@ contract CashbackDistributor is
         (cashbackPeriodStart, overallCashbackForPeriod, ) = _previewCashbackCap(token, recipient);
     }
 
+    /**
+     * @inheritdoc ICashbackDistributorConfiguration
+     */
+    function getCashbackVault(address token) external view returns (address) {
+        return _cashbackVaults[token];
+    }
+
     // ------------------ Internal functions ---------------------- //
 
     function _grantCashback(address token, address recipient, uint256 amount) internal {

@@ -411,6 +411,14 @@ interface ICashbackDistributorConfiguration {
      */
     // TODO: Describe the cashback modes somewhere in the code and provide a link like See {Somewhere} for details.
     function setCashbackVault(address token, address cashbackVault) external;
+
+    // ------------------ View functions ------------------------ //
+
+    /**
+     * @dev Returns the address of the cashback vault for a given token.
+     * @param token The address of the token to return the cashback vault for.
+     */
+    function getCashbackVault(address token) external view returns (address);
 }
 /**
  * @title ICashbackDistributorErrors interface

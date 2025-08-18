@@ -217,6 +217,15 @@ contract CashbackDistributorMock is ICashbackDistributor {
         cashbackPeriodStart = 0;
         overallCashbackForPeriod = 0;
     }
+        /**
+     * @inheritdoc ICashbackDistributorConfiguration
+     *
+     * @dev Just a stub for to comply with the interface.
+     * seems like it is not used in the tests now.
+     */
+    function getCashbackVault(address token) external pure returns (address) {
+        return address(0);
+    }
 
     // ------------------ Transactional functions ----------------- //
 

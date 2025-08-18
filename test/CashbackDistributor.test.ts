@@ -1,6 +1,6 @@
 import { ethers, network, upgrades } from "hardhat";
 import { expect } from "chai";
-import { Block, Contract, ContractFactory, TransactionReceipt } from "ethers";
+import { Block, Contract, ContractFactory, TransactionReceipt, TransactionResponse } from "ethers";
 import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { connect, getAddress, increaseBlockTimestamp, proveTx } from "../test-utils/eth";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
@@ -189,6 +189,9 @@ describe("Contract 'CashbackDistributor'", async () => {
   const EVENT_NAME_INCREASE_CASHBACK = "IncreaseCashback";
   const EVENT_NAME_REVOKE_CASHBACK = "RevokeCashback";
   const EVENT_NAME_SEND_CASHBACK = "SendCashback";
+  const EVENT_NAME_CASHBACK_VAULT_UPDATED = "CashbackVaultUpdated";
+  const ERROR_NAME_CASHBACK_VAULT_UNCHANGED = "CashbackVaultUnchanged";
+  const ERROR_NAME_CASHBACK_VAULT_TOKEN_MISMATCH = "CashbackVaultTokenMismatch";
 
   // Error messages of the library contracts
   const ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
@@ -200,6 +203,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   const ERROR_NAME_ZERO_EXTERNAL_ID = "ZeroExternalId";
   const ERROR_NAME_ZERO_RECIPIENT_ADDRESS = "ZeroRecipientAddress";
   const ERROR_NAME_ZERO_TOKEN_ADDRESS = "ZeroTokenAddress";
+  const ERROR_NAME_CASHBACK_VAULT_INVALID = "CashbackVaultInvalid";
 
   const OWNER_ROLE: string = ethers.id("OWNER_ROLE");
   const GRANTOR_ROLE: string = ethers.id("GRANTOR_ROLE");
@@ -515,7 +519,82 @@ describe("Contract 'CashbackDistributor'", async () => {
 
     return { fixture, cashbacks: [cashback], cashbackDistributorInitialBalanceByToken };
   };
+  describe("Cashback vault configuration", async () => {
+    let tokens: Contract[];
 
+    // [token][cv]
+    let cashbackVaults: Contract[][];
+    let cashbackDistributor: Contract;
+    beforeEach(async () => {
+      const { cashbackDistributor: cv } = await setUpFixture(deployCashbackDistributor);
+      cashbackDistributor = cv;
+      const CVfactory = await ethers.getContractFactory("CashbackVaultMock");
+      const contracts = await setUpFixture(async function deploy2CVs() {
+        const tokens = [
+          await deployTokenMock("1"),
+          await deployTokenMock("2")
+        ];
+        const cashbackVaults = [
+          [await CVfactory.deploy(getAddress(tokens[0])), await CVfactory.deploy(getAddress(tokens[0]))],
+          [await CVfactory.deploy(getAddress(tokens[1])), await CVfactory.deploy(getAddress(tokens[1]))]
+        ];
+        return { tokens, cashbackVaults };
+      });
+      tokens = contracts.tokens;
+      cashbackVaults = contracts.cashbackVaults;
+    });
+    describe("setting wrong contract (token contract) as cashback vault", async () => {
+      let tx: Promise<TransactionResponse>;
+      beforeEach(async () => {
+        tx = cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(tokens[1]));
+      });
+      it("should be reverted with CashbackVaultInvalid error", async () => {
+        await expect(tx)
+          .to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_CASHBACK_VAULT_INVALID);
+      });
+    });
+    describe("configuring cv contract as cashback vault", async () => {
+      let tx: TransactionResponse;
+      beforeEach(async () => {
+        tx = await cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
+      });
+      it("should increase allowance for new cv contract for the token", async () => {
+        expect(await tokens[0].allowance(getAddress(cashbackDistributor), getAddress(cashbackVaults[0][0])))
+          .to.equal(MAX_UINT256);
+      });
+      it("should emit event CashbackVaultUpdated", async () => {
+        await expect(tx)
+          .to.emit(cashbackDistributor, EVENT_NAME_CASHBACK_VAULT_UPDATED)
+          .withArgs(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
+      });
+      it("should change the cashback vault for the token", async () => {
+        expect(await cashbackDistributor.getCashbackVault(getAddress(tokens[0])))
+          .to.equal(getAddress(cashbackVaults[0][0]));
+      });
+      describe("confguring new cv contract as cashback vault", async () => {
+        it(
+          "should be reverted with CashbackVaultUnchanged error if the same cv contract is set as cashback vault",
+          async () => {
+            await expect(cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[0][0])))
+              .to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_CASHBACK_VAULT_UNCHANGED);
+          }
+        );
+        it(
+          "should be reverted with CashbackVaultTokenMismatch error \
+          if the token of the cv contract does not match the expected one",
+          async () => {
+            await expect(cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[1][0])))
+              .to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_CASHBACK_VAULT_TOKEN_MISMATCH);
+          }
+        );
+        it("Should decrease allowance for the old cv contract for the token when the new one is set", async () => {
+          await cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[0][1]));
+          expect(await tokens[0].allowance(getAddress(cashbackDistributor), getAddress(cashbackVaults[0][0])))
+            .to.equal(0);
+        });
+      });
+    });
+  });
   describe("Function 'initialize()'", async () => {
     it("Configures the contract as expected", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
@@ -871,7 +950,6 @@ describe("Contract 'CashbackDistributor'", async () => {
       });
 
       describe("Function 'revokeCashback()'", async () => {
-
         // TODO: We need tests with partial revocation from the vault ant from the receiver. Both positive and negative.
 
         async function checkRevoking(targetRevocationStatus: RevocationStatus, context: TestContext) {
