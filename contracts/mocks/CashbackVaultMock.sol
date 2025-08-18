@@ -3,7 +3,6 @@
 pragma solidity ^0.8.9;
 
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
-import { console } from "hardhat/console.sol";
 
 import { ICashbackVault } from "../interfaces/ICashbackVault.sol";
 

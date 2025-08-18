@@ -17,7 +17,6 @@ import { CashbackDistributorStorage } from "./CashbackDistributorStorage.sol";
 import { ICashbackDistributor, ICashbackDistributorPrimary } from "./interfaces/ICashbackDistributor.sol";
 import { ICashbackDistributorConfiguration } from "./interfaces/ICashbackDistributor.sol";
 import { ICashbackVault } from "./interfaces/ICashbackVault.sol";
-import { console } from "hardhat/console.sol";
 
 /**
  * @title CashbackDistributor contract
