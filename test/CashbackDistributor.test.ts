@@ -7,6 +7,8 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { checkEquality as checkInterfaceEquality } from "../test-utils/checkers";
 import { createRevertMessageDueToMissingRole, setUpFixture } from "../test-utils/common";
 
+// TODO: Check linter warnings
+
 const MAX_UINT256 = ethers.MaxUint256;
 const MAX_INT256 = ethers.MaxInt256;
 const ZERO_ADDRESS = ethers.ZeroAddress;
@@ -627,11 +629,11 @@ describe("Contract 'CashbackDistributor'", async () => {
     });
   });
 
+  // TODO: Please create a task ot review this approach and maybe rework the tests.
   for (const useCashbackVault of [false, true]) {
     describe(`The cashback vault is ${useCashbackVault ? "set" : "not set"}`, async () => {
       let cashbackVault: Contract;
       if (useCashbackVault) {
-        // I am sorry for this, but I don't want to refactor the whole test
         let originalBeforeSendingCashback: typeof beforeSendingCashback;
         before(() => {
           originalBeforeSendingCashback = beforeSendingCashback;
@@ -640,11 +642,11 @@ describe("Contract 'CashbackDistributor'", async () => {
             const { fixture: { cashbackDistributor, tokenMocks: [token] } } = context;
 
             cashbackVault = await (await ethers.getContractFactory("CashbackVaultMock"))
-              .deploy(await token.getAddress());
+              .deploy(getAddress(token));
             await cashbackVault.waitForDeployment();
             cashbackVault = connect(cashbackVault, deployer);
-            const cashbackVaultAddress = await cashbackVault.getAddress();
-            await proveTx(cashbackDistributor.setCashbackVault(await token.getAddress(), cashbackVaultAddress));
+            const cashbackVaultAddress = getAddress(cashbackVault);
+            await proveTx(cashbackDistributor.setCashbackVault(getAddress(token), cashbackVaultAddress));
 
             return context;
           };
@@ -653,6 +655,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           beforeSendingCashback = originalBeforeSendingCashback;
         });
       }
+
       describe("Function 'sendCashback()'", async () => {
         async function checkSending(context: TestContext) {
           const { fixture: { cashbackDistributor }, cashbacks } = context;
@@ -675,14 +678,12 @@ describe("Contract 'CashbackDistributor'", async () => {
             cashback.requestedAmount
           );
           if (useCashbackVault) {
-            // here we also check CV balance changes
             await expect(tx).to.changeTokenBalances(
               cashback.token,
-              [cashbackDistributor, cashback.recipient, cashback.sender, await cashbackVault.getAddress()],
+              [cashbackDistributor, cashback.recipient, cashback.sender, getAddress(cashbackVault)],
               [-recipientBalanceChange, 0, 0, +recipientBalanceChange]
             );
           } else {
-            // ignore CV balance changes
             await expect(tx).to.changeTokenBalances(
               cashback.token,
               [cashbackDistributor, cashback.recipient, cashback.sender],
@@ -870,6 +871,9 @@ describe("Contract 'CashbackDistributor'", async () => {
       });
 
       describe("Function 'revokeCashback()'", async () => {
+
+        // TODO: We need tests with partial revocation from the vault ant from the receiver. Both positive and negative.
+
         async function checkRevoking(targetRevocationStatus: RevocationStatus, context: TestContext) {
           const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
           const contractBalanceChange =
@@ -882,10 +886,9 @@ describe("Contract 'CashbackDistributor'", async () => {
 
           const tx = connect(cashbackDistributor, distributor).revokeCashback(cashback.nonce, cashback.revokedAmount);
           if (useCashbackVault) {
-            // here we also check CV balance changes
             await expect(tx).to.changeTokenBalances(
               cashback.token,
-              [cashbackDistributor, cashback.recipient, cashback.sender, await cashbackVault.getAddress()],
+              [cashbackDistributor, cashback.recipient, cashback.sender, getAddress(cashbackVault)],
               [+contractBalanceChange, 0, 0, -contractBalanceChange]
             );
           } else {
@@ -992,7 +995,7 @@ describe("Contract 'CashbackDistributor'", async () => {
               const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
               await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Partial);
               cashback.sentAmount = MAX_CASHBACK_FOR_PERIOD;
-              cashback.revokedAmount = Math.floor(MAX_CASHBACK_FOR_PERIOD * 0.1);// recipient spends almost all his balance
+              cashback.revokedAmount = Math.floor(MAX_CASHBACK_FOR_PERIOD * 0.1);
               if (useCashbackVault) {
                 await proveTx(cashbackVault.claim(cashback.recipient.address, cashback.sentAmount));
               }
@@ -1002,7 +1005,7 @@ describe("Contract 'CashbackDistributor'", async () => {
                   .transfer(distributor.address, Number(recipientBalance) - cashback.revokedAmount + 1)
               );
               await checkRevoking(RevocationStatus.OutOfFunds, context);
-            })
+            });
 
             it("The cashback distributor has not enough allowance from the caller", async () => {
               const context = await beforeSendingCashback();
@@ -1075,7 +1078,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           if (useCashbackVault) {
             await expect(tx).to.changeTokenBalances(
               cashback.token,
-              [cashbackDistributor, cashback.recipient, cashback.sender, await cashbackVault.getAddress()],
+              [cashbackDistributor, cashback.recipient, cashback.sender, getAddress(cashbackVault)],
               [-recipientBalanceChange, 0, 0, +recipientBalanceChange]
             );
           } else {
@@ -1084,7 +1087,7 @@ describe("Contract 'CashbackDistributor'", async () => {
               [cashbackDistributor, cashback.recipient, cashback.sender],
               [-recipientBalanceChange, +recipientBalanceChange, 0]
             );
-           }
+          }
           await expect(tx).to.emit(cashbackDistributor, EVENT_NAME_INCREASE_CASHBACK).withArgs(
             getAddress(cashback.token),
             cashback.kind,

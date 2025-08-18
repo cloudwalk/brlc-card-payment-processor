@@ -17,7 +17,6 @@ import { CashbackDistributorStorage } from "./CashbackDistributorStorage.sol";
 import { ICashbackDistributor, ICashbackDistributorPrimary } from "./interfaces/ICashbackDistributor.sol";
 import { ICashbackDistributorConfiguration } from "./interfaces/ICashbackDistributor.sol";
 import { ICashbackVault } from "./interfaces/ICashbackVault.sol";
-import { console } from "hardhat/console.sol";
 
 /**
  * @title CashbackDistributor contract
@@ -199,9 +198,10 @@ contract CashbackDistributor is
         });
 
         RevocationStatus revocationStatus = RevocationStatus.Success;
+        address cashbackVault = _cashbackVaults[context.token];
 
         (uint256 vaultRevokeAmount, uint256 accountRevokeAmount) = _calculateRevokeAmounts(
-            _cashbackVaults[context.token],
+            cashbackVault,
             context.recipient,
             amount
         );
@@ -237,7 +237,7 @@ contract CashbackDistributor is
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] -= amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] -= amount;
             if (vaultRevokeAmount > 0) {
-                ICashbackVault(_cashbackVaults[context.token]).revokeCashback(context.recipient, vaultRevokeAmount);
+                ICashbackVault(cashbackVault).revokeCashback(context.recipient, vaultRevokeAmount);
             }
             if (accountRevokeAmount > 0) {
                 IERC20Upgradeable(context.token).safeTransferFrom(context.recipient, address(this), accountRevokeAmount);
@@ -331,10 +331,10 @@ contract CashbackDistributor is
         }
         if (cashbackVault != address(0)) {
             try cv.proveCashbackVault() {} catch {
-                revert InvalidCashbackVault();
+                revert CashbackVaultInvalid();
             }
             if (cv.underlyingToken() != token) {
-                revert InvalidCashbackVault();
+                revert CashbackVaultTokenMismatch();
             }
 
             t.approve(cashbackVault, type(uint256).max);
@@ -491,27 +491,25 @@ contract CashbackDistributor is
     }
 
     /**
-     * @dev Calculates the amounts to revoke from the vault and the account.
-     * Uses CV balance first, then account balance.
+     * @dev Calculates the amounts to revoke from the cashback vault and the account.
      *
-     * @param cashbackVault The cashback vault interface.
+     * Uses the vault balance first, then the account balance.
+     *
+     * @param cashbackVault The cashback vault address.
      * @param recipient The recipient address.
-     * @param amount The amount to revoke.
+     * @param amount The cashback amount to revoke.
      */
     function _calculateRevokeAmounts(
         address cashbackVault,
         address recipient,
         uint256 amount
     ) internal view returns (uint256 vaultRevokeAmount, uint256 accountRevokeAmount) {
-        if (cashbackVault == address(0)) {
-            return (0, amount);
-        }
-
         accountRevokeAmount = amount;
-        // first try decrease users cashback in the vault
-        uint256 vaultAccountBalance = ICashbackVault(cashbackVault).getAccountCashbackBalance(recipient);
-        vaultRevokeAmount = vaultAccountBalance >= amount ? amount : vaultAccountBalance;
-        accountRevokeAmount -= vaultRevokeAmount;
+        if (cashbackVault != address(0)) {
+            uint256 vaultAccountBalance = ICashbackVault(cashbackVault).getAccountCashbackBalance(recipient);
+            vaultRevokeAmount = vaultAccountBalance >= amount ? amount : vaultAccountBalance;
+            accountRevokeAmount -= vaultRevokeAmount;
+        }
     }
 
     /**
