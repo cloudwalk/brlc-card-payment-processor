@@ -639,11 +639,11 @@ describe("Contract 'CashbackDistributor'", async () => {
             const { fixture: { cashbackDistributor, tokenMocks: [token] } } = context;
 
             cashbackVault = await (await ethers.getContractFactory("CashbackVaultMock"))
-              .deploy(await token.getAddress());
+              .deploy(getAddress(token));
             await cashbackVault.waitForDeployment();
             cashbackVault = connect(cashbackVault, deployer);
-            const cashbackVaultAddress = await cashbackVault.getAddress();
-            await proveTx(cashbackDistributor.setCashbackVault(await token.getAddress(), cashbackVaultAddress));
+            const cashbackVaultAddress = getAddress(cashbackVault);
+            await proveTx(cashbackDistributor.setCashbackVault(getAddress(token), cashbackVaultAddress));
 
             return context;
           };
@@ -676,7 +676,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           if (useCashbackVault) {
             await expect(tx).to.changeTokenBalances(
               cashback.token,
-              [cashbackDistributor, cashback.recipient, cashback.sender, await cashbackVault.getAddress()],
+              [cashbackDistributor, cashback.recipient, cashback.sender, getAddress(cashbackVault)],
               [-recipientBalanceChange, 0, 0, +recipientBalanceChange]
             );
           } else {
@@ -881,7 +881,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           if (useCashbackVault) {
             await expect(tx).to.changeTokenBalances(
               cashback.token,
-              [cashbackDistributor, cashback.recipient, cashback.sender, await cashbackVault.getAddress()],
+              [cashbackDistributor, cashback.recipient, cashback.sender, getAddress(cashbackVault)],
               [+contractBalanceChange, 0, 0, -contractBalanceChange]
             );
           } else {
@@ -998,7 +998,7 @@ describe("Contract 'CashbackDistributor'", async () => {
                   .transfer(distributor.address, Number(recipientBalance) - cashback.revokedAmount + 1)
               );
               await checkRevoking(RevocationStatus.OutOfFunds, context);
-            })
+            });
 
             it("The cashback distributor has not enough allowance from the caller", async () => {
               const context = await beforeSendingCashback();
@@ -1071,7 +1071,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           if (useCashbackVault) {
             await expect(tx).to.changeTokenBalances(
               cashback.token,
-              [cashbackDistributor, cashback.recipient, cashback.sender, await cashbackVault.getAddress()],
+              [cashbackDistributor, cashback.recipient, cashback.sender, getAddress(cashbackVault)],
               [-recipientBalanceChange, 0, 0, +recipientBalanceChange]
             );
           } else {
@@ -1080,7 +1080,7 @@ describe("Contract 'CashbackDistributor'", async () => {
               [cashbackDistributor, cashback.recipient, cashback.sender],
               [-recipientBalanceChange, +recipientBalanceChange, 0]
             );
-           }
+          }
           await expect(tx).to.emit(cashbackDistributor, EVENT_NAME_INCREASE_CASHBACK).withArgs(
             getAddress(cashback.token),
             cashback.kind,
