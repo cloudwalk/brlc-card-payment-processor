@@ -436,9 +436,11 @@ interface ICashbackDistributorErrors {
     error CashbackVaultUnchanged();
 
     /// @dev The provided cashback vault contract is not a valid one.
+    // TODO: Check this in tests
     error CashbackVaultInvalid();
 
     /// @dev The token of the provided cashback vault does not match the expected one.
+    // TODO: Check this in tests
     error CashbackVaultTokenMismatch();
 }
 
