@@ -631,7 +631,6 @@ describe("Contract 'CashbackDistributor'", async () => {
     describe(`The cashback vault is ${useCashbackVault ? "set" : "not set"}`, async () => {
       let cashbackVault: Contract;
       if (useCashbackVault) {
-        // I am sorry for this, but I don't want to refactor the whole test
         let originalBeforeSendingCashback: typeof beforeSendingCashback;
         before(() => {
           originalBeforeSendingCashback = beforeSendingCashback;
@@ -675,14 +674,12 @@ describe("Contract 'CashbackDistributor'", async () => {
             cashback.requestedAmount
           );
           if (useCashbackVault) {
-            // here we also check CV balance changes
             await expect(tx).to.changeTokenBalances(
               cashback.token,
               [cashbackDistributor, cashback.recipient, cashback.sender, await cashbackVault.getAddress()],
               [-recipientBalanceChange, 0, 0, +recipientBalanceChange]
             );
           } else {
-            // ignore CV balance changes
             await expect(tx).to.changeTokenBalances(
               cashback.token,
               [cashbackDistributor, cashback.recipient, cashback.sender],
@@ -882,7 +879,6 @@ describe("Contract 'CashbackDistributor'", async () => {
 
           const tx = connect(cashbackDistributor, distributor).revokeCashback(cashback.nonce, cashback.revokedAmount);
           if (useCashbackVault) {
-            // here we also check CV balance changes
             await expect(tx).to.changeTokenBalances(
               cashback.token,
               [cashbackDistributor, cashback.recipient, cashback.sender, await cashbackVault.getAddress()],
@@ -992,7 +988,7 @@ describe("Contract 'CashbackDistributor'", async () => {
               const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
               await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Partial);
               cashback.sentAmount = MAX_CASHBACK_FOR_PERIOD;
-              cashback.revokedAmount = Math.floor(MAX_CASHBACK_FOR_PERIOD * 0.1);// recipient spends almost all his balance
+              cashback.revokedAmount = Math.floor(MAX_CASHBACK_FOR_PERIOD * 0.1);
               if (useCashbackVault) {
                 await proveTx(cashbackVault.claim(cashback.recipient.address, cashback.sentAmount));
               }
