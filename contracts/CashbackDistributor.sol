@@ -492,27 +492,25 @@ contract CashbackDistributor is
     }
 
     /**
-     * @dev Calculates the amounts to revoke from the vault and the account.
-     * Uses CV balance first, then account balance.
+     * @dev Calculates the amounts to revoke from the cashback vault and the account.
      *
-     * @param cashbackVault The cashback vault interface.
+     * Uses the vault balance first, then the account balance.
+     *
+     * @param cashbackVault The cashback vault address.
      * @param recipient The recipient address.
-     * @param amount The amount to revoke.
+     * @param amount The cashback amount to revoke.
      */
     function _calculateRevokeAmounts(
         address cashbackVault,
         address recipient,
         uint256 amount
     ) internal view returns (uint256 vaultRevokeAmount, uint256 accountRevokeAmount) {
-        if (cashbackVault == address(0)) {
-            return (0, amount);
-        }
-
         accountRevokeAmount = amount;
-        // first try decrease users cashback in the vault
-        uint256 vaultAccountBalance = ICashbackVault(cashbackVault).getAccountCashbackBalance(recipient);
-        vaultRevokeAmount = vaultAccountBalance >= amount ? amount : vaultAccountBalance;
-        accountRevokeAmount -= vaultRevokeAmount;
+        if (cashbackVault != address(0)) {
+            uint256 vaultAccountBalance = ICashbackVault(cashbackVault).getAccountCashbackBalance(recipient);
+            vaultRevokeAmount = vaultAccountBalance >= amount ? amount : vaultAccountBalance;
+            accountRevokeAmount -= vaultRevokeAmount;
+        }
     }
 
     /**
