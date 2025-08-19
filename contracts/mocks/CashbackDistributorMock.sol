@@ -274,7 +274,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
         success = revokeCashbackSuccessResult;
         emit RevokeCashbackMock(msg.sender, nonce, amount);
         if (success) {
-            IERC20Upgradeable(lastCashbackToken).transferFrom(msg.sender, address(this), amount);
+            IERC20Upgradeable(lastCashbackToken).transferFrom(lastCashbackRecipient, address(this), amount);
         }
     }
 

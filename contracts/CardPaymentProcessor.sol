@@ -1075,18 +1075,10 @@ contract CardPaymentProcessor is
             operation.paymentTotalAmountChange = oldPaymentSumAmount - newPaymentSumAmount;
             operation.sponsorBalanceChange = oldSponsorSumAmount - newSponsorSumAmount;
             operation.accountBalanceChange = oldAccountSumAmount - newAccountSumAmount;
-
-            if (operation.cashbackDecreased) {
-                operation.accountBalanceChange -= operation.cashbackAmountChange;
-            }
         } else {
             operation.paymentTotalAmountChange = newPaymentSumAmount - oldPaymentSumAmount;
             operation.sponsorBalanceChange = newSponsorSumAmount - oldSponsorSumAmount;
             operation.accountBalanceChange = newAccountSumAmount - oldAccountSumAmount;
-
-            if (operation.cashbackDecreased) {
-                operation.accountBalanceChange += operation.cashbackAmountChange;
-            }
         }
         return operation;
     }
@@ -1360,7 +1352,7 @@ contract CardPaymentProcessor is
         uint256 paymentSumAmount = paymentBaseAmount + payment.extraAmount;
         (uint256 accountSumAmount, uint256 sponsorSumAmount) = _defineSumAmountParts(paymentSumAmount, subsidyLimit);
         uint256 paymentTotalAmount = paymentSumAmount - paymentRefundAmount;
-        uint256 accountSentAmount = accountSumAmount - (payment.compensationAmount - sponsorRefundAmount);
+        uint256 accountSentAmount = accountSumAmount - (paymentRefundAmount - sponsorRefundAmount);
         uint256 sponsorSentAmount = sponsorSumAmount - sponsorRefundAmount;
 
         CancelingOperation memory operation = CancelingOperation({
@@ -1368,7 +1360,7 @@ contract CardPaymentProcessor is
             accountSentAmount: accountSentAmount,
             sponsorSentAmount: sponsorSentAmount,
             totalSentAmount: accountSentAmount + sponsorSentAmount,
-            revokedCashbackAmount: paymentTotalAmount - accountSentAmount - sponsorSentAmount
+            revokedCashbackAmount: payment.compensationAmount - paymentRefundAmount
         });
 
         return operation;
@@ -1436,7 +1428,6 @@ contract CardPaymentProcessor is
             if (sponsor != address(0)) {
                 token.safeTransferFrom(cashOutAccount_, sponsor, operation.sponsorSentAmount);
             }
-            token.safeTransferFrom(cashOutAccount_, address(this), operation.revokedCashbackAmount);
         }
 
         _revokeCashback(authorizationId, operation.revokedCashbackAmount);
@@ -1531,9 +1522,8 @@ contract CardPaymentProcessor is
         uint256 paymentExtraAmountChange = oldPaymentExtraAmount - newPaymentExtraAmount;
         uint256 accountExtraAmountChange = oldAccountExtraAmount - newAccountExtraAmount;
         operation.accountSentAmount =
-            operation.newCompensationAmount -
-            operation.oldCompensationAmount -
-            newSponsorRefundAmount +
+            operation.paymentRefundAmount -
+            operation.sponsorRefundAmount +
             accountExtraAmountChange;
         operation.sponsorSentAmount =
             operation.sponsorRefundAmount +

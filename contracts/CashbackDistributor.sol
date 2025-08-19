@@ -200,9 +200,9 @@ contract CashbackDistributor is
 
         if (context.cashbackStatus != CashbackStatus.Success && context.cashbackStatus != CashbackStatus.Partial) {
             revocationStatus = RevocationStatus.Inapplicable;
-        } else if (amount > IERC20Upgradeable(context.token).balanceOf(context.sender)) {
+        } else if (amount > IERC20Upgradeable(context.token).balanceOf(context.recipient)) {
             revocationStatus = RevocationStatus.OutOfFunds;
-        } else if (amount > IERC20Upgradeable(context.token).allowance(context.sender, address(this))) {
+        } else if (amount > IERC20Upgradeable(context.token).allowance(context.recipient, address(this))) {
             revocationStatus = RevocationStatus.OutOfAllowance;
         } else if (amount > cashback.amount - context.newAmount) {
             revocationStatus = RevocationStatus.OutOfBalance;
@@ -228,7 +228,7 @@ contract CashbackDistributor is
             _reduceOverallCashback(context.token, context.recipient, amount);
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] -= amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] -= amount;
-            IERC20Upgradeable(context.token).safeTransferFrom(context.sender, address(this), amount);
+            IERC20Upgradeable(context.token).safeTransferFrom(context.recipient, address(this), amount);
             success = true;
         }
     }
