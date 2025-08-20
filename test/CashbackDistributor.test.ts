@@ -7,8 +7,6 @@ import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { checkEquality as checkInterfaceEquality } from "../test-utils/checkers";
 import { createRevertMessageDueToMissingRole, setUpFixture } from "../test-utils/common";
 
-// TODO: Check linter warnings
-
 const MAX_UINT256 = ethers.MaxUint256;
 const MAX_INT256 = ethers.MaxInt256;
 const ZERO_ADDRESS = ethers.ZeroAddress;
@@ -765,7 +763,6 @@ describe("Contract 'CashbackDistributor'", async () => {
     });
   });
 
-  // TODO: Please create a task ot review this approach and maybe rework the tests.
   for (const useCashbackVault of [false, true]) {
     describe(`The cashback vault is ${useCashbackVault ? "set" : "not set"}`, async () => {
       let cashbackVault: Contract;
@@ -1074,14 +1071,17 @@ describe("Contract 'CashbackDistributor'", async () => {
               await checkRevoking(RevocationStatus.Success, context);
             });
 
-            it("Less than the initial cashback amount and cashback operations are disabled before execution", async () => {
-              const context = await beforeSendingCashback();
-              const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
-              cashback.revokedAmount = Math.floor(cashback.requestedAmount * 0.1);
-              await prepareRevocation(context);
-              await proveTx(cashbackDistributor.disable());
-              await checkRevoking(RevocationStatus.Success, context);
-            });
+            it(
+              "Less than the initial cashback amount and cashback operations are disabled before execution",
+              async () => {
+                const context = await beforeSendingCashback();
+                const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
+                cashback.revokedAmount = Math.floor(cashback.requestedAmount * 0.1);
+                await prepareRevocation(context);
+                await proveTx(cashbackDistributor.disable());
+                await checkRevoking(RevocationStatus.Success, context);
+              }
+            );
 
             it("The same as the initial cashback amount", async () => {
               const context = await beforeSendingCashback();
@@ -1098,13 +1098,16 @@ describe("Contract 'CashbackDistributor'", async () => {
               await checkRevoking(RevocationStatus.Success, context);
             });
 
-            it("Less than the initial cashback amount and initial sending operation is partially successful", async () => {
-              const context = await beforeSendingCashback({ cashbackRequestedAmount: MAX_CASHBACK_FOR_PERIOD + 1 });
-              const { cashbacks: [cashback] } = context;
-              cashback.revokedAmount = Math.floor(MAX_CASHBACK_FOR_PERIOD * 0.1);
-              await prepareRevocation(context);
-              await checkRevoking(RevocationStatus.Success, context);
-            });
+            it(
+              "Less than the initial cashback amount and initial sending operation is partially successful",
+              async () => {
+                const context = await beforeSendingCashback({ cashbackRequestedAmount: MAX_CASHBACK_FOR_PERIOD + 1 });
+                const { cashbacks: [cashback] } = context;
+                cashback.revokedAmount = Math.floor(MAX_CASHBACK_FOR_PERIOD * 0.1);
+                await prepareRevocation(context);
+                await checkRevoking(RevocationStatus.Success, context);
+              }
+            );
           });
 
           describe("Fails because", async () => {
@@ -1181,7 +1184,9 @@ describe("Contract 'CashbackDistributor'", async () => {
           it("The contract is paused", async () => {
             const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
             await pauseContract(cashbackDistributor);
-            await expect(connect(cashbackDistributor, distributor).revokeCashback(cashback.nonce, cashback.revokedAmount))
+            await expect(
+              connect(cashbackDistributor, distributor).revokeCashback(cashback.nonce, cashback.revokedAmount)
+            )
               .to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
           });
 
@@ -1331,13 +1336,16 @@ describe("Contract 'CashbackDistributor'", async () => {
               await checkIncreasing(IncreaseStatus.Inapplicable, context);
             });
 
-            it("The period cap for the recipient is reached and the requested increase amount is non-zero", async () => {
-              const context = await beforeSendingCashback({ cashbackRequestedAmount: MAX_CASHBACK_FOR_PERIOD });
-              const { cashbacks: [cashback] } = context;
-              cashback.increaseRequestedAmount = 1;
-              await prepareIncrease(context);
-              await checkIncreasing(IncreaseStatus.Capped, context);
-            });
+            it(
+              "The period cap for the recipient is reached and the requested increase amount is non-zero",
+              async () => {
+                const context = await beforeSendingCashback({ cashbackRequestedAmount: MAX_CASHBACK_FOR_PERIOD });
+                const { cashbacks: [cashback] } = context;
+                cashback.increaseRequestedAmount = 1;
+                await prepareIncrease(context);
+                await checkIncreasing(IncreaseStatus.Capped, context);
+              }
+            );
 
             it("The period cap for the recipient is reached and the requested increase amount is zero", async () => {
               const context = await beforeSendingCashback({ cashbackRequestedAmount: MAX_CASHBACK_FOR_PERIOD });
@@ -1353,7 +1361,9 @@ describe("Contract 'CashbackDistributor'", async () => {
           it("The contract is paused", async () => {
             const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
             await pauseContract(cashbackDistributor);
-            await expect(connect(cashbackDistributor, distributor).increaseCashback(cashback.nonce, cashback.revokedAmount))
+            await expect(
+              connect(cashbackDistributor, distributor).increaseCashback(cashback.nonce, cashback.revokedAmount)
+            )
               .to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
           });
 
