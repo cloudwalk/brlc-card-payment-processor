@@ -1004,8 +1004,6 @@ describe("Contract 'CashbackDistributor'", async () => {
       });
 
       describe("Function 'revokeCashback()'", async () => {
-        // TODO: We need tests with partial revocation from the vault ant from the receiver. Both positive and negative.
-
         async function checkRevoking(targetRevocationStatus: RevocationStatus, context: TestContext) {
           const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
           const contractBalanceChange =
@@ -1109,7 +1107,7 @@ describe("Contract 'CashbackDistributor'", async () => {
               }
             );
             if (useCashbackVault) {
-              it.only("Greater then unclaimed cashback but user has enough tokens in the account", async () => {
+              it("Greater then unclaimed cashback but user has enough tokens in the account", async () => {
                 const context = await beforeSendingCashback();
                 const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
                 await prepareRevocation(context);
@@ -1215,6 +1213,51 @@ describe("Contract 'CashbackDistributor'", async () => {
               await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.OutOfFunds);
               await checkRevoking(RevocationStatus.Inapplicable, context);
             });
+            if (useCashbackVault) {
+              it("Revoke more cashback than user has in account and in CV", async () => {
+                const context = await beforeSendingCashback();
+                const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
+                await prepareRevocation(context);
+                // we want to revoke 100% of the cashback
+                cashback.revokedAmount = cashback.requestedAmount;
+                // claim 80% of the cashback so vault has 20% of the cashback
+                const claimedAmount = Math.floor(cashback.sentAmount * 0.8);
+                const claimReceipt = await cashbackVault.claim(cashback.recipient.address, claimedAmount);
+
+                await expect(claimReceipt).to.changeTokenBalances(
+                  cashback.token,
+                  [cashback.recipient, getAddress(cashbackVault)],
+                  [+claimedAmount, -claimedAmount]
+                );
+
+                // user spends his balance
+                const recipientBalance = await cashback.token.balanceOf(cashback.recipient);
+                await proveTx(
+                  connect(cashback.token, cashback.recipient)
+                    .transfer(deployer.address, Number(recipientBalance) - 1)
+                );
+                cashback.revokedAmount = cashback.requestedAmount;
+                const tx = connect(cashbackDistributor, distributor)
+                  .revokeCashback(cashback.nonce, cashback.revokedAmount);
+                await expect(tx).not.to.changeTokenBalances(
+                  cashback.token,
+                  [cashbackDistributor, cashback.recipient, cashback.sender, getAddress(cashbackVault)],
+                  [+cashback.revokedAmount, -claimedAmount, 0, -(cashback.revokedAmount - claimedAmount)]
+                );
+                await expect(tx).to.emit(cashbackDistributor, EVENT_NAME_REVOKE_CASHBACK).withArgs(
+                  getAddress(cashback.token),
+                  cashback.kind,
+                  cashback.status,
+                  RevocationStatus.OutOfFunds,
+                  cashback.externalId,
+                  cashback.recipient.address,
+                  cashback.revokedAmount,
+                  cashback.sentAmount,
+                  distributor.address,
+                  cashback.nonce
+                );
+              });
+            }
           });
         });
 
