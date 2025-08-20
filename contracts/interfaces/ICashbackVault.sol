@@ -8,9 +8,9 @@ pragma solidity ^0.8.0;
  * @dev The primary part of the cashback vault smart contract interface.
  */
 interface ICashbackVault {
-    function grantCashback(address user, uint256 amount) external;
+    function grantCashback(address user, uint64 amount) external;
 
-    function revokeCashback(address user, uint256 amount) external;
+    function revokeCashback(address user, uint64 amount) external;
 
     function getAccountCashbackBalance(address account) external view returns (uint256);
 

@@ -237,7 +237,7 @@ contract CashbackDistributor is
             _totalCashbackByTokenAndRecipient[context.token][context.recipient] -= amount;
             _totalCashbackByTokenAndExternalId[context.token][context.externalId] -= amount;
             if (vaultRevokeAmount > 0) {
-                ICashbackVault(cashbackVault).revokeCashback(context.recipient, vaultRevokeAmount);
+                ICashbackVault(cashbackVault).revokeCashback(context.recipient, uint64(vaultRevokeAmount));
             }
             if (accountRevokeAmount > 0) {
                 IERC20Upgradeable(context.token).safeTransferFrom(context.recipient, address(this), accountRevokeAmount);
@@ -491,7 +491,7 @@ contract CashbackDistributor is
     function _grantCashback(address token, address recipient, uint256 amount) internal {
         address cashbackVault = _cashbackVaults[token];
         if (cashbackVault != address(0)) {
-            ICashbackVault(cashbackVault).grantCashback(recipient, amount);
+            ICashbackVault(cashbackVault).grantCashback(recipient, uint64(amount));
         } else {
             IERC20Upgradeable(token).safeTransfer(recipient, amount);
         }
