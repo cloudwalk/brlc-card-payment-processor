@@ -1108,6 +1108,44 @@ describe("Contract 'CashbackDistributor'", async () => {
                 await checkRevoking(RevocationStatus.Success, context);
               }
             );
+            if (useCashbackVault) {
+              it.only("Greater then unclaimed cashback but user has enough tokens in the account", async () => {
+                const context = await beforeSendingCashback();
+                const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
+                await prepareRevocation(context);
+                // we want to revoke 100% of the cashback
+                cashback.revokedAmount = cashback.requestedAmount;
+                // claim 80% of the cashback so vault has 20% of the cashback
+                const claimedAmount = Math.floor(cashback.sentAmount * 0.8);
+                const claimReceipt = await cashbackVault.claim(cashback.recipient.address, claimedAmount);
+
+                await expect(claimReceipt).to.changeTokenBalances(
+                  cashback.token,
+                  [cashback.recipient, getAddress(cashbackVault)],
+                  [+claimedAmount, -claimedAmount]
+                );
+
+                const tx = connect(cashbackDistributor, distributor)
+                  .revokeCashback(cashback.nonce, cashback.revokedAmount);
+                await expect(tx).to.changeTokenBalances(
+                  cashback.token,
+                  [cashbackDistributor, cashback.recipient, cashback.sender, getAddress(cashbackVault)],
+                  [+cashback.revokedAmount, -claimedAmount, 0, -(cashback.revokedAmount - claimedAmount)]
+                );
+                await expect(tx).to.emit(cashbackDistributor, EVENT_NAME_REVOKE_CASHBACK).withArgs(
+                  getAddress(cashback.token),
+                  cashback.kind,
+                  cashback.status,
+                  RevocationStatus.Success,
+                  cashback.externalId,
+                  cashback.recipient.address,
+                  cashback.revokedAmount,
+                  cashback.sentAmount - cashback.revokedAmount, // totalAmount
+                  distributor.address,
+                  cashback.nonce
+                );
+              });
+            }
           });
 
           describe("Fails because", async () => {
