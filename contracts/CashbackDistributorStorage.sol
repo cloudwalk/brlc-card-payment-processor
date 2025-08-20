@@ -60,7 +60,6 @@ abstract contract CashbackDistributorStorageV2 {
  */
 abstract contract CashbackDistributorStorageV3 {
     /// @dev The mapping of the cashback vault for a given token.
-    // TODO: Add a view function for this variable.
     mapping(address => address) internal _cashbackVaults;
 }
 /**
