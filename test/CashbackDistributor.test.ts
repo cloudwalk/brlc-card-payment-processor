@@ -181,6 +181,8 @@ describe("Contract 'CashbackDistributor'", async () => {
     major: 1,
     minor: 3,
     patch: 0
+    minor: 3,
+    patch: 0
   };
 
   // Events of the contract under test
@@ -261,6 +263,10 @@ describe("Contract 'CashbackDistributor'", async () => {
     const tokenMock1 = await deployTokenMock("1");
     const tokenMock2 = await deployTokenMock("2");
 
+    await proveTx(connect(tokenMock1, deployer).approve(getAddress(cashbackDistributor), MAX_UINT256));
+    await proveTx(connect(tokenMock2, deployer).approve(getAddress(cashbackDistributor), MAX_UINT256));
+    await proveTx(connect(tokenMock1, user).approve(getAddress(cashbackDistributor), MAX_UINT256));
+    await proveTx(connect(tokenMock2, user).approve(getAddress(cashbackDistributor), MAX_UINT256));
     await proveTx(connect(tokenMock1, deployer).approve(getAddress(cashbackDistributor), MAX_UINT256));
     await proveTx(connect(tokenMock2, deployer).approve(getAddress(cashbackDistributor), MAX_UINT256));
     await proveTx(connect(tokenMock1, user).approve(getAddress(cashbackDistributor), MAX_UINT256));
