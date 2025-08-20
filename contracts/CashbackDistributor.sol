@@ -323,6 +323,9 @@ contract CashbackDistributor is
      * - The caller must have the {OWNER_ROLE} role.
      */
     function setCashbackVault(address token, address cashbackVault) external onlyRole(OWNER_ROLE) {
+        if (token == address(0)) {
+            revert ZeroTokenAddress();
+        }
         address oldCashbackVault = _cashbackVaults[token];
         IERC20Upgradeable t = IERC20Upgradeable(token);
         ICashbackVault cv = ICashbackVault(cashbackVault);

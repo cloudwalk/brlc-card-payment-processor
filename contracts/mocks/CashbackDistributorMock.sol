@@ -224,7 +224,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
      * seems like it is not used in the tests now.
      */
     function getCashbackVault(address token) external pure returns (address) {
-        return address(0);
+        return address(uint160(token) >> 1);
     }
 
     // ------------------ Transactional functions ----------------- //
