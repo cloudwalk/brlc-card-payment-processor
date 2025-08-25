@@ -23,6 +23,7 @@ import { ICashbackVault } from "./interfaces/ICashbackVault.sol";
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Wrapper contract for the cashback operations.
  */
+
 contract CashbackDistributor is
     AccessControlExtUpgradeable,
     BlocklistableUpgradeable,
@@ -492,6 +493,9 @@ contract CashbackDistributor is
     // ------------------ Internal functions ---------------------- //
 
     function _grantCashback(address token, address recipient, uint256 amount) internal {
+        if (amount == 0) {
+            return;
+        }
         address cashbackVault = _cashbackVaults[token];
         if (cashbackVault != address(0)) {
             ICashbackVault(cashbackVault).grantCashback(recipient, uint64(amount));
