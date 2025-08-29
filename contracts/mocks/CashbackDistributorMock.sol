@@ -101,6 +101,8 @@ contract CashbackDistributorMock is ICashbackDistributor {
         previewCashbackCap(address(0), address(0));
         enable();
         disable();
+        setCashbackVault(address(0), address(0));
+        getCashbackVault(address(0));
     }
 
     // ------------------ Pure functions ------------------------ //
@@ -217,8 +219,26 @@ contract CashbackDistributorMock is ICashbackDistributor {
         cashbackPeriodStart = 0;
         overallCashbackForPeriod = 0;
     }
+        /**
+     * @inheritdoc ICashbackDistributorConfiguration
+     *
+     * @dev Just a stub for to comply with the interface.
+     * seems like it is not used in the tests now.
+     */
+    function getCashbackVault(address token) public pure returns (address) {
+        return address(uint160(token) >> 1);
+    }
 
     // ------------------ Transactional functions ----------------- //
+
+    /**
+     * @inheritdoc ICashbackDistributorConfiguration
+     *
+     * @dev Requirements:
+     *
+     * - The caller must have the {OWNER_ROLE} role.
+     */
+    function setCashbackVault(address token, address cashbackVault) public {}
 
     /**
      * @inheritdoc ICashbackDistributorConfiguration

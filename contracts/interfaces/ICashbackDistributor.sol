@@ -51,7 +51,8 @@ interface ICashbackDistributorTypes {
      * - Unknown = 0 --------- The operation has not been initiated (the default value).
      * - Success = 1 --------- The operation has been successfully executed.
      * - Inapplicable = 2 ---- The operation has been failed because the cashback does not have a relevant status.
-     * - OutOfFunds = 3 ------ The operation has been failed because the caller does not have enough tokens.
+     * - OutOfFunds = 3 ------ The operation has been failed because the recipient does not have enough tokens 
+     *                         (in the account and in the his cashback balance in the vault summed up).
      * - OutOfAllowance = 4 -- The operation has been failed because
      *                         the caller does not have enough allowance for the contract.
      * - OutOfBalance = 5 ---- The operation has been failed because the revocation amount exceeds the cashback amount.
@@ -373,6 +374,14 @@ interface ICashbackDistributorConfiguration {
      */
     event Disable(address sender);
 
+    /**
+     * @dev Emitted when the cashback vault is updated for a selected token.
+     * @param token The address of the token to set the cashback vault for.
+     * @param cashbackVault The address of the cashback vault. If zero the claimable mode is disabled.
+     */
+    // TODO: Describe the cashback modes somewhere in the code and provide a link like See {Somewhere} for details.
+    event CashbackVaultUpdated(address token, address cashbackVault);
+
     // ------------------ Transactional functions --------------- //
 
     /**
@@ -394,6 +403,22 @@ interface ICashbackDistributorConfiguration {
      * Emits a {Disable} event.
      */
     function disable() external;
+
+    /**
+     * @dev Sets the address of the cashback vault for a given token,
+     * @param token The address of the token to set the cashback vault for.
+     * @param cashbackVault The address of the cashback vault to set. If zero the claimable mode is disabled.
+     */
+    // TODO: Describe the cashback modes somewhere in the code and provide a link like See {Somewhere} for details.
+    function setCashbackVault(address token, address cashbackVault) external;
+
+    // ------------------ View functions ------------------------ //
+
+    /**
+     * @dev Returns the address of the cashback vault for a given token.
+     * @param token The address of the token to return the cashback vault for.
+     */
+    function getCashbackVault(address token) external view returns (address);
 }
 /**
  * @title ICashbackDistributorErrors interface
@@ -415,6 +440,17 @@ interface ICashbackDistributorErrors {
 
     /// @dev The zero token address has been passed as a function argument.
     error ZeroTokenAddress();
+
+    /// @dev The provided cashback vault address is identical to the current one for the token.
+    error CashbackVaultUnchanged();
+
+    /// @dev The provided cashback vault contract is not a valid one.
+    // TODO: Check this in tests
+    error CashbackVaultInvalid();
+
+    /// @dev The token of the provided cashback vault does not match the expected one.
+    // TODO: Check this in tests
+    error CashbackVaultTokenMismatch();
 }
 
 /**
