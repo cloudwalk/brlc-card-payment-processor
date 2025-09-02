@@ -376,7 +376,9 @@ interface ICashbackDistributorConfiguration {
 
     /**
      * @dev Emitted when the cashback vault is updated for a selected token.
+     *
      * See {ICashbackDistributor} for details.
+     *
      * @param token The address of the token to set the cashback vault for.
      * @param cashbackVault The address of the cashback vault. If zero the claimable mode is disabled.
      */
@@ -405,8 +407,10 @@ interface ICashbackDistributorConfiguration {
     function disable() external;
 
     /**
-     * @dev Sets the address of the cashback vault for a given token,
+     * @dev Sets the address of the cashback vault for a given token.
+     *
      * See {ICashbackDistributor} for details.
+     *
      * @param token The address of the token to set the cashback vault for.
      * @param cashbackVault The address of the cashback vault to set. If zero the claimable mode is disabled.
      */

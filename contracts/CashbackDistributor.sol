@@ -497,6 +497,7 @@ contract CashbackDistributor is
     // ------------------ Internal functions ---------------------- //
     /**
      * @dev Grants the cashback to the recipient.
+     *
      * Chooses the appropriate way to grant the cashback based on the cashback vault presence.
      *
      * @param token The token address.
