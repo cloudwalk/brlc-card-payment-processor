@@ -333,24 +333,23 @@ contract CashbackDistributor is
             revert ZeroTokenAddress();
         }
         address oldCashbackVault = _cashbackVaults[token];
-        IERC20Upgradeable t = IERC20Upgradeable(token);
-        ICashbackVault cv = ICashbackVault(cashbackVault);
+
         if (oldCashbackVault == cashbackVault) {
             revert CashbackVaultUnchanged();
         }
         if (cashbackVault != address(0)) {
-            try cv.proveCashbackVault() {} catch {
+            try ICashbackVault(cashbackVault).proveCashbackVault() {} catch {
                 revert CashbackVaultInvalid();
             }
-            if (cv.underlyingToken() != token) {
+            if (ICashbackVault(cashbackVault).underlyingToken() != token) {
                 revert CashbackVaultTokenMismatch();
             }
 
-            t.approve(cashbackVault, type(uint256).max);
+            IERC20Upgradeable(token).approve(cashbackVault, type(uint256).max);
         }
 
         if (oldCashbackVault != address(0)) {
-            t.approve(oldCashbackVault, 0);
+            IERC20Upgradeable(token).approve(oldCashbackVault, 0);
         }
         _cashbackVaults[token] = cashbackVault;
 
@@ -496,7 +495,14 @@ contract CashbackDistributor is
     }
 
     // ------------------ Internal functions ---------------------- //
-
+    /**
+     * @dev Grants the cashback to the recipient.
+     * Chooses the appropriate way to grant the cashback based on the cashback vault presence.
+     *
+     * @param token The token address.
+     * @param recipient The recipient address.
+     * @param amount The amount to grant.
+     */
     function _grantCashback(address token, address recipient, uint256 amount) internal {
         if (amount == 0) {
             return;
