@@ -555,7 +555,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           tx = await cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
         });
 
-        it("Increases allowance for new cv contract for the token", async () => {
+        it("Sets maximum allowance for the new CV contract", async () => {
           expect(await tokens[0].allowance(getAddress(cashbackDistributor), getAddress(cashbackVaults[0][0])))
             .to.equal(MAX_UINT256);
         });
@@ -566,7 +566,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             .withArgs(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
         });
 
-        it("Changes the cashback vault for the token", async () => {
+        it("Updates the cashback vault", async () => {
           expect(await cashbackDistributor.getCashbackVault(getAddress(tokens[0])))
             .to.equal(getAddress(cashbackVaults[0][0]));
         });
@@ -580,12 +580,12 @@ describe("Contract 'CashbackDistributor'", async () => {
         tx = await cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[0][1]));
       });
 
-      it("Increases the allowance for the new vault contract on the token", async () => {
+      it("Sets maximum allowance for the new vault contract", async () => {
         expect(await tokens[0].allowance(getAddress(cashbackDistributor), getAddress(cashbackVaults[0][1])))
           .to.equal(MAX_UINT256);
       });
 
-      it("Decreases allowance for the old cv contract for the token when the new one is set", async () => {
+      it("Removes allowance from the old CV contract", async () => {
         expect(await tokens[0].allowance(getAddress(cashbackDistributor), getAddress(cashbackVaults[0][0])))
           .to.equal(0);
       });
@@ -596,7 +596,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           .withArgs(getAddress(tokens[0]), getAddress(cashbackVaults[0][1]));
       });
 
-      it("Changes the cashback vault for the token", async () => {
+      it("Updates the cashback vault", async () => {
         expect(await cashbackDistributor.getCashbackVault(getAddress(tokens[0])))
           .to.equal(getAddress(cashbackVaults[0][1]));
       });
@@ -609,7 +609,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         tx = await cashbackDistributor.setCashbackVault(getAddress(tokens[0]), ZERO_ADDRESS);
       });
 
-      it("Decreases allowance for the old cv contract for the token when the new one is set", async () => {
+      it("Removes allowance from the old CV contract", async () => {
         expect(await tokens[0].allowance(getAddress(cashbackDistributor), getAddress(cashbackVaults[0][0])))
           .to.equal(0);
       });
@@ -620,12 +620,12 @@ describe("Contract 'CashbackDistributor'", async () => {
           .withArgs(getAddress(tokens[0]), ZERO_ADDRESS);
       });
 
-      it("Changes the cashback vault for the token", async () => {
+      it("Updates the cashback vault", async () => {
         expect(await cashbackDistributor.getCashbackVault(getAddress(tokens[0])))
           .to.equal(ZERO_ADDRESS);
       });
     });
-    it("Is reverted if it is called with not a valid cv contract", async () => {
+    it("Is reverted if it is called with an invalid CV contract", async () => {
       await expect(cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(tokens[1])))
         .to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_CASHBACK_VAULT_INVALID);
     });
@@ -642,7 +642,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         .to.be.revertedWith(createRevertMessageDueToMissingRole(user.address, OWNER_ROLE));
     });
 
-    it("Is reverted if the same cv contract is set as cashback vault", async () => {
+    it("Is reverted if the same CV contract is set as cashback vault", async () => {
       await cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
 
       await expect(cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[0][0])))
@@ -1111,7 +1111,7 @@ describe("Contract 'CashbackDistributor'", async () => {
               }
             );
             if (useCashbackVault) {
-              it("Greater then unclaimed cashback but user has enough tokens in the account", async () => {
+              it("Greater than unclaimed cashback but user has enough tokens in the account", async () => {
                 const context = await beforeSendingCashback();
                 const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
                 await prepareRevocation(context);
