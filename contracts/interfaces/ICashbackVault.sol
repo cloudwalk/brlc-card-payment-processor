@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 /**
  * @title ICashbackVaultPrimary interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
- * @dev The primary part of the cashback vault smart contract interface.
+ * @dev Defines the needed functions to interact with the cashback vault contract.
  */
 interface ICashbackVault {
     function grantCashback(address user, uint64 amount) external;
