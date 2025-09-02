@@ -555,12 +555,12 @@ describe("Contract 'CashbackDistributor'", async () => {
           tx = await cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
         });
 
-        it("Increasesallowance for new cv contract for the token", async () => {
+        it("Increases allowance for new cv contract for the token", async () => {
           expect(await tokens[0].allowance(getAddress(cashbackDistributor), getAddress(cashbackVaults[0][0])))
             .to.equal(MAX_UINT256);
         });
 
-        it("Emits event CashbackVaultUpdated", async () => {
+        it("Emits the required event", async () => {
           await expect(tx)
             .to.emit(cashbackDistributor, EVENT_NAME_CASHBACK_VAULT_UPDATED)
             .withArgs(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
@@ -580,7 +580,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         tx = await cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[0][1]));
       });
 
-      it("Increases allowance for the new cv contract for the token", async () => {
+      it("Increases the allowance for the new vault contract on the token", async () => {
         expect(await tokens[0].allowance(getAddress(cashbackDistributor), getAddress(cashbackVaults[0][1])))
           .to.equal(MAX_UINT256);
       });
@@ -590,7 +590,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           .to.equal(0);
       });
 
-      it("Emits event CashbackVaultUpdated", async () => {
+      it("Emits the required event", async () => {
         await expect(tx)
           .to.emit(cashbackDistributor, EVENT_NAME_CASHBACK_VAULT_UPDATED)
           .withArgs(getAddress(tokens[0]), getAddress(cashbackVaults[0][1]));
@@ -614,7 +614,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           .to.equal(0);
       });
 
-      it("Emits event CashbackVaultUpdated", async () => {
+      it("Emits the required event", async () => {
         await expect(tx)
           .to.emit(cashbackDistributor, EVENT_NAME_CASHBACK_VAULT_UPDATED)
           .withArgs(getAddress(tokens[0]), ZERO_ADDRESS);
@@ -630,7 +630,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         .to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_CASHBACK_VAULT_INVALID);
     });
 
-    it("Is reverted if it is called with  cv with wrong token", async () => {
+    it("Is reverted if the CV underlying token mismatches the distributor one", async () => {
       await expect(cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[1][0])))
         .to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_CASHBACK_VAULT_TOKEN_MISMATCH);
     });
