@@ -188,8 +188,6 @@ describe("Contract 'CashbackDistributor'", async () => {
   const EVENT_NAME_REVOKE_CASHBACK = "RevokeCashback";
   const EVENT_NAME_SEND_CASHBACK = "SendCashback";
   const EVENT_NAME_CASHBACK_VAULT_UPDATED = "CashbackVaultUpdated";
-  const ERROR_NAME_CASHBACK_VAULT_UNCHANGED = "CashbackVaultUnchanged";
-  const ERROR_NAME_CASHBACK_VAULT_TOKEN_MISMATCH = "CashbackVaultTokenMismatch";
 
   // Error messages of the library contracts
   const ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
@@ -202,6 +200,8 @@ describe("Contract 'CashbackDistributor'", async () => {
   const ERROR_NAME_ZERO_RECIPIENT_ADDRESS = "ZeroRecipientAddress";
   const ERROR_NAME_ZERO_TOKEN_ADDRESS = "ZeroTokenAddress";
   const ERROR_NAME_CASHBACK_VAULT_INVALID = "CashbackVaultInvalid";
+  const ERROR_NAME_CASHBACK_VAULT_UNCHANGED = "CashbackVaultUnchanged";
+  const ERROR_NAME_CASHBACK_VAULT_TOKEN_MISMATCH = "CashbackVaultTokenMismatch";
 
   const OWNER_ROLE: string = ethers.id("OWNER_ROLE");
   const GRANTOR_ROLE: string = ethers.id("GRANTOR_ROLE");

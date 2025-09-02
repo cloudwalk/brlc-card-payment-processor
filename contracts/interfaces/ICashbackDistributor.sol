@@ -376,10 +376,10 @@ interface ICashbackDistributorConfiguration {
 
     /**
      * @dev Emitted when the cashback vault is updated for a selected token.
+     * See {ICashbackDistributor} for details.
      * @param token The address of the token to set the cashback vault for.
      * @param cashbackVault The address of the cashback vault. If zero the claimable mode is disabled.
      */
-    // TODO: Describe the cashback modes somewhere in the code and provide a link like See {Somewhere} for details.
     event CashbackVaultUpdated(address token, address cashbackVault);
 
     // ------------------ Transactional functions --------------- //
@@ -406,10 +406,10 @@ interface ICashbackDistributorConfiguration {
 
     /**
      * @dev Sets the address of the cashback vault for a given token,
+     * See {ICashbackDistributor} for details.
      * @param token The address of the token to set the cashback vault for.
      * @param cashbackVault The address of the cashback vault to set. If zero the claimable mode is disabled.
      */
-    // TODO: Describe the cashback modes somewhere in the code and provide a link like See {Somewhere} for details.
     function setCashbackVault(address token, address cashbackVault) external;
 
     // ------------------ View functions ------------------------ //
@@ -445,11 +445,9 @@ interface ICashbackDistributorErrors {
     error CashbackVaultUnchanged();
 
     /// @dev The provided cashback vault contract is not a valid one.
-    // TODO: Check this in tests
     error CashbackVaultInvalid();
 
     /// @dev The token of the provided cashback vault does not match the expected one.
-    // TODO: Check this in tests
     error CashbackVaultTokenMismatch();
 }
 
@@ -457,6 +455,13 @@ interface ICashbackDistributorErrors {
  * @title ICashbackDistributor interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Defines the interface of the wrapper contract for the cashback operations.
+ *  
+ * There are two cashback modes depending on whether the cashback vault is set or not:  
+ *  
+ * * Direct mode -- the cashback vault is NOT set for a token. In this case the cashback is sent directly  
+ *   from or to the recipient. The token flow: Contract <=> Recipient.  
+ * * Claimable mode -- the cashback vault is set for a token. In this case the cashback is sent from or to the vault  
+ *   and later the recipient can claim the cashback from the vault. The token flow: Contract <=> Vault <=> Recipient.  
  */
 interface ICashbackDistributor is
     ICashbackDistributorPrimary,
