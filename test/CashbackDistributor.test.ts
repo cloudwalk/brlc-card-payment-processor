@@ -511,7 +511,6 @@ describe("Contract 'CashbackDistributor'", async () => {
     return { fixture, cashback };
   }
 
-  // we change this function to variable to be able to monkey patch it
   let beforeSendingCashback = async (options?: { cashbackRequestedAmount?: number }): Promise<TestContext> => {
     const { fixture, cashback } = await prepareForSingleCashback(options?.cashbackRequestedAmount);
     const { cashbackDistributorInitialBalanceByToken } = await setUpContractsForSendingCashbacks(
@@ -548,28 +547,31 @@ describe("Contract 'CashbackDistributor'", async () => {
       cashbackVaults = contracts.cashbackVaults;
     });
 
-    describe("Executes as expected", async () => {
-      let tx: TransactionResponse;
-      beforeEach(async () => {
-        tx = await cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
-      });
+    describe(
+      "Executes as expected when initially setting the cashback vault (enabling the claimable mode)",
+      async () => {
+        let tx: TransactionResponse;
+        beforeEach(async () => {
+          tx = await cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
+        });
 
-      it("Increasesallowance for new cv contract for the token", async () => {
-        expect(await tokens[0].allowance(getAddress(cashbackDistributor), getAddress(cashbackVaults[0][0])))
-          .to.equal(MAX_UINT256);
-      });
+        it("Increasesallowance for new cv contract for the token", async () => {
+          expect(await tokens[0].allowance(getAddress(cashbackDistributor), getAddress(cashbackVaults[0][0])))
+            .to.equal(MAX_UINT256);
+        });
 
-      it("Emits event CashbackVaultUpdated", async () => {
-        await expect(tx)
-          .to.emit(cashbackDistributor, EVENT_NAME_CASHBACK_VAULT_UPDATED)
-          .withArgs(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
-      });
+        it("Emits event CashbackVaultUpdated", async () => {
+          await expect(tx)
+            .to.emit(cashbackDistributor, EVENT_NAME_CASHBACK_VAULT_UPDATED)
+            .withArgs(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
+        });
 
-      it("Changes the cashback vault for the token", async () => {
-        expect(await cashbackDistributor.getCashbackVault(getAddress(tokens[0])))
-          .to.equal(getAddress(cashbackVaults[0][0]));
-      });
-    });
+        it("Changes the cashback vault for the token", async () => {
+          expect(await cashbackDistributor.getCashbackVault(getAddress(tokens[0])))
+            .to.equal(getAddress(cashbackVaults[0][0]));
+        });
+      }
+    );
     describe("Executes as expected when updating the cashback vault", async () => {
       let tx: TransactionResponse;
       beforeEach(async () => {

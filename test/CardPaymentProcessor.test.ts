@@ -2215,7 +2215,6 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   });
 
   describe("Function 'setCashbackDistributor()'", async () => {
-
     it("Executes as expected and emits the correct event", async () => {
       const {
         cardPaymentProcessor,
