@@ -521,24 +521,26 @@ describe("Contract 'CashbackDistributor'", async () => {
 
     return { fixture, cashbacks: [cashback], cashbackDistributorInitialBalanceByToken };
   };
+
   describe("Function 'setCashbackVault()'", async () => {
     let tokens: Contract[];
 
     // [token][cv]
     let cashbackVaults: Contract[][];
     let cashbackDistributor: Contract;
+
     beforeEach(async () => {
-      const { cashbackDistributor: cv } = await setUpFixture(deployCashbackDistributor);
-      cashbackDistributor = cv;
-      const CVfactory = await ethers.getContractFactory("CashbackVaultMock");
+      const deployedContract = await setUpFixture(deployCashbackDistributor);
+      cashbackDistributor = deployedContract.cashbackDistributor;
+      const CVFactory = await ethers.getContractFactory("CashbackVaultMock");
       const contracts = await setUpFixture(async function deploy2CVs() {
         const tokens = [
           await deployTokenMock("1"),
           await deployTokenMock("2")
         ];
         const cashbackVaults = [
-          [await CVfactory.deploy(getAddress(tokens[0])), await CVfactory.deploy(getAddress(tokens[0]))],
-          [await CVfactory.deploy(getAddress(tokens[1])), await CVfactory.deploy(getAddress(tokens[1]))]
+          [await CVFactory.deploy(getAddress(tokens[0])), await CVFactory.deploy(getAddress(tokens[0]))],
+          [await CVFactory.deploy(getAddress(tokens[1])), await CVFactory.deploy(getAddress(tokens[1]))]
         ];
         return { tokens, cashbackVaults };
       });
