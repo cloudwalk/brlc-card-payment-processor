@@ -638,8 +638,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     it("Is reverted if the caller does not have the owner role", async () => {
       await expect(
         connect(cashbackDistributor, user).setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[1][0]))
-      )
-        .to.be.revertedWith(createRevertMessageDueToMissingRole(user.address, OWNER_ROLE));
+      ).to.be.revertedWith(createRevertMessageDueToMissingRole(user.address, OWNER_ROLE));
     });
 
     it("Is reverted if the same CV contract is set as cashback vault", async () => {
@@ -1271,8 +1270,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             await pauseContract(cashbackDistributor);
             await expect(
               connect(cashbackDistributor, distributor).revokeCashback(cashback.nonce, cashback.revokedAmount)
-            )
-              .to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
+            ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
           });
 
           it("Is reverted if the caller does not have the distributor role", async () => {
@@ -1448,8 +1446,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             await pauseContract(cashbackDistributor);
             await expect(
               connect(cashbackDistributor, distributor).increaseCashback(cashback.nonce, cashback.revokedAmount)
-            )
-              .to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
+            ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
           });
 
           it("Is reverted if the caller does not have the distributor role", async () => {
