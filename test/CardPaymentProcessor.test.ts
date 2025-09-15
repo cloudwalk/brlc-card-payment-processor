@@ -1909,7 +1909,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const CASHBACK_NONCE = 111222333;
   const EXPECTED_VERSION: Version = {
     major: 1,
-    minor: 3,
+    minor: 4,
     patch: 0
   };
 
