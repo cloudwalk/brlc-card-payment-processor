@@ -210,10 +210,6 @@ contract CashbackDistributor is
             revocationStatus = RevocationStatus.Inapplicable;
         } else if (accountRevocationAmount > IERC20Upgradeable(context.token).balanceOf(context.recipient)) {
             revocationStatus = RevocationStatus.OutOfFunds;
-        } else if (
-            accountRevocationAmount > IERC20Upgradeable(context.token).allowance(context.recipient, address(this))
-        ) {
-            revocationStatus = RevocationStatus.OutOfAllowance;
         } else if (amount > cashback.amount - context.newAmount) {
             revocationStatus = RevocationStatus.OutOfBalance;
         } else {

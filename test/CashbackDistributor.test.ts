@@ -36,6 +36,7 @@ enum IncreaseStatus {
 }
 
 enum RevocationStatus {
+  Unknown = 0,
   Success = 1,
   Inapplicable = 2,
   OutOfFunds = 3,
@@ -192,6 +193,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   // Error messages of the library contracts
   const ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const ERROR_MESSAGE_PAUSABLE_PAUSED = "Pausable: paused";
+  const ERROR_MESSAGE_ERC20_INSUFFICIENT_ALLOWANCE = "ERC20: insufficient allowance";
 
   // Errors of the contract under test
   const ERROR_NAME_CASHBACK_ALREADY_DISABLED = "CashbackAlreadyDisabled";
@@ -1197,7 +1199,10 @@ describe("Contract 'CashbackDistributor'", async () => {
                 getAddress(cashbackDistributor),
                 (cashback.revokedAmount ?? 0) - 1
               ));
-              await checkRevoking(RevocationStatus.OutOfAllowance, context);
+
+              const tx = connect(cashbackDistributor, distributor)
+                .revokeCashback(cashback.nonce, cashback.revokedAmount);
+              await expect(tx).to.be.revertedWith(ERROR_MESSAGE_ERC20_INSUFFICIENT_ALLOWANCE);
             });
 
             it("The initial cashback amount is less than revocation amount", async () => {
