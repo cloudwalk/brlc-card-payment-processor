@@ -1214,6 +1214,17 @@ describe("Contract 'CashbackDistributor'", async () => {
               await checkRevoking(RevocationStatus.OutOfBalance, context);
             });
 
+            it(
+              "The initial cashback amount is less than revocation amount and account has not enough tokens",
+              async () => {
+                const context = await beforeSendingCashback();
+                const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
+                await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Success);
+                cashback.revokedAmount = cashback.requestedAmount + 1;
+                await checkRevoking(RevocationStatus.OutOfBalance, context);
+              }
+            );
+
             it("The initial cashback operations failed", async () => {
               const context = await beforeSendingCashback();
               const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
