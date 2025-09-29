@@ -53,7 +53,8 @@ interface ICashbackDistributorTypes {
      * - Inapplicable = 2 ---- The operation has been failed because the cashback does not have a relevant status.
      * - OutOfFunds = 3 ------ The operation has been failed because the recipient does not have enough tokens 
      *                         (in the account and in the his cashback balance in the vault summed up).
-     * - OutOfAllowance = 4 -- !DEPRECATED! The operation has been failed because
+     * - OutOfAllowance = 4 -- DEPRECATED since v1.1.1.
+     *                         The operation has been failed because
      *                         the caller does not have enough allowance for the contract.
      * - OutOfBalance = 5 ---- The operation has been failed because the revocation amount exceeds the cashback amount.
      */

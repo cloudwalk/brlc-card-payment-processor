@@ -206,12 +206,10 @@ contract CashbackDistributor is
             amount
         );
 
-        if (amount > cashback.amount - context.newAmount) {
-            revocationStatus = RevocationStatus.OutOfBalance;
-        } else if (
-            context.cashbackStatus != CashbackStatus.Success && context.cashbackStatus != CashbackStatus.Partial
-        ) {
+        if (context.cashbackStatus != CashbackStatus.Success && context.cashbackStatus != CashbackStatus.Partial) {
             revocationStatus = RevocationStatus.Inapplicable;
+        } else if (amount > cashback.amount - context.newAmount) {
+            revocationStatus = RevocationStatus.OutOfBalance;
         } else if (accountRevocationAmount > IERC20Upgradeable(context.token).balanceOf(context.recipient)) {
             revocationStatus = RevocationStatus.OutOfFunds;
         } else {
