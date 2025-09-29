@@ -200,7 +200,7 @@ contract CashbackDistributor is
         RevocationStatus revocationStatus = RevocationStatus.Success;
         address cashbackVault = _cashbackVaults[context.token];
 
-        (uint256 vaultRevocationAmount, uint256 accountRevocationAmount) = _calculateRevokationAmounts(
+        (uint256 vaultRevocationAmount, uint256 accountRevocationAmount) = _calculateRevocationAmounts(
             cashbackVault,
             context.recipient,
             amount
@@ -525,7 +525,7 @@ contract CashbackDistributor is
      * @param recipient The recipient address.
      * @param amount The cashback amount to revoke.
      */
-    function _calculateRevokationAmounts(
+    function _calculateRevocationAmounts(
         address cashbackVault,
         address recipient,
         uint256 amount
