@@ -200,7 +200,7 @@ contract CashbackDistributor is
         RevocationStatus revocationStatus = RevocationStatus.Success;
         address cashbackVault = _cashbackVaults[context.token];
 
-        (uint256 vaultRevocationAmount, uint256 accountRevocationAmount) = _calculateRevokationAmounts(
+        (uint256 vaultRevocationAmount, uint256 accountRevocationAmount) = _calculateRevocationAmounts(
             cashbackVault,
             context.recipient,
             amount
@@ -208,14 +208,10 @@ contract CashbackDistributor is
 
         if (context.cashbackStatus != CashbackStatus.Success && context.cashbackStatus != CashbackStatus.Partial) {
             revocationStatus = RevocationStatus.Inapplicable;
-        } else if (accountRevocationAmount > IERC20Upgradeable(context.token).balanceOf(context.recipient)) {
-            revocationStatus = RevocationStatus.OutOfFunds;
-        } else if (
-            accountRevocationAmount > IERC20Upgradeable(context.token).allowance(context.recipient, address(this))
-        ) {
-            revocationStatus = RevocationStatus.OutOfAllowance;
         } else if (amount > cashback.amount - context.newAmount) {
             revocationStatus = RevocationStatus.OutOfBalance;
+        } else if (accountRevocationAmount > IERC20Upgradeable(context.token).balanceOf(context.recipient)) {
+            revocationStatus = RevocationStatus.OutOfFunds;
         } else {
             context.newAmount += amount;
         }
@@ -525,7 +521,7 @@ contract CashbackDistributor is
      * @param recipient The recipient address.
      * @param amount The cashback amount to revoke.
      */
-    function _calculateRevokationAmounts(
+    function _calculateRevocationAmounts(
         address cashbackVault,
         address recipient,
         uint256 amount

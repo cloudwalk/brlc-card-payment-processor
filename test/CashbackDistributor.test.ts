@@ -36,6 +36,7 @@ enum IncreaseStatus {
 }
 
 enum RevocationStatus {
+  Unknown = 0,
   Success = 1,
   Inapplicable = 2,
   OutOfFunds = 3,
@@ -178,7 +179,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   const EXPECTED_VERSION: Version = {
     major: 1,
     minor: 4,
-    patch: 0
+    patch: 1
   };
 
   // Events of the contract under test
@@ -192,6 +193,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   // Error messages of the library contracts
   const ERROR_MESSAGE_INITIALIZABLE_CONTRACT_IS_ALREADY_INITIALIZED = "Initializable: contract is already initialized";
   const ERROR_MESSAGE_PAUSABLE_PAUSED = "Pausable: paused";
+  const ERROR_MESSAGE_ERC20_INSUFFICIENT_ALLOWANCE = "ERC20: insufficient allowance";
 
   // Errors of the contract under test
   const ERROR_NAME_CASHBACK_ALREADY_DISABLED = "CashbackAlreadyDisabled";
@@ -1184,30 +1186,25 @@ describe("Contract 'CashbackDistributor'", async () => {
               await checkRevoking(RevocationStatus.OutOfFunds, context);
             });
 
-            it("The cashback distributor has not enough allowance from the caller", async () => {
+            it("The initial cashback amount is less than revocation amount and account has enough tokens", async () => {
               const context = await beforeSendingCashback();
               const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
               await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Success);
-              cashback.revokedAmount = Math.floor(cashback.requestedAmount * 0.1);
-              if (useCashbackVault) {
-                await proveTx(cashbackVault.claim(cashback.recipient.address, cashback.sentAmount));
-              }
-              await proveTx(cashback.token.mint(user.address, cashback.revokedAmount));
-              await proveTx(connect(cashback.token, user).approve(
-                getAddress(cashbackDistributor),
-                (cashback.revokedAmount ?? 0) - 1
-              ));
-              await checkRevoking(RevocationStatus.OutOfAllowance, context);
-            });
-
-            it("The initial cashback amount is less than revocation amount", async () => {
-              const context = await beforeSendingCashback();
-              const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
-              await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Success);
-              await proveTx(cashback.token.mint(cashback.recipient, cashback.requestedAmount + 1));
               cashback.revokedAmount = cashback.requestedAmount + 1;
+              await proveTx(cashback.token.mint(cashback.recipient, 1));
               await checkRevoking(RevocationStatus.OutOfBalance, context);
             });
+
+            it(
+              "The initial cashback amount is less than revocation amount and account has not enough tokens",
+              async () => {
+                const context = await beforeSendingCashback();
+                const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
+                await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Success);
+                cashback.revokedAmount = cashback.requestedAmount + 1;
+                await checkRevoking(RevocationStatus.OutOfBalance, context);
+              }
+            );
 
             it("The initial cashback operations failed", async () => {
               const context = await beforeSendingCashback();
@@ -1273,10 +1270,29 @@ describe("Contract 'CashbackDistributor'", async () => {
             ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
           });
 
-          it("Is reverted if the caller does not have the distributor role", async () => {
+          it("The caller does not have the distributor role", async () => {
             const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
             await expect(cashbackDistributor.revokeCashback(cashback.nonce, cashback.revokedAmount))
               .to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, DISTRIBUTOR_ROLE));
+          });
+
+          it("The cashback distributor has not enough allowance from the caller", async () => {
+            const context = await beforeSendingCashback();
+            const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
+            await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Success);
+            cashback.revokedAmount = Math.floor(cashback.requestedAmount * 0.1);
+            if (useCashbackVault) {
+              await proveTx(cashbackVault.claim(cashback.recipient.address, cashback.sentAmount));
+            }
+            await proveTx(cashback.token.mint(user.address, cashback.revokedAmount));
+            await proveTx(connect(cashback.token, user).approve(
+              getAddress(cashbackDistributor),
+              (cashback.revokedAmount ?? 0) - 1
+            ));
+
+            const tx = connect(cashbackDistributor, distributor)
+              .revokeCashback(cashback.nonce, cashback.revokedAmount);
+            await expect(tx).to.be.revertedWith(ERROR_MESSAGE_ERC20_INSUFFICIENT_ALLOWANCE);
           });
         });
       });
