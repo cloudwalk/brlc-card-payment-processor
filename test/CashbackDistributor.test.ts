@@ -1186,12 +1186,12 @@ describe("Contract 'CashbackDistributor'", async () => {
               await checkRevoking(RevocationStatus.OutOfFunds, context);
             });
 
-            it("The initial cashback amount is less than revocation amount", async () => {
+            it("The initial cashback amount is less than revocation amount and account has enough tokens", async () => {
               const context = await beforeSendingCashback();
               const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
               await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Success);
-              await proveTx(cashback.token.mint(cashback.recipient, cashback.requestedAmount + 1));
               cashback.revokedAmount = cashback.requestedAmount + 1;
+              await proveTx(cashback.token.mint(cashback.recipient, 1));
               await checkRevoking(RevocationStatus.OutOfBalance, context);
             });
 
