@@ -71,4 +71,8 @@ abstract contract CashbackDistributorStorageV3 {
  * e.g. CashbackDistributorStorage<versionNumber>, so finally it would look like
  * "contract CashbackDistributorStorage is CashbackDistributorStorageV1, CashbackDistributorStorageV2".
  */
-abstract contract CashbackDistributorStorage is CashbackDistributorStorageV1, CashbackDistributorStorageV2, CashbackDistributorStorageV3 {}
+abstract contract CashbackDistributorStorage is
+    CashbackDistributorStorageV1,
+    CashbackDistributorStorageV2,
+    CashbackDistributorStorageV3
+{}

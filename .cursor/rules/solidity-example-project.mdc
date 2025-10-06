@@ -42,6 +42,7 @@ alwaysApply: false
 pragma solidity 0.8.24;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import { AccessControlExtUpgradeable } from "./base/AccessControlExtUpgradeable.sol";
 import { PausableExtUpgradeable } from "./base/PausableExtUpgradeable.sol";
@@ -72,6 +73,10 @@ contract Blueprint is
     Versionable,
     IBlueprint
 {
+    // ------------------ Types ----------------------------------- //
+
+    using SafeERC20 for IERC20;
+
     // ------------------ Constants ------------------------------- //
 
     /// @dev The kind of operation that is deposit.
@@ -260,9 +265,9 @@ contract Blueprint is
         );
 
         if (operationKind == OPERATION_KIND_DEPOSIT) {
-            IERC20($.token).transferFrom(account, treasury, amount);
+            IERC20($.token).safeTransferFrom(account, treasury, amount);
         } else {
-            IERC20($.token).transferFrom(treasury, account, amount);
+            IERC20($.token).safeTransferFrom(treasury, account, amount);
         }
     }
 
@@ -367,11 +372,11 @@ abstract contract BlueprintStorageLayout is IBlueprintTypes {
     struct BlueprintStorage {
         // Slot 1
         address token;
-        // uint96 __reserved1; // Reserved for future use until the end of the storage slot
+        // uint96 __reserved1; // Reserved until the end of the storage slot
 
         // Slot 2
         address operationalTreasury;
-        // uint96 __reserved2; // Reserved for future use until the end of the storage slot
+        // uint96 __reserved2; // Reserved until the end of the storage slot
 
         // Slot 3
         mapping(bytes32 opId => Operation operation) operations;
@@ -422,7 +427,7 @@ abstract contract AccessControlExtUpgradeable is AccessControlUpgradeable {
     // ------------------ Initializers ---------------------------- //
 
     /**
-     * @dev The unchained internal initializer of the upgradeable contract
+     * @dev The unchained internal initializer of the upgradeable contract.
      *
      * See details: https://docs.openzeppelin.com/contracts/5.x/upgradeable#multiple-inheritance
      *
@@ -503,7 +508,7 @@ abstract contract PausableExtUpgradeable is AccessControlExtUpgradeable, Pausabl
     // ------------------ Initializers ---------------------------- //
 
     /**
-     * @dev The unchained internal initializer of the upgradeable contract
+     * @dev The unchained internal initializer of the upgradeable contract.
      *
      * See details: https://docs.openzeppelin.com/contracts/5.x/upgradeable#multiple-inheritance
      *
@@ -565,7 +570,7 @@ abstract contract RescuableUpgradeable is AccessControlExtUpgradeable {
     // ------------------ Initializers ---------------------------- //
 
     /**
-     * @dev The unchained internal initializer of the upgradeable contract
+     * @dev The unchained internal initializer of the upgradeable contract.
      *
      * See details: https://docs.openzeppelin.com/contracts/5.x/upgradeable#multiple-inheritance
      *
@@ -948,7 +953,7 @@ interface IBlueprintTypes {
         OperationStatus status;
         address account;
         uint64 amount;
-        // uint24 __reserved; // Reserved for future use until the end of the storage slot
+        // uint24 __reserved; // Reserved until the end of the storage slot
     }
 
     /**
@@ -968,7 +973,7 @@ interface IBlueprintTypes {
         // Slot 2
         uint64 balance;
         uint32 operationCount;
-        // uint160 __reserved; // Reserved for future use until the end of the storage slot
+        // uint160 __reserved; // Reserved until the end of the storage slot
     }
 }
 ```

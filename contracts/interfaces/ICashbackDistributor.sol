@@ -51,7 +51,7 @@ interface ICashbackDistributorTypes {
      * - Unknown = 0 --------- The operation has not been initiated (the default value).
      * - Success = 1 --------- The operation has been successfully executed.
      * - Inapplicable = 2 ---- The operation has been failed because the cashback does not have a relevant status.
-     * - OutOfFunds = 3 ------ The operation has been failed because the recipient does not have enough tokens 
+     * - OutOfFunds = 3 ------ The operation has been failed because the recipient does not have enough tokens
      *                         (in the account and in the his cashback balance in the vault summed up).
      * - OutOfAllowance = 4 -- DEPRECATED since v1.1.1.
      *                         The operation has been failed because
@@ -460,13 +460,13 @@ interface ICashbackDistributorErrors {
  * @title ICashbackDistributor interface
  * @author CloudWalk Inc. (See https://www.cloudwalk.io)
  * @dev Defines the interface of the wrapper contract for the cashback operations.
- *  
- * There are two cashback modes depending on whether the cashback vault is set or not:  
- *  
- * * Direct mode -- the cashback vault is NOT set for a token. In this case the cashback is sent directly  
- *   from or to the recipient. The token flow: Contract <=> Recipient.  
- * * Claimable mode -- the cashback vault is set for a token. In this case the cashback is sent from or to the vault  
- *   and later the recipient can claim the cashback from the vault. The token flow: Contract <=> Vault <=> Recipient.  
+ *
+ * There are two cashback modes depending on whether the cashback vault is set or not:
+ *
+ * * Direct mode -- the cashback vault is NOT set for a token. In this case the cashback is sent directly
+ *   from or to the recipient. The token flow: Contract <=> Recipient.
+ * * Claimable mode -- the cashback vault is set for a token. In this case the cashback is sent from or to the vault
+ *   and later the recipient can claim the cashback from the vault. The token flow: Contract <=> Vault <=> Recipient.
  */
 interface ICashbackDistributor is
     ICashbackDistributorPrimary,

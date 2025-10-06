@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 import { ethers, upgrades } from "hardhat";
 import { expect } from "chai";
 import { Contract, ContractFactory, TransactionReceipt, TransactionResponse } from "ethers";
@@ -13,8 +14,8 @@ const ZERO_ADDRESS = ethers.ZeroAddress;
 const ZERO_SPONSOR_ADDRESS = ethers.ZeroAddress;
 const ZERO_SUBSIDY_LIMIT = 0;
 const ZERO_TRANSACTION_HASH: string = ethers.ZeroHash;
-const BYTES16_LENGTH: number = 16;
-const BYTES32_LENGTH: number = 32;
+const BYTES16_LENGTH = 16;
+const BYTES32_LENGTH = 32;
 const CASHBACK_RATE_AS_IN_CONTRACT = -1;
 const CASHBACK_ROUNDING_COEF = 10000;
 const DIGITS_COEF = 1000000;
@@ -65,12 +66,12 @@ enum PaymentStatus {
   Cleared = 2,
   Revoked = 3,
   Reversed = 4,
-  Confirmed = 5
+  Confirmed = 5,
 }
 
 enum CashbackKind {
   // Manual = 0,
-  CardPayment = 1
+  CardPayment = 1,
 }
 
 interface TestPayment {
@@ -120,7 +121,7 @@ enum OperationKind {
   Revoking = 5,
   Reversing = 6,
   Confirming = 7,
-  Refunding = 8
+  Refunding = 8,
 }
 
 interface PaymentOperation {
@@ -222,14 +223,14 @@ class CashbackDistributorMockShell {
 
 class CardPaymentProcessorModel {
   #cashbackDistributorMockConfig: CashbackDistributorMockConfig;
-  #cashbackEnabled: boolean = false;
+  #cashbackEnabled = false;
   #cashbackRateInPermil: number;
   #paymentPerAuthorizationId: Map<string, PaymentModel> = new Map<string, PaymentModel>();
   #unclearedBalancePerAccount: Map<string, number> = new Map<string, number>();
   #clearedBalancePerAccount: Map<string, number> = new Map<string, number>();
-  #totalUnclearedBalance: number = 0;
-  #totalClearedBalance: number = 0;
-  #totalBalance: number = 0;
+  #totalUnclearedBalance = 0;
+  #totalClearedBalance = 0;
+  #totalBalance = 0;
   #cashbackPerAuthorizationId: Map<string, CashbackModel> = new Map<string, CashbackModel>();
   #paymentMakingOperations: PaymentOperation[] = [];
   #paymentOperations: PaymentOperation[] = [];
@@ -258,7 +259,7 @@ class CardPaymentProcessorModel {
       subsidyLimit?: number;
       cashbackRateInPermil?: number;
       sender?: HardhatEthersSigner;
-    } = {}
+    } = {},
   ): number {
     const paymentModel = this.#createPayment(payment);
     const operation: PaymentOperation = this.#createPaymentOperation(paymentModel, OperationKind.Making);
@@ -282,7 +283,7 @@ class CardPaymentProcessorModel {
     newBaseAmount: number,
     newExtraAmount: number,
     authorizationId: string,
-    correlationId: string
+    correlationId: string,
   ): number {
     const payment: PaymentModel = this.getPaymentByAuthorizationId(authorizationId);
     const operation: PaymentOperation = this.#createPaymentOperation(payment, OperationKind.Updating);
@@ -344,7 +345,7 @@ class CardPaymentProcessorModel {
     refundAmount: number,
     newExtraAmount: number,
     authorizationId: string,
-    correlationId: string
+    correlationId: string,
   ): number {
     const payment: PaymentModel = this.getPaymentByAuthorizationId(authorizationId);
     const operation: PaymentOperation = this.#createPaymentOperation(payment, OperationKind.Refunding);
@@ -411,7 +412,7 @@ class CardPaymentProcessorModel {
     if (!!currentPayment && currentPayment.status != PaymentStatus.Revoked) {
       throw new Error(
         `A payment with the provided authorization ID already exists in the model and its status is not "Revoked". ` +
-        `authorizationId=${payment.authorizationId}`
+        `authorizationId=${payment.authorizationId}`,
       );
     }
     return {
@@ -427,7 +428,7 @@ class CardPaymentProcessorModel {
       revocationParentTxHashes: !currentPayment ? [] : [...currentPayment.revocationParentTxHashes],
       reversalParentTxHashes: [],
       sponsor: undefined,
-      subsidyLimit: 0
+      subsidyLimit: 0,
     };
   }
 
@@ -436,7 +437,7 @@ class CardPaymentProcessorModel {
     const amountParts: AmountParts = this.#defineAmountParts(
       payment.baseAmount,
       payment.extraAmount,
-      payment.subsidyLimit
+      payment.subsidyLimit,
     );
     return {
       kind,
@@ -475,7 +476,7 @@ class CardPaymentProcessorModel {
       sponsorRefundAmountChange: 0,
       sponsorBalanceChange: 0,
       oldSponsorSumAmount: amountParts.sponsorBaseAmount + amountParts.sponsorExtraAmount,
-      newSponsorSumAmount: amountParts.sponsorBaseAmount + amountParts.sponsorExtraAmount
+      newSponsorSumAmount: amountParts.sponsorBaseAmount + amountParts.sponsorExtraAmount,
     };
   }
 
@@ -483,7 +484,7 @@ class CardPaymentProcessorModel {
     const { accountBaseAmount, accountExtraAmount, sponsorBaseAmount, sponsorExtraAmount } = this.#defineAmountParts(
       operation.newBaseAmount,
       operation.newExtraAmount,
-      operation.subsidyLimit
+      operation.subsidyLimit,
     );
     if (operation.cashbackEnabled) {
       operation.cashbackRequestedChange = this.#calculateCashback(accountBaseAmount, operation.cashbackRate);
@@ -560,7 +561,7 @@ class CardPaymentProcessorModel {
         `The new base amount is wrong for the payment with authorizationId=${payment.authorizationId}. ` +
         `The requested new base amount: ${operation.newBaseAmount}. ` +
         `The payment initial base amount: ${payment.baseAmount}. ` +
-        `The current payment refund amount: ${payment.refundAmount}`
+        `The current payment refund amount: ${payment.refundAmount}`,
       );
     }
   }
@@ -569,12 +570,12 @@ class CardPaymentProcessorModel {
     const newAmountParts: AmountParts = this.#defineAmountParts(
       operation.newBaseAmount,
       operation.newExtraAmount,
-      operation.subsidyLimit
+      operation.subsidyLimit,
     );
     const oldAmountParts: AmountParts = this.#defineAmountParts(
       operation.oldBaseAmount,
       operation.oldExtraAmount,
-      operation.subsidyLimit
+      operation.subsidyLimit,
     );
     const amountDiff =
       operation.newBaseAmount + operation.newExtraAmount - operation.oldBaseAmount - operation.oldExtraAmount;
@@ -627,28 +628,28 @@ class CardPaymentProcessorModel {
     const newAmountParts: AmountParts = this.#defineAmountParts(
       operation.newBaseAmount,
       operation.newExtraAmount,
-      operation.subsidyLimit
+      operation.subsidyLimit,
     );
     const oldAmountParts: AmountParts = this.#defineAmountParts(
       operation.oldBaseAmount,
       operation.oldExtraAmount,
-      operation.subsidyLimit
+      operation.subsidyLimit,
     );
     const refundParts: RefundParts = this.#defineRefundParts(
       payment.refundAmount,
       payment.baseAmount,
-      payment.subsidyLimit
+      payment.subsidyLimit,
     );
     const cashbackModel = this.getCashbackByAuthorizationId(operation.authorizationId);
     operation.cashbackNonce = cashbackModel?.lastCashbackNonce ?? 0;
     const oldExpectedCashback = this.#calculateCashback(
       oldAmountParts.accountBaseAmount - refundParts.accountRefundAmount,
-      payment.cashbackRate
+      payment.cashbackRate,
     );
     const oldActualCashback = payment.compensationAmount - payment.refundAmount;
     const newExpectedCashback = this.#calculateCashback(
       newAmountParts.accountBaseAmount - refundParts.accountRefundAmount,
-      payment.cashbackRate
+      payment.cashbackRate,
     );
     if (newExpectedCashback < oldExpectedCashback && newExpectedCashback > oldActualCashback) {
       return 0;
@@ -723,12 +724,12 @@ class CardPaymentProcessorModel {
     const amountParts: AmountParts = this.#defineAmountParts(
       payment.baseAmount,
       payment.extraAmount,
-      payment.subsidyLimit
+      payment.subsidyLimit,
     );
     const refundParts: RefundParts = this.#defineRefundParts(
       payment.refundAmount,
       payment.baseAmount,
-      payment.subsidyLimit
+      payment.subsidyLimit,
     );
     operation.sponsorBalanceChange =
       amountParts.sponsorBaseAmount + amountParts.sponsorExtraAmount - refundParts.sponsorRefundAmount;
@@ -811,14 +812,14 @@ class CardPaymentProcessorModel {
         `The refund amount is wrong for the payment with authorizationId=${payment.authorizationId}. ` +
         `The requested amount: ${operation.refundAmountChange}. ` +
         `The payment initial amount: ${payment.baseAmount}. ` +
-        `The current payment refund amount: ${payment.refundAmount}`
+        `The current payment refund amount: ${payment.refundAmount}`,
       );
     }
     if (operation.newExtraAmount > payment.extraAmount) {
       throw new Error(
         `The new extra amount is wrong for the payment with authorizationId=${payment.authorizationId}. ` +
         `The requested new extra amount: ${operation.newExtraAmount}. ` +
-        `The payment initial extra amount: ${payment.extraAmount}`
+        `The payment initial extra amount: ${payment.extraAmount}`,
       );
     }
   }
@@ -827,24 +828,24 @@ class CardPaymentProcessorModel {
     const oldAmountParts: AmountParts = this.#defineAmountParts(
       payment.baseAmount,
       operation.oldExtraAmount,
-      payment.subsidyLimit
+      payment.subsidyLimit,
     );
     const newAmountParts: AmountParts = this.#defineAmountParts(
       payment.baseAmount,
       operation.newExtraAmount,
-      payment.subsidyLimit
+      payment.subsidyLimit,
     );
 
     const newPaymentRefundAmount = operation.refundAmountChange + payment.refundAmount;
     const oldRefundParts: RefundParts = this.#defineRefundParts(
       payment.refundAmount,
       payment.baseAmount,
-      payment.subsidyLimit
+      payment.subsidyLimit,
     );
     const newRefundParts: RefundParts = this.#defineRefundParts(
       newPaymentRefundAmount,
       payment.baseAmount,
-      payment.subsidyLimit
+      payment.subsidyLimit,
     );
     const sponsorRefundAmount = newRefundParts.sponsorRefundAmount - oldRefundParts.sponsorRefundAmount;
     const accountRefundAmount = operation.refundAmountChange - sponsorRefundAmount;
@@ -860,7 +861,7 @@ class CardPaymentProcessorModel {
       const oldCashback = payment.compensationAmount - payment.refundAmount;
       const newCashback = this.#calculateCashback(
         newAmountParts.accountBaseAmount - newRefundParts.accountRefundAmount,
-        payment.cashbackRate
+        payment.cashbackRate,
       );
       const cashbackRevocationAmount = newCashback > oldCashback ? 0 : oldCashback - newCashback;
       if (this.#cashbackDistributorMockConfig.revokeCashbackSuccessResult) {
@@ -909,7 +910,7 @@ class CardPaymentProcessorModel {
       accountBaseAmount: paymentBaseAmount,
       accountExtraAmount: paymentExtraAmount,
       sponsorBaseAmount: 0,
-      sponsorExtraAmount: 0
+      sponsorExtraAmount: 0,
     };
     if (subsidyLimit >= paymentBaseAmount + paymentExtraAmount) {
       result.sponsorBaseAmount = paymentBaseAmount;
@@ -939,7 +940,7 @@ class CardPaymentProcessorModel {
     }
     return {
       accountRefundAmount: paymentRefundAmount - sponsorRefundAmount,
-      sponsorRefundAmount
+      sponsorRefundAmount,
     };
   }
 }
@@ -987,13 +988,13 @@ class CardPaymentProcessorShell {
         payment.correlationId,
         ZERO_ADDRESS,
         ZERO_SUBSIDY_LIMIT,
-        CASHBACK_RATE_AS_IN_CONTRACT
+        CASHBACK_RATE_AS_IN_CONTRACT,
       );
       const txReceipt: TransactionReceipt = await proveTx(tx);
       operationResults.push({
         operationIndex,
         tx,
-        txReceipt
+        txReceipt,
       });
       payment.parentTxHash = txReceipt.hash;
     }
@@ -1005,13 +1006,13 @@ class CardPaymentProcessorShell {
     sponsor?: HardhatEthersSigner,
     subsidyLimit?: number,
     cashbackRateInPermil?: number,
-    sender: HardhatEthersSigner = this.executor
+    sender: HardhatEthersSigner = this.executor,
   ): Promise<OperationResult> {
     const operationIndex = this.model.makePayment(payment, {
       sponsor,
       subsidyLimit,
       cashbackRateInPermil,
-      sender
+      sender,
     });
     const tx = connect(this.contract, sender).makePaymentFor(
       payment.account.address,
@@ -1021,13 +1022,13 @@ class CardPaymentProcessorShell {
       payment.correlationId,
       sponsor?.address ?? ZERO_ADDRESS,
       subsidyLimit ?? 0,
-      cashbackRateInPermil ?? -1
+      cashbackRateInPermil ?? -1,
     );
     const txReceipt: TransactionReceipt = await proveTx(tx);
     return {
       operationIndex,
       tx,
-      txReceipt
+      txReceipt,
     };
   }
 
@@ -1035,31 +1036,31 @@ class CardPaymentProcessorShell {
     payment: TestPayment,
     newBaseAmount: number,
     newExtraAmount: number = payment.extraAmount,
-    sender: HardhatEthersSigner = this.executor
+    sender: HardhatEthersSigner = this.executor,
   ): Promise<OperationResult> {
     const operationIndex = this.model.updatePaymentAmount(
       newBaseAmount,
       newExtraAmount,
       payment.authorizationId,
-      payment.correlationId
+      payment.correlationId,
     );
     const tx = connect(this.contract, sender).updatePaymentAmount(
       newBaseAmount,
       newExtraAmount,
       payment.authorizationId,
-      payment.correlationId
+      payment.correlationId,
     );
     const txReceipt: TransactionReceipt = await proveTx(tx);
     return {
       operationIndex,
       tx,
-      txReceipt
+      txReceipt,
     };
   }
 
   async clearPayments(
     payments: TestPayment[],
-    sender: HardhatEthersSigner = this.executor
+    sender: HardhatEthersSigner = this.executor,
   ): Promise<OperationResult[]> {
     const operationResults: OperationResult[] = [];
     for (const payment of payments) {
@@ -1069,7 +1070,7 @@ class CardPaymentProcessorShell {
       operationResults.push({
         operationIndex,
         tx,
-        txReceipt
+        txReceipt,
       });
     }
     return operationResults;
@@ -1077,7 +1078,7 @@ class CardPaymentProcessorShell {
 
   async unclearPayments(
     payments: TestPayment[],
-    sender: HardhatEthersSigner = this.executor
+    sender: HardhatEthersSigner = this.executor,
   ): Promise<OperationResult[]> {
     const operationResults: OperationResult[] = [];
     for (const payment of payments) {
@@ -1087,7 +1088,7 @@ class CardPaymentProcessorShell {
       operationResults.push({
         operationIndex,
         tx,
-        txReceipt
+        txReceipt,
       });
     }
     return operationResults;
@@ -1097,18 +1098,18 @@ class CardPaymentProcessorShell {
     const operationIndex = this.model.revokePayment(
       payment.authorizationId,
       payment.correlationId,
-      payment.parentTxHash
+      payment.parentTxHash,
     );
     const tx = connect(this.contract, sender)["revokePayment(bytes16,bytes16,bytes32)"](
       payment.authorizationId,
       payment.correlationId,
-      payment.parentTxHash
+      payment.parentTxHash,
     );
     const txReceipt: TransactionReceipt = await proveTx(tx);
     return {
       operationIndex,
       tx,
-      txReceipt
+      txReceipt,
     };
   }
 
@@ -1116,24 +1117,24 @@ class CardPaymentProcessorShell {
     const operationIndex = this.model.reversePayment(
       payment.authorizationId,
       payment.correlationId,
-      payment.parentTxHash
+      payment.parentTxHash,
     );
     const tx = connect(this.contract, sender).reversePayment(
       payment.authorizationId,
       payment.correlationId,
-      payment.parentTxHash
+      payment.parentTxHash,
     );
     const txReceipt: TransactionReceipt = await proveTx(tx);
     return {
       operationIndex,
       tx,
-      txReceipt
+      txReceipt,
     };
   }
 
   async confirmPayments(
     payments: TestPayment[],
-    sender: HardhatEthersSigner = this.executor
+    sender: HardhatEthersSigner = this.executor,
   ): Promise<OperationResult[]> {
     const operationResults: OperationResult[] = [];
     for (const payment of payments) {
@@ -1143,7 +1144,7 @@ class CardPaymentProcessorShell {
       operationResults.push({
         operationIndex,
         tx,
-        txReceipt
+        txReceipt,
       });
       payment.parentTxHash = txReceipt.hash;
     }
@@ -1154,25 +1155,25 @@ class CardPaymentProcessorShell {
     payment: TestPayment,
     refundAmount: number,
     newExtraAmount: number = payment.extraAmount,
-    sender: HardhatEthersSigner = this.executor
+    sender: HardhatEthersSigner = this.executor,
   ): Promise<OperationResult> {
     const operationIndex = this.model.refundPayment(
       refundAmount,
       newExtraAmount,
       payment.authorizationId,
-      payment.correlationId
+      payment.correlationId,
     );
     const tx = connect(this.contract, sender)[FUNCTION_REFUND_PAYMENT_FULL](
       refundAmount,
       newExtraAmount,
       payment.authorizationId,
-      payment.correlationId
+      payment.correlationId,
     );
     const txReceipt: TransactionReceipt = await proveTx(tx);
     return {
       operationIndex,
       tx,
-      txReceipt
+      txReceipt,
     };
   }
 }
@@ -1196,15 +1197,15 @@ class TestContext {
     this.tokenMock = props.fixture.tokenMock;
     this.cashbackDistributorMockShell = new CashbackDistributorMockShell({
       cashbackDistributorMockContract: props.fixture.cashbackDistributorMock,
-      cashbackDistributorMockConfig: this.cashbackDistributorMockConfig
+      cashbackDistributorMockConfig: this.cashbackDistributorMockConfig,
     });
     this.cardPaymentProcessorShell = new CardPaymentProcessorShell({
       cardPaymentProcessorContract: props.fixture.cardPaymentProcessor,
       cardPaymentProcessorModel: new CardPaymentProcessorModel({
         cashbackDistributorMockConfig: this.cashbackDistributorMockConfig,
-        cashbackRateInPermil: props.cashbackRateInPermil
+        cashbackRateInPermil: props.cashbackRateInPermil,
       }),
-      executor: props.cardPaymentProcessorExecutor
+      executor: props.cardPaymentProcessorExecutor,
     });
     this.cashOutAccount = props.cashOutAccount;
     this.payments = props.payments;
@@ -1212,7 +1213,7 @@ class TestContext {
 
   async checkPaymentOperationsForTx(tx: Promise<TransactionResponse>, paymentOperationIndexes: number[] = [-1]) {
     const operations: PaymentOperation[] = paymentOperationIndexes.map(
-      index => this.cardPaymentProcessorShell.model.getPaymentOperation(index)
+      index => this.cardPaymentProcessorShell.model.getPaymentOperation(index),
     );
     const cashbackRevocationRequestedInAnyOperation =
       operations.filter(operation => operation.cashbackRevocationRequested).length > 0;
@@ -1243,7 +1244,7 @@ class TestContext {
             operation,
             operations,
             EVENT_NAME_REVOKE_PAYMENT,
-            EVENT_NAME_REVOKE_PAYMENT_SUBSIDIZED
+            EVENT_NAME_REVOKE_PAYMENT_SUBSIDIZED,
           );
           break;
         case OperationKind.Reversing:
@@ -1252,7 +1253,7 @@ class TestContext {
             operation,
             operations,
             EVENT_NAME_REVERSE_PAYMENT,
-            EVENT_NAME_REVERSE_PAYMENT_SUBSIDIZED
+            EVENT_NAME_REVERSE_PAYMENT_SUBSIDIZED,
           );
           break;
         case OperationKind.Confirming:
@@ -1274,7 +1275,7 @@ class TestContext {
             checkEventField("account", operation.account.address),
             checkEventField("sumAmount", operation.newBaseAmount + operation.newExtraAmount),
             checkEventField("newExtraAmount", operation.newExtraAmount),
-            checkEventField("oldExtraAmount", operation.oldExtraAmount)
+            checkEventField("oldExtraAmount", operation.oldExtraAmount),
           );
       } else if (!extraAmountChangedInAnyOperations) {
         await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_PAYMENT_EXTRA_AMOUNT_CHANGED);
@@ -1289,7 +1290,7 @@ class TestContext {
             checkEventField("kind", CashbackKind.CardPayment),
             checkEventField("externalId", operation.authorizationId.padEnd(BYTES32_LENGTH * 2 + 2, "0")),
             checkEventField("recipient", operation.account.address),
-            checkEventField("amount", operation.cashbackRequestedChange)
+            checkEventField("amount", operation.cashbackRequestedChange),
           );
         if (operation.cashbackSendingSucceeded) {
           await expect(tx)
@@ -1297,7 +1298,7 @@ class TestContext {
             .withArgs(
               checkEventField("cashbackDistributor", getAddress(this.cashbackDistributorMockShell.contract)),
               checkEventField("amount", operation.cashbackActualChange),
-              checkEventField("nonce", operation.cashbackNonce)
+              checkEventField("nonce", operation.cashbackNonce),
             );
           await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_SEND_CASHBACK_FAILURE);
         } else {
@@ -1306,7 +1307,7 @@ class TestContext {
             .withArgs(
               checkEventField("cashbackDistributor", getAddress(this.cashbackDistributorMockShell.contract)),
               checkEventField("amount", operation.cashbackRequestedChange),
-              checkEventField("nonce", operation.cashbackNonce)
+              checkEventField("nonce", operation.cashbackNonce),
             );
           await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_SEND_CASHBACK_SUCCESS);
         }
@@ -1322,7 +1323,7 @@ class TestContext {
           .withArgs(
             checkEventField("sender", getAddress(this.cardPaymentProcessorShell.contract)),
             checkEventField("nonce", operation.cashbackNonce),
-            checkEventField("amount", -operation.cashbackRequestedChange)
+            checkEventField("amount", -operation.cashbackRequestedChange),
           );
 
         if (operation.cashbackRevocationSuccess) {
@@ -1331,7 +1332,7 @@ class TestContext {
             .withArgs(
               checkEventField("cashbackDistributor", getAddress(this.cashbackDistributorMockShell.contract)),
               checkEventField("amount", -operation.cashbackActualChange),
-              checkEventField("nonce", operation.cashbackNonce)
+              checkEventField("nonce", operation.cashbackNonce),
             );
           await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_REVOKE_CASHBACK_FAILURE);
         } else { // !(operation.cashbackRevocationSuccess)
@@ -1340,7 +1341,7 @@ class TestContext {
             .withArgs(
               checkEventField("cashbackDistributor", getAddress(this.cashbackDistributorMockShell.contract)),
               checkEventField("amount", -operation.cashbackRequestedChange),
-              checkEventField("nonce", operation.cashbackNonce)
+              checkEventField("nonce", operation.cashbackNonce),
             );
           await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_REVOKE_CASHBACK_SUCCESS);
         }
@@ -1354,7 +1355,7 @@ class TestContext {
           .withArgs(
             checkEventField("sender", getAddress(this.cardPaymentProcessorShell.contract)),
             checkEventField("nonce", operation.cashbackNonce),
-            checkEventField("amount", operation.cashbackRequestedChange)
+            checkEventField("amount", operation.cashbackRequestedChange),
           );
 
         if (operation.cashbackIncreaseSuccess) {
@@ -1363,7 +1364,7 @@ class TestContext {
             .withArgs(
               checkEventField("cashbackDistributor", getAddress(this.cashbackDistributorMockShell.contract)),
               checkEventField("amount", operation.cashbackActualChange),
-              checkEventField("nonce", operation.cashbackNonce)
+              checkEventField("nonce", operation.cashbackNonce),
             );
           await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_INCREASE_CASHBACK_FAILURE);
         } else {
@@ -1373,7 +1374,7 @@ class TestContext {
             .withArgs(
               checkEventField("cashbackDistributor", getAddress(this.cashbackDistributorMockShell.contract)),
               checkEventField("amount", operation.cashbackRequestedChange),
-              checkEventField("nonce", operation.cashbackNonce)
+              checkEventField("nonce", operation.cashbackNonce),
             );
           await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_INCREASE_CASHBACK_SUCCESS);
         }
@@ -1403,20 +1404,20 @@ class TestContext {
   }
 
   async setUpContractsForPayments(payments: TestPayment[] = this.payments) {
-    const accounts: Set<HardhatEthersSigner> = new Set(payments.map(payment => payment.account));
+    const accounts = new Set<HardhatEthersSigner>(payments.map(payment => payment.account));
     for (const account of accounts) {
       await proveTx(this.tokenMock.mint(account.address, INITIAL_USER_BALANCE));
       const allowance: bigint = await this.tokenMock.allowance(
         account.address,
-        getAddress(this.cardPaymentProcessorShell.contract)
+        getAddress(this.cardPaymentProcessorShell.contract),
       );
 
       await proveTx(
-        connect(this.tokenMock, account).approve(getAddress(this.cashbackDistributorMockShell.contract), MAX_UINT256)
+        connect(this.tokenMock, account).approve(getAddress(this.cashbackDistributorMockShell.contract), MAX_UINT256),
       );
       if (allowance < MAX_UINT256) {
         await proveTx(
-          connect(this.tokenMock, account).approve(getAddress(this.cardPaymentProcessorShell.contract), MAX_UINT256)
+          connect(this.tokenMock, account).approve(getAddress(this.cardPaymentProcessorShell.contract), MAX_UINT256),
         );
       }
     }
@@ -1431,7 +1432,7 @@ class TestContext {
         checkEventField("account", operation.account.address),
         checkEventField("sumAmount", operation.newBaseAmount + operation.newExtraAmount),
         checkEventField("revocationCounter", operation.revocationCounter),
-        checkEventField("sender", operation.sender?.address)
+        checkEventField("sender", operation.sender?.address),
       );
 
     if (operation.sponsor) {
@@ -1443,7 +1444,7 @@ class TestContext {
           checkEventField("sponsor", operation.sponsor.address),
           checkEventField("subsidyLimit", operation.subsidyLimit),
           checkEventField("sponsorSumAmount", operation.newSponsorSumAmount),
-          checkEventField("addendum", "0x")
+          checkEventField("addendum", "0x"),
         );
     } else {
       await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_MAKE_PAYMENT_SUBSIDIZED);
@@ -1460,7 +1461,7 @@ class TestContext {
         checkEventField("oldSumAmount", operation.oldBaseAmount + operation.oldExtraAmount),
         checkEventField("newSumAmount", operation.newBaseAmount + operation.newExtraAmount),
         checkEventField("oldBaseAmount", operation.oldBaseAmount),
-        checkEventField("newBaseAmount", operation.newBaseAmount)
+        checkEventField("newBaseAmount", operation.newBaseAmount),
       );
 
     if (operation.sponsor) {
@@ -1472,7 +1473,7 @@ class TestContext {
           checkEventField("sponsor", operation.sponsor.address),
           checkEventField("oldSponsorSumAmount", operation.oldSponsorSumAmount),
           checkEventField("newSponsorSumAmount", operation.newSponsorSumAmount),
-          checkEventField("addendum", "0x")
+          checkEventField("addendum", "0x"),
         );
     } else {
       await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_UPDATE_PAYMENT_SUBSIDIZED);
@@ -1482,7 +1483,7 @@ class TestContext {
   async checkClearingEvents(
     tx: Promise<TransactionResponse>,
     operation: PaymentOperation,
-    operations: PaymentOperation[]
+    operations: PaymentOperation[],
   ) {
     await expect(tx)
       .to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_CLEAR_PAYMENT)
@@ -1492,7 +1493,7 @@ class TestContext {
         checkEventField("totalAmount", operation.totalAmount),
         checkEventField("clearedBalance", operation.clearedBalance),
         checkEventField("unclearedBalance", operation.unclearedBalance),
-        checkEventField("revocationCounter", operation.revocationCounter)
+        checkEventField("revocationCounter", operation.revocationCounter),
       );
 
     const wasThereSubsidizedPayment: boolean = operations.some(op => !!op.sponsor);
@@ -1503,7 +1504,7 @@ class TestContext {
         .withArgs(
           checkEventField("authorizationId", operation.authorizationId),
           checkEventField("sponsor", operation.sponsor.address),
-          checkEventField("addendum", "0x")
+          checkEventField("addendum", "0x"),
         );
     } else {
       if (wasThereSubsidizedPayment) {
@@ -1512,7 +1513,7 @@ class TestContext {
           .withArgs(
             checkEventFieldNotEqual("authorizationId", operation.authorizationId),
             anyValue,
-            anyValue
+            anyValue,
           );
       } else {
         await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_CLEAR_PAYMENT_SUBSIDIZED);
@@ -1523,7 +1524,7 @@ class TestContext {
   async checkUnclearingEvents(
     tx: Promise<TransactionResponse>,
     operation: PaymentOperation,
-    operations: PaymentOperation[]
+    operations: PaymentOperation[],
   ) {
     await expect(tx)
       .to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_UNCLEAR_PAYMENT)
@@ -1533,7 +1534,7 @@ class TestContext {
         checkEventField("totalAmount", operation.totalAmount),
         checkEventField("clearedBalance", operation.clearedBalance),
         checkEventField("unclearedBalance", operation.unclearedBalance),
-        checkEventField("revocationCounter", operation.revocationCounter)
+        checkEventField("revocationCounter", operation.revocationCounter),
       );
 
     const wasThereSubsidizedPayment: boolean = operations.some(op => !!op.sponsor);
@@ -1544,7 +1545,7 @@ class TestContext {
         .withArgs(
           checkEventField("authorizationId", operation.authorizationId),
           checkEventField("sponsor", operation.sponsor.address),
-          checkEventField("addendum", "0x")
+          checkEventField("addendum", "0x"),
         );
     } else {
       if (wasThereSubsidizedPayment) {
@@ -1553,7 +1554,7 @@ class TestContext {
           .withArgs(
             checkEventFieldNotEqual("authorizationId", operation.authorizationId),
             anyValue,
-            anyValue
+            anyValue,
           );
       } else {
         await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_UNCLEAR_PAYMENT_SUBSIDIZED);
@@ -1566,7 +1567,7 @@ class TestContext {
     operation: PaymentOperation,
     operations: PaymentOperation[],
     mainEventName: string,
-    subsidizedEventName: string
+    subsidizedEventName: string,
   ) {
     await expect(tx)
       .to.emit(this.cardPaymentProcessorShell.contract, mainEventName)
@@ -1579,7 +1580,7 @@ class TestContext {
         checkEventField("unclearedBalance", operation.unclearedBalance),
         checkEventField("wasPaymentCleared", operation.paymentStatus === PaymentStatus.Cleared),
         checkEventField("parentTransactionHash", operation.parentTransactionHash),
-        checkEventField("revocationCounter", operation.revocationCounter)
+        checkEventField("revocationCounter", operation.revocationCounter),
       );
 
     const wasThereSubsidizedPayment: boolean = operations.some(op => !!op.sponsor);
@@ -1592,7 +1593,7 @@ class TestContext {
           checkEventField("correlationId", operation.correlationId),
           checkEventField("sponsor", operation.sponsor.address),
           checkEventField("sponsorSentAmount", operation.sponsorBalanceChange),
-          checkEventField("addendum", "0x")
+          checkEventField("addendum", "0x"),
         );
     } else {
       if (wasThereSubsidizedPayment) {
@@ -1602,7 +1603,7 @@ class TestContext {
             checkEventFieldNotEqual("authorizationId", operation.authorizationId),
             anyValue,
             anyValue,
-            anyValue
+            anyValue,
           );
       } else {
         await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, subsidizedEventName);
@@ -1613,7 +1614,7 @@ class TestContext {
   async checkConfirmingEvents(
     tx: Promise<TransactionResponse>,
     operation: PaymentOperation,
-    operations: PaymentOperation[]
+    operations: PaymentOperation[],
   ) {
     await expect(tx)
       .to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_CONFIRM_PAYMENT)
@@ -1622,7 +1623,7 @@ class TestContext {
         checkEventField("account", operation.account.address),
         checkEventField("totalAmount", operation.totalAmount),
         checkEventField("clearedBalance", operation.clearedBalance),
-        checkEventField("revocationCounter", operation.revocationCounter)
+        checkEventField("revocationCounter", operation.revocationCounter),
       );
 
     const wasThereSubsidizedPayment: boolean = operations.some(op => !!op.sponsor);
@@ -1633,7 +1634,7 @@ class TestContext {
         .withArgs(
           checkEventField("authorizationId", operation.authorizationId),
           checkEventField("sponsor", operation.sponsor.address),
-          checkEventField("addendum", "0x")
+          checkEventField("addendum", "0x"),
         );
     } else {
       if (wasThereSubsidizedPayment) {
@@ -1642,7 +1643,7 @@ class TestContext {
           .withArgs(
             checkEventFieldNotEqual("authorizationId", operation.authorizationId),
             anyValue,
-            anyValue
+            anyValue,
           );
       } else {
         await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_CONFIRM_PAYMENT_SUBSIDIZED);
@@ -1660,9 +1661,9 @@ class TestContext {
         checkEventField("refundAmount", operation.refundAmountChange),
         checkEventField(
           "sentAmount",
-          -(operation.cashOutAccountBalanceChange + operation.cardPaymentProcessorBalanceChange)
+          -(operation.cashOutAccountBalanceChange + operation.cardPaymentProcessorBalanceChange),
         ),
-        checkEventField("status", operation.paymentStatus)
+        checkEventField("status", operation.paymentStatus),
       );
 
     if (operation.sponsor) {
@@ -1674,7 +1675,7 @@ class TestContext {
           checkEventField("sponsor", operation.sponsor.address),
           checkEventField("sponsorRefundAmount", operation.sponsorRefundAmountChange),
           checkEventField("sponsorSentAmount", operation.sponsorBalanceChange),
-          checkEventField("addendum", "0x")
+          checkEventField("addendum", "0x"),
         );
     } else {
       await expect(tx).not.to.emit(this.cardPaymentProcessorShell.contract, EVENT_NAME_REFUND_PAYMENT_SUBSIDIZED);
@@ -1701,21 +1702,21 @@ class TestContext {
         this.cardPaymentProcessorShell.contract,
         this.cashbackDistributorMockShell.contract,
         this.cashOutAccount,
-        ...accounts
+        ...accounts,
       ],
       [
         cardPaymentProcessorBalanceChange,
         cashbackDistributorBalanceChange,
         cashOutAccountBalanceChange,
-        ...accountBalanceChanges
-      ]
+        ...accountBalanceChanges,
+      ],
     );
   }
 
   async #checkPaymentStructures() {
     const expectedPayments: PaymentModel[] = this.cardPaymentProcessorShell.model.getPaymentModelsInMakingOrder();
     const paymentNumber = expectedPayments.length;
-    const checkedAuthorizationIds: Set<string> = new Set();
+    const checkedAuthorizationIds = new Set<string>();
     for (let i = 0; i < paymentNumber; ++i) {
       const expectedPayment: PaymentModel = expectedPayments[i];
       if (checkedAuthorizationIds.has(expectedPayment.authorizationId)) {
@@ -1730,7 +1731,7 @@ class TestContext {
       if (expectedPayment.reversalParentTxHashes.length > 0) {
         expect(expectedPayment.reversalParentTxHashes.length).to.lessThanOrEqual(
           1,
-          `The reversal count of a payment with the authorization ID ${expectedPayment.authorizationId} is wrong`
+          `The reversal count of a payment with the authorization ID ${expectedPayment.authorizationId} is wrong`,
         );
         await this.#checkPaymentReversalsByParentHashes(expectedPayment.reversalParentTxHashes);
       }
@@ -1740,47 +1741,47 @@ class TestContext {
   #checkPaymentsEquality(
     actualOnChainPayment: Record<string, unknown>,
     expectedPayment: PaymentModel,
-    paymentIndex: number
+    paymentIndex: number,
   ) {
     expect(actualOnChainPayment.account).to.equal(
       expectedPayment.account.address,
-      `payment[${paymentIndex}].account is wrong`
+      `payment[${paymentIndex}].account is wrong`,
     );
     expect(actualOnChainPayment.baseAmount).to.equal(
       expectedPayment.baseAmount,
-      `payment[${paymentIndex}].baseAmount is wrong`
+      `payment[${paymentIndex}].baseAmount is wrong`,
     );
     expect(actualOnChainPayment.extraAmount).to.equal(
       expectedPayment.extraAmount,
-      `payment[${paymentIndex}].extraAmount is wrong`
+      `payment[${paymentIndex}].extraAmount is wrong`,
     );
     expect(actualOnChainPayment.status).to.equal(
       expectedPayment.status,
-      `payment[${paymentIndex}].status is wrong`
+      `payment[${paymentIndex}].status is wrong`,
     );
     expect(actualOnChainPayment.revocationCounter).to.equal(
       expectedPayment.revocationParentTxHashes.length,
-      `payment[${paymentIndex}].revocationCounter is wrong`
+      `payment[${paymentIndex}].revocationCounter is wrong`,
     );
     expect(actualOnChainPayment.compensationAmount).to.equal(
       expectedPayment.compensationAmount,
-      `payment[${paymentIndex}].compensationAmount is wrong`
+      `payment[${paymentIndex}].compensationAmount is wrong`,
     );
     expect(actualOnChainPayment.refundAmount).to.equal(
       expectedPayment.refundAmount,
-      `payment[${paymentIndex}].refundAmount is wrong`
+      `payment[${paymentIndex}].refundAmount is wrong`,
     );
     expect(actualOnChainPayment.cashbackRate).to.equal(
       expectedPayment.cashbackRate,
-      `payment[${paymentIndex}].cashbackRate is wrong`
+      `payment[${paymentIndex}].cashbackRate is wrong`,
     );
     expect(actualOnChainPayment.sponsor).to.equal(
       expectedPayment.sponsor?.address ?? ZERO_ADDRESS,
-      `payment[${paymentIndex}].sponsor is wrong`
+      `payment[${paymentIndex}].sponsor is wrong`,
     );
     expect(actualOnChainPayment.subsidyLimit).to.equal(
       expectedPayment.subsidyLimit,
-      `payment[${paymentIndex}].subsidyLimit is wrong`
+      `payment[${paymentIndex}].subsidyLimit is wrong`,
     );
   }
 
@@ -1791,7 +1792,7 @@ class TestContext {
       expect(await this.cardPaymentProcessorShell.contract.isPaymentRevoked(parentTxHash)).to.equal(
         true,
         `The result of the "isPaymentRevoked()" function is wrong for parentTxHash=${parentTxHash} and` +
-        `the revocation index is ${index}`
+        `the revocation index is ${index}`,
       );
     }
   }
@@ -1803,7 +1804,7 @@ class TestContext {
       expect(await this.cardPaymentProcessorShell.contract.isPaymentReversed(parentTxHash)).to.equal(
         true,
         `The result of the "isPaymentReversed()" function is wrong for parentTxHash=${parentTxHash} and` +
-        `the reversal index is ${index}`
+        `the reversal index is ${index}`,
       );
     }
   }
@@ -1830,7 +1831,7 @@ class TestContext {
       const actualBalance = await this.cardPaymentProcessorShell.contract.unclearedBalanceOf(account);
       expect(actualBalance).to.equal(
         expectedBalance,
-        `The uncleared balance for account ${account} is wrong`
+        `The uncleared balance for account ${account} is wrong`,
       );
     }
 
@@ -1839,31 +1840,31 @@ class TestContext {
       const actualBalance = await this.cardPaymentProcessorShell.contract.clearedBalanceOf(account);
       expect(actualBalance).to.equal(
         expectedBalance,
-        `The cleared balance for account ${account} is wrong`
+        `The cleared balance for account ${account} is wrong`,
       );
     }
 
     expect(await this.cardPaymentProcessorShell.contract.totalUnclearedBalance()).to.equal(
       this.cardPaymentProcessorShell.model.totalUnclearedBalance,
-      `The total uncleared balance is wrong`
+      `The total uncleared balance is wrong`,
     );
 
     expect(await this.cardPaymentProcessorShell.contract.totalClearedBalance()).to.equal(
       this.cardPaymentProcessorShell.model.totalClearedBalance,
-      `The total cleared balance is wrong`
+      `The total cleared balance is wrong`,
     );
   }
 
   async #checkTokenBalance() {
     expect(await this.tokenMock.balanceOf(getAddress(this.cardPaymentProcessorShell.contract))).to.equal(
       this.cardPaymentProcessorShell.model.totalBalance,
-      `The card payment processor token balance is wrong`
+      `The card payment processor token balance is wrong`,
     );
   }
 
   #getBalanceChangePerAccount(operations: PaymentOperation[]) {
-    const result: Map<HardhatEthersSigner, number> = new Map();
-    operations.forEach(operation => {
+    const result = new Map<HardhatEthersSigner, number>();
+    operations.forEach((operation) => {
       let balanceChange: number = result.get(operation.account) ?? 0;
       balanceChange += operation.userBalanceChange;
       result.set(operation.account, balanceChange);
@@ -1890,7 +1891,7 @@ interface Version {
 function increaseBytesString(bytesString: string, targetLength: number) {
   return ethers.toBeHex(
     parseInt(bytesString.substring(2), 16) + 1,
-    targetLength
+    targetLength,
   );
 }
 
@@ -1910,7 +1911,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const EXPECTED_VERSION: Version = {
     major: 1,
     minor: 4,
-    patch: 1
+    patch: 1,
   };
 
   // Error messages of the library contracts
@@ -1982,7 +1983,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     let tokenMock = await upgrades.deployProxy(
       tokenMockFactory,
       [name, symbol],
-      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+      { unsafeSkipProxyAdminCheck: true }, // This is necessary to run tests on other networks
     ) as Contract;
     await tokenMock.waitForDeployment();
     tokenMock = connect(tokenMock, deployer); // Explicitly specifying the initial account
@@ -1999,14 +2000,14 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     let cardPaymentProcessor = await upgrades.deployProxy(
       cardPaymentProcessorFactory,
       [getAddress(tokenMock)],
-      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+      { unsafeSkipProxyAdminCheck: true }, // This is necessary to run tests on other networks
     ) as Contract;
     await cardPaymentProcessor.waitForDeployment();
     cardPaymentProcessor = connect(cardPaymentProcessor, deployer); // Explicitly specifying the initial account
 
     return {
       cardPaymentProcessor,
-      tokenMock
+      tokenMock,
     };
   }
 
@@ -2020,7 +2021,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       sendCashbackNonceResult: CASHBACK_NONCE,
       revokeCashbackSuccessResult: true,
       increaseCashbackSuccessResult: true,
-      increaseCashbackAmountResult: -1
+      increaseCashbackAmountResult: -1,
     };
 
     let cashbackDistributorMock: Contract = await cashbackDistributorMockFactory.deploy(
@@ -2029,14 +2030,14 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       cashbackDistributorMockConfig.sendCashbackNonceResult,
       cashbackDistributorMockConfig.revokeCashbackSuccessResult,
       cashbackDistributorMockConfig.increaseCashbackSuccessResult,
-      cashbackDistributorMockConfig.increaseCashbackAmountResult
+      cashbackDistributorMockConfig.increaseCashbackAmountResult,
     ) as Contract;
     await cashbackDistributorMock.waitForDeployment();
     cashbackDistributorMock = connect(cashbackDistributorMock, deployer); // Explicitly specifying the initial account
 
     return {
       cashbackDistributorMock,
-      cashbackDistributorMockConfig
+      cashbackDistributorMockConfig,
     };
   }
 
@@ -2060,7 +2061,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       cardPaymentProcessor,
       tokenMock,
       cashbackDistributorMock,
-      cashbackDistributorMockConfig
+      cashbackDistributorMockConfig,
     };
   }
 
@@ -2070,7 +2071,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     await proveTx(contract.pause());
   }
 
-  function createTestPayments(numberOfPayments: number = 1): TestPayment[] {
+  function createTestPayments(numberOfPayments = 1): TestPayment[] {
     const testPayments: TestPayment[] = [];
     for (let i = 0; i < numberOfPayments; ++i) {
       const payment: TestPayment = {
@@ -2079,7 +2080,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         extraAmount: Math.floor(123.456789 * DIGITS_COEF + i * 123.456789 * DIGITS_COEF),
         authorizationId: ethers.toBeHex(123 + i * 123, BYTES16_LENGTH),
         correlationId: ethers.toBeHex(345 + i * 345, BYTES16_LENGTH),
-        parentTxHash: ethers.toBeHex(1 + i, BYTES32_LENGTH)
+        parentTxHash: ethers.toBeHex(1 + i, BYTES32_LENGTH),
       };
       expect(payment.baseAmount).greaterThan(10 * DIGITS_COEF);
       expect(payment.extraAmount).greaterThan(10 * DIGITS_COEF);
@@ -2096,7 +2097,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       cashbackRateInPermil: CASHBACK_RATE_IN_PERMIL,
       cashOutAccount,
       cardPaymentProcessorExecutor: executor,
-      payments
+      payments,
     });
   }
 
@@ -2165,8 +2166,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         [],
         {
           initializer: false,
-          unsafeSkipProxyAdminCheck: true // This is necessary to run tests on other networks
-        }
+          unsafeSkipProxyAdminCheck: true, // This is necessary to run tests on other networks
+        },
       ) as Contract;
 
       await expect(anotherCardPaymentProcessor.initialize(ZERO_ADDRESS))
@@ -2218,7 +2219,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     it("Executes as expected and emits the correct event", async () => {
       const {
         cardPaymentProcessor,
-        tokenMock
+        tokenMock,
       } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       expect(await tokenMock.allowance(getAddress(cardPaymentProcessor), CASHBACK_DISTRIBUTOR_ADDRESS_STUB1))
         .to.equal(0);
@@ -2396,7 +2397,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           payment.baseAmount,
           payment.extraAmount,
           payment.authorizationId,
-          payment.correlationId
+          payment.correlationId,
         );
         expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
         await context.checkPaymentOperationsForTx(tx);
@@ -2416,8 +2417,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            payment.correlationId
-          )
+            payment.correlationId,
+          ),
         ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
       });
 
@@ -2433,8 +2434,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            payment.correlationId
-          )
+            payment.correlationId,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_BLOCKLISTED_ACCOUNT);
       });
     });
@@ -2448,7 +2449,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         subsidyLimit?: number;
         cashbackEnabled?: boolean;
         cashbackRateInPermil?: number;
-      } = {}
+      } = {},
     ) {
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
@@ -2460,7 +2461,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         sponsor: props.sponsor,
         subsidyLimit: props.subsidyLimit,
         cashbackRateInPermil: props.cashbackRateInPermil,
-        sender: executor
+        sender: executor,
       });
       const tx = connect(cardPaymentProcessorShell.contract, executor).makePaymentFor(
         payment.account.address,
@@ -2470,7 +2471,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         payment.correlationId,
         props.sponsor?.address ?? ZERO_ADDRESS,
         props.subsidyLimit ?? 0,
-        props.cashbackRateInPermil ?? CASHBACK_RATE_AS_IN_CONTRACT
+        props.cashbackRateInPermil ?? CASHBACK_RATE_AS_IN_CONTRACT,
       );
       expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
       await context.checkPaymentOperationsForTx(tx);
@@ -2686,8 +2687,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.correlationId,
             sponsor.address,
             subsidyLimit,
-            CASHBACK_RATE_AS_IN_CONTRACT
-          )
+            CASHBACK_RATE_AS_IN_CONTRACT,
+          ),
         ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
       });
 
@@ -2704,8 +2705,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.correlationId,
             sponsor.address,
             subsidyLimit,
-            CASHBACK_RATE_AS_IN_CONTRACT
-          )
+            CASHBACK_RATE_AS_IN_CONTRACT,
+          ),
         ).to.be.revertedWith(createRevertMessageDueToMissingRole(payment.account.address, EXECUTOR_ROLE));
       });
 
@@ -2722,8 +2723,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.correlationId,
             sponsor.address,
             subsidyLimit,
-            CASHBACK_RATE_AS_IN_CONTRACT
-          )
+            CASHBACK_RATE_AS_IN_CONTRACT,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_ZERO_ACCOUNT);
       });
 
@@ -2740,8 +2741,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.correlationId,
             sponsor.address,
             subsidyLimit,
-            CASHBACK_RATE_AS_IN_CONTRACT
-          )
+            CASHBACK_RATE_AS_IN_CONTRACT,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_ZERO_AUTHORIZATION_ID);
       });
 
@@ -2760,8 +2761,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.correlationId,
             ZERO_ADDRESS,
             subsidyLimit,
-            CASHBACK_RATE_AS_IN_CONTRACT
-          )
+            CASHBACK_RATE_AS_IN_CONTRACT,
+          ),
         ).to.be.revertedWith(ERROR_MESSAGE_ERC20_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
       });
 
@@ -2781,8 +2782,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.correlationId,
             sponsor.address,
             subsidyLimitLocal,
-            CASHBACK_RATE_AS_IN_CONTRACT
-          )
+            CASHBACK_RATE_AS_IN_CONTRACT,
+          ),
         ).to.be.revertedWith(ERROR_MESSAGE_ERC20_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
       });
 
@@ -2802,8 +2803,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             anotherCorrelationId,
             sponsor.address,
             subsidyLimit,
-            CASHBACK_RATE_AS_IN_CONTRACT
-          )
+            CASHBACK_RATE_AS_IN_CONTRACT,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_PAYMENT_ALREADY_EXISTS);
       });
 
@@ -2820,8 +2821,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.correlationId,
             sponsor.address,
             subsidyLimit,
-            MAX_CASHBACK_RATE_IN_PERMIL + 1
-          )
+            MAX_CASHBACK_RATE_IN_PERMIL + 1,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_CASHBACK_RATE_EXCESS);
       });
     });
@@ -2831,7 +2832,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     enum NewBasePaymentAmountType {
       Same = 0,
       Less = 1,
-      More = 2
+      More = 2,
     }
 
     enum NewExtraPaymentAmountType {
@@ -2840,7 +2841,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       FarMore = 2,
       SlightlyLess = 3,
       SlightlyMore = 4,
-      Zero = 5
+      Zero = 5,
     }
 
     enum UpdatingConditionType {
@@ -2849,13 +2850,13 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       CashbackDisabledAfterPaymentMaking = 2,
       CashbackEnabledButRevokingFails = 3,
       CashbackEnabledButIncreasingFails = 4,
-      CashbackEnabledButIncreasingPartial = 5
+      CashbackEnabledButIncreasingPartial = 5,
     }
 
     async function checkUpdatingForNonSubsidizedPayment(
       newBasePaymentAmountType: NewBasePaymentAmountType,
       newExtraPaymentAmountType: NewExtraPaymentAmountType,
-      updatingCondition: UpdatingConditionType
+      updatingCondition: UpdatingConditionType,
     ) {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -2920,13 +2921,13 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         newBaseAmount,
         newExtraAmount,
         payment.authorizationId,
-        PAYMENT_UPDATING_CORRELATION_ID_STUB
+        PAYMENT_UPDATING_CORRELATION_ID_STUB,
       );
       const tx = connect(cardPaymentProcessorShell.contract, executor).updatePaymentAmount(
         newBaseAmount,
         newExtraAmount,
         payment.authorizationId,
-        PAYMENT_UPDATING_CORRELATION_ID_STUB
+        PAYMENT_UPDATING_CORRELATION_ID_STUB,
       );
 
       expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
@@ -2953,13 +2954,13 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         props.newBaseAmount,
         props.newExtraAmount,
         payment.authorizationId,
-        PAYMENT_UPDATING_CORRELATION_ID_STUB
+        PAYMENT_UPDATING_CORRELATION_ID_STUB,
       );
       const tx = connect(cardPaymentProcessorShell.contract, executor).updatePaymentAmount(
         props.newBaseAmount,
         props.newExtraAmount,
         payment.authorizationId,
-        PAYMENT_UPDATING_CORRELATION_ID_STUB
+        PAYMENT_UPDATING_CORRELATION_ID_STUB,
       );
 
       expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
@@ -2975,7 +2976,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Less,
                 NewExtraPaymentAmountType.Same,
-                UpdatingConditionType.CashbackEnabled
+                UpdatingConditionType.CashbackEnabled,
               );
             });
 
@@ -2983,7 +2984,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Less,
                 NewExtraPaymentAmountType.Same,
-                UpdatingConditionType.CashbackDisabledBeforePaymentMaking
+                UpdatingConditionType.CashbackDisabledBeforePaymentMaking,
               );
             });
 
@@ -2991,7 +2992,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Less,
                 NewExtraPaymentAmountType.Same,
-                UpdatingConditionType.CashbackDisabledAfterPaymentMaking
+                UpdatingConditionType.CashbackDisabledAfterPaymentMaking,
               );
             });
 
@@ -2999,7 +3000,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Less,
                 NewExtraPaymentAmountType.Same,
-                UpdatingConditionType.CashbackEnabledButRevokingFails
+                UpdatingConditionType.CashbackEnabledButRevokingFails,
               );
             });
           });
@@ -3009,7 +3010,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Less,
                 NewExtraPaymentAmountType.FarLess,
-                UpdatingConditionType.CashbackEnabled
+                UpdatingConditionType.CashbackEnabled,
               );
             });
           });
@@ -3019,7 +3020,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Less,
                 NewExtraPaymentAmountType.FarMore,
-                UpdatingConditionType.CashbackEnabled
+                UpdatingConditionType.CashbackEnabled,
               );
             });
           });
@@ -3029,7 +3030,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Less,
                 NewExtraPaymentAmountType.SlightlyMore,
-                UpdatingConditionType.CashbackEnabled
+                UpdatingConditionType.CashbackEnabled,
               );
             });
           });
@@ -3039,7 +3040,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Less,
                 NewExtraPaymentAmountType.Zero,
-                UpdatingConditionType.CashbackEnabled
+                UpdatingConditionType.CashbackEnabled,
               );
             });
           });
@@ -3051,7 +3052,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Same,
                 NewExtraPaymentAmountType.Same,
-                UpdatingConditionType.CashbackEnabled
+                UpdatingConditionType.CashbackEnabled,
               );
             });
           });
@@ -3061,7 +3062,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Same,
                 NewExtraPaymentAmountType.FarLess,
-                UpdatingConditionType.CashbackEnabled
+                UpdatingConditionType.CashbackEnabled,
               );
             });
           });
@@ -3071,7 +3072,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Same,
                 NewExtraPaymentAmountType.FarMore,
-                UpdatingConditionType.CashbackEnabled
+                UpdatingConditionType.CashbackEnabled,
               );
             });
           });
@@ -3081,7 +3082,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Same,
                 NewExtraPaymentAmountType.Zero,
-                UpdatingConditionType.CashbackEnabled
+                UpdatingConditionType.CashbackEnabled,
               );
             });
           });
@@ -3093,7 +3094,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.More,
                 NewExtraPaymentAmountType.Same,
-                UpdatingConditionType.CashbackEnabled
+                UpdatingConditionType.CashbackEnabled,
               );
             });
 
@@ -3101,7 +3102,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.More,
                 NewExtraPaymentAmountType.Same,
-                UpdatingConditionType.CashbackDisabledBeforePaymentMaking
+                UpdatingConditionType.CashbackDisabledBeforePaymentMaking,
               );
             });
 
@@ -3109,7 +3110,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.More,
                 NewExtraPaymentAmountType.Same,
-                UpdatingConditionType.CashbackDisabledAfterPaymentMaking
+                UpdatingConditionType.CashbackDisabledAfterPaymentMaking,
               );
             });
 
@@ -3117,7 +3118,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.More,
                 NewExtraPaymentAmountType.Same,
-                UpdatingConditionType.CashbackEnabledButIncreasingFails
+                UpdatingConditionType.CashbackEnabledButIncreasingFails,
               );
             });
 
@@ -3125,7 +3126,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.More,
                 NewExtraPaymentAmountType.Same,
-                UpdatingConditionType.CashbackEnabledButIncreasingPartial
+                UpdatingConditionType.CashbackEnabledButIncreasingPartial,
               );
             });
           });
@@ -3135,7 +3136,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.More,
                 NewExtraPaymentAmountType.FarLess,
-                UpdatingConditionType.CashbackEnabled
+                UpdatingConditionType.CashbackEnabled,
               );
             });
           });
@@ -3145,7 +3146,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.More,
                 NewExtraPaymentAmountType.SlightlyLess,
-                UpdatingConditionType.CashbackEnabled
+                UpdatingConditionType.CashbackEnabled,
               );
             });
           });
@@ -3155,7 +3156,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.More,
                 NewExtraPaymentAmountType.FarMore,
-                UpdatingConditionType.CashbackEnabled
+                UpdatingConditionType.CashbackEnabled,
               );
             });
           });
@@ -3165,7 +3166,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.More,
                 NewExtraPaymentAmountType.Zero,
-                UpdatingConditionType.CashbackEnabled
+                UpdatingConditionType.CashbackEnabled,
               );
             });
           });
@@ -3180,7 +3181,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               initExtraAmount: 500 * DIGITS_COEF,
               subsidyLimit: 700 * DIGITS_COEF,
               newBaseAmount: 800 * DIGITS_COEF,
-              newExtraAmount: 500 * DIGITS_COEF
+              newExtraAmount: 500 * DIGITS_COEF,
             });
           });
 
@@ -3190,7 +3191,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               initExtraAmount: 500 * DIGITS_COEF,
               subsidyLimit: 700 * DIGITS_COEF,
               newBaseAmount: 600 * DIGITS_COEF,
-              newExtraAmount: 500 * DIGITS_COEF
+              newExtraAmount: 500 * DIGITS_COEF,
             });
           });
 
@@ -3200,7 +3201,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               initExtraAmount: 500 * DIGITS_COEF,
               subsidyLimit: 700 * DIGITS_COEF,
               newBaseAmount: 200 * DIGITS_COEF,
-              newExtraAmount: 300 * DIGITS_COEF
+              newExtraAmount: 300 * DIGITS_COEF,
             });
           });
         });
@@ -3212,7 +3213,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               initExtraAmount: 600 * DIGITS_COEF,
               subsidyLimit: 1200 * DIGITS_COEF,
               newBaseAmount: 800 * DIGITS_COEF,
-              newExtraAmount: 600 * DIGITS_COEF
+              newExtraAmount: 600 * DIGITS_COEF,
             });
           });
 
@@ -3222,7 +3223,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               initExtraAmount: 600 * DIGITS_COEF,
               subsidyLimit: 1200 * DIGITS_COEF,
               newBaseAmount: 400 * DIGITS_COEF,
-              newExtraAmount: 600 * DIGITS_COEF
+              newExtraAmount: 600 * DIGITS_COEF,
             });
           });
 
@@ -3232,7 +3233,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               initExtraAmount: 600 * DIGITS_COEF,
               subsidyLimit: 1200 * DIGITS_COEF,
               newBaseAmount: 1400 * DIGITS_COEF,
-              newExtraAmount: 600 * DIGITS_COEF
+              newExtraAmount: 600 * DIGITS_COEF,
             });
           });
         });
@@ -3244,7 +3245,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               initExtraAmount: 600 * DIGITS_COEF,
               subsidyLimit: 2000 * DIGITS_COEF,
               newBaseAmount: 800 * DIGITS_COEF,
-              newExtraAmount: 400 * DIGITS_COEF
+              newExtraAmount: 400 * DIGITS_COEF,
             });
           });
 
@@ -3254,7 +3255,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               initExtraAmount: 600 * DIGITS_COEF,
               subsidyLimit: 2000 * DIGITS_COEF,
               newBaseAmount: 1200 * DIGITS_COEF,
-              newExtraAmount: 700 * DIGITS_COEF
+              newExtraAmount: 700 * DIGITS_COEF,
             });
           });
 
@@ -3264,7 +3265,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               initExtraAmount: 600 * DIGITS_COEF,
               subsidyLimit: 2000 * DIGITS_COEF,
               newBaseAmount: 1200 * DIGITS_COEF,
-              newExtraAmount: 1000 * DIGITS_COEF
+              newExtraAmount: 1000 * DIGITS_COEF,
             });
           });
 
@@ -3274,7 +3275,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               initExtraAmount: 600 * DIGITS_COEF,
               subsidyLimit: 2000 * DIGITS_COEF,
               newBaseAmount: 2200 * DIGITS_COEF,
-              newExtraAmount: 800 * DIGITS_COEF
+              newExtraAmount: 800 * DIGITS_COEF,
             });
           });
         });
@@ -3292,8 +3293,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_UPDATING_CORRELATION_ID_STUB
-          )
+            PAYMENT_UPDATING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
       });
 
@@ -3306,8 +3307,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_UPDATING_CORRELATION_ID_STUB
-          )
+            PAYMENT_UPDATING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, EXECUTOR_ROLE));
       });
 
@@ -3320,8 +3321,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             ZERO_AUTHORIZATION_ID,
-            PAYMENT_UPDATING_CORRELATION_ID_STUB
-          )
+            PAYMENT_UPDATING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_ZERO_AUTHORIZATION_ID);
       });
 
@@ -3334,8 +3335,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_UPDATING_CORRELATION_ID_STUB
-          )
+            PAYMENT_UPDATING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_PAYMENT_NOT_EXIST);
       });
 
@@ -3352,11 +3353,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             refundAmount - 1,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_UPDATING_CORRELATION_ID_STUB
-          )
+            PAYMENT_UPDATING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          ERROR_NAME_INAPPROPRIATE_NEW_BASE_PAYMENT_AMOUNT
+          ERROR_NAME_INAPPROPRIATE_NEW_BASE_PAYMENT_AMOUNT,
         );
       });
 
@@ -3372,11 +3373,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_UPDATING_CORRELATION_ID_STUB
-          )
+            PAYMENT_UPDATING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS
+          ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS,
         ).withArgs(PaymentStatus.Cleared);
       });
 
@@ -3394,11 +3395,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_UPDATING_CORRELATION_ID_STUB
-          )
+            PAYMENT_UPDATING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          ERROR_NAME_SUBSIDIZED_PAYMENT_WITH_NON_ZERO_REFUND_AMOUNT
+          ERROR_NAME_SUBSIDIZED_PAYMENT_WITH_NON_ZERO_REFUND_AMOUNT,
         );
       });
     });
@@ -3512,7 +3513,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const operationIndex2 = cardPaymentProcessorShell.model.clearPayment(payments[1].authorizationId);
       const tx = connect(cardPaymentProcessorShell.contract, executor).clearPayments([
         payments[0].authorizationId,
-        payments[1].authorizationId
+        payments[1].authorizationId,
       ]);
       expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
@@ -3553,8 +3554,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).clearPayments([
           payments[0].authorizationId,
-          ZERO_AUTHORIZATION_ID
-        ])
+          ZERO_AUTHORIZATION_ID,
+        ]),
       ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_ZERO_AUTHORIZATION_ID);
     });
 
@@ -3566,8 +3567,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).clearPayments([
           payments[0].authorizationId,
-          increaseBytesString(payments[1].authorizationId, BYTES16_LENGTH)
-        ])
+          increaseBytesString(payments[1].authorizationId, BYTES16_LENGTH),
+        ]),
       ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_PAYMENT_NOT_EXIST);
     });
 
@@ -3581,8 +3582,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).clearPayments([
           payments[0].authorizationId,
-          payments[1].authorizationId
-        ])
+          payments[1].authorizationId,
+        ]),
       ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_PAYMENT_ALREADY_CLEARED);
     });
   });
@@ -3708,7 +3709,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const operationIndex2 = cardPaymentProcessorShell.model.unclearPayment(payments[1].authorizationId);
       const tx = connect(cardPaymentProcessorShell.contract, executor).unclearPayments([
         payments[0].authorizationId,
-        payments[1].authorizationId
+        payments[1].authorizationId,
       ]);
       expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
@@ -3750,8 +3751,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).unclearPayments([
           payments[0].authorizationId,
-          ZERO_AUTHORIZATION_ID
-        ])
+          ZERO_AUTHORIZATION_ID,
+        ]),
       ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_ZERO_AUTHORIZATION_ID);
     });
 
@@ -3764,8 +3765,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).unclearPayments([
           payments[0].authorizationId,
-          increaseBytesString(payments[1].authorizationId, BYTES16_LENGTH)
-        ])
+          increaseBytesString(payments[1].authorizationId, BYTES16_LENGTH),
+        ]),
       ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_PAYMENT_NOT_EXIST);
     });
 
@@ -3780,8 +3781,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).unclearPayments([
           payments[0].authorizationId,
-          payments[1].authorizationId
-        ])
+          payments[1].authorizationId,
+        ]),
       ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_PAYMENT_ALREADY_UNCLEARED);
     });
   });
@@ -3797,12 +3798,12 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       cardPaymentProcessorShell.model.revokePayment(
         payment.authorizationId,
         PAYMENT_REVOKING_CORRELATION_ID_STUB,
-        payment.parentTxHash
+        payment.parentTxHash,
       );
       const tx = connect(cardPaymentProcessorShell.contract, executor).revokePayment(
         payment.authorizationId,
         PAYMENT_REVOKING_CORRELATION_ID_STUB,
-        payment.parentTxHash
+        payment.parentTxHash,
       );
       expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
@@ -3906,8 +3907,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, executor).revokePayment(
             payment.authorizationId,
             PAYMENT_REVOKING_CORRELATION_ID_STUB,
-            payment.parentTxHash
-          )
+            payment.parentTxHash,
+          ),
         ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
       });
 
@@ -3919,8 +3920,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, deployer).revokePayment(
             payment.authorizationId,
             PAYMENT_REVOKING_CORRELATION_ID_STUB,
-            payment.parentTxHash
-          )
+            payment.parentTxHash,
+          ),
         ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, EXECUTOR_ROLE));
       });
 
@@ -3934,8 +3935,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, executor).revokePayment(
             payment.authorizationId,
             PAYMENT_REVOKING_CORRELATION_ID_STUB,
-            payment.parentTxHash
-          )
+            payment.parentTxHash,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_REVOCATION_LIMIT_REACHED);
       });
 
@@ -3947,8 +3948,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, executor).revokePayment(
             ZERO_AUTHORIZATION_ID,
             PAYMENT_REVOKING_CORRELATION_ID_STUB,
-            payment.parentTxHash
-          )
+            payment.parentTxHash,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_ZERO_AUTHORIZATION_ID);
       });
 
@@ -3960,8 +3961,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, executor).revokePayment(
             payment.authorizationId,
             PAYMENT_REVOKING_CORRELATION_ID_STUB,
-            ZERO_TRANSACTION_HASH
-          )
+            ZERO_TRANSACTION_HASH,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_ZERO_PARENT_TRANSACTION_HASH);
       });
 
@@ -3973,8 +3974,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, executor).revokePayment(
             increaseBytesString(payment.authorizationId, BYTES16_LENGTH),
             PAYMENT_REVOKING_CORRELATION_ID_STUB,
-            payment.parentTxHash
-          )
+            payment.parentTxHash,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_PAYMENT_NOT_EXIST);
       });
     });
@@ -3991,12 +3992,12 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       cardPaymentProcessorShell.model.reversePayment(
         payment.authorizationId,
         PAYMENT_REVOKING_CORRELATION_ID_STUB,
-        payment.parentTxHash
+        payment.parentTxHash,
       );
       const tx = connect(cardPaymentProcessorShell.contract, executor).reversePayment(
         payment.authorizationId,
         PAYMENT_REVOKING_CORRELATION_ID_STUB,
-        payment.parentTxHash
+        payment.parentTxHash,
       );
       expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
@@ -4082,8 +4083,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, executor).reversePayment(
             payment.authorizationId,
             PAYMENT_REVERSING_CORRELATION_ID_STUB,
-            payment.parentTxHash
-          )
+            payment.parentTxHash,
+          ),
         ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
       });
 
@@ -4095,8 +4096,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, deployer).reversePayment(
             payment.authorizationId,
             PAYMENT_REVERSING_CORRELATION_ID_STUB,
-            payment.parentTxHash
-          )
+            payment.parentTxHash,
+          ),
         ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, EXECUTOR_ROLE));
       });
 
@@ -4108,8 +4109,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, executor).reversePayment(
             ZERO_AUTHORIZATION_ID,
             PAYMENT_REVERSING_CORRELATION_ID_STUB,
-            payment.parentTxHash
-          )
+            payment.parentTxHash,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_ZERO_AUTHORIZATION_ID);
       });
 
@@ -4121,8 +4122,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, executor).reversePayment(
             payment.authorizationId,
             PAYMENT_REVERSING_CORRELATION_ID_STUB,
-            ZERO_TRANSACTION_HASH
-          )
+            ZERO_TRANSACTION_HASH,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_ZERO_PARENT_TRANSACTION_HASH);
       });
 
@@ -4134,8 +4135,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, executor).reversePayment(
             increaseBytesString(payment.authorizationId, BYTES16_LENGTH),
             PAYMENT_REVERSING_CORRELATION_ID_STUB,
-            payment.parentTxHash
-          )
+            payment.parentTxHash,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_PAYMENT_NOT_EXIST);
       });
     });
@@ -4264,7 +4265,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const operationIndex2 = cardPaymentProcessorShell.model.confirmPayment(payments[1].authorizationId);
       const tx = connect(cardPaymentProcessorShell.contract, executor).confirmPayments([
         payments[0].authorizationId,
-        payments[1].authorizationId
+        payments[1].authorizationId,
       ]);
       expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
@@ -4306,8 +4307,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).confirmPayments([
           payments[0].authorizationId,
-          ZERO_AUTHORIZATION_ID
-        ])
+          ZERO_AUTHORIZATION_ID,
+        ]),
       ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_ZERO_AUTHORIZATION_ID);
     });
 
@@ -4320,8 +4321,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).confirmPayments([
           payments[0].authorizationId,
-          increaseBytesString(payments[1].authorizationId, BYTES16_LENGTH)
-        ])
+          increaseBytesString(payments[1].authorizationId, BYTES16_LENGTH),
+        ]),
       ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_PAYMENT_NOT_EXIST);
     });
 
@@ -4336,11 +4337,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).confirmPayments([
           payments[0].authorizationId,
-          payments[1].authorizationId
-        ])
+          payments[1].authorizationId,
+        ]),
       ).to.be.revertedWithCustomError(
         cardPaymentProcessorShell.contract,
-        ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS
+        ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS,
       ).withArgs(PaymentStatus.Uncleared);
     });
 
@@ -4355,8 +4356,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(
         connect(cardPaymentProcessorShell.contract, executor).confirmPayments([
           payments[0].authorizationId,
-          payments[1].authorizationId
-        ])
+          payments[1].authorizationId,
+        ]),
       ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_ZERO_CASH_OUT_ACCOUNT);
     });
   });
@@ -4385,7 +4386,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await pauseContract(cardPaymentProcessorShell.contract);
 
       await expect(
-        connect(cardPaymentProcessorShell.contract, executor).clearAndConfirmPayment(payment.authorizationId)
+        connect(cardPaymentProcessorShell.contract, executor).clearAndConfirmPayment(payment.authorizationId),
       ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
     });
 
@@ -4394,7 +4395,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
       await expect(
-        connect(cardPaymentProcessorShell.contract, deployer).clearAndConfirmPayment(payment.authorizationId)
+        connect(cardPaymentProcessorShell.contract, deployer).clearAndConfirmPayment(payment.authorizationId),
       ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, EXECUTOR_ROLE));
     });
 
@@ -4404,17 +4405,17 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   describe("Function 'updateLazyClearConfirmPayment()'", async () => {
     enum NewBasePaymentAmountType {
       Same = 0,
-      More = 1
+      More = 1,
     }
 
     enum NewExtraPaymentAmountType {
       Same = 0,
-      More = 1
+      More = 1,
     }
 
     async function checkContractFunction(
       newBasePaymentAmountType: NewBasePaymentAmountType,
-      newExtraPaymentAmountType: NewExtraPaymentAmountType
+      newExtraPaymentAmountType: NewExtraPaymentAmountType,
     ) {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -4442,7 +4443,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           newBaseAmount,
           newExtraAmount,
           payment.authorizationId,
-          PAYMENT_UPDATING_CORRELATION_ID_STUB
+          PAYMENT_UPDATING_CORRELATION_ID_STUB,
         );
         operationIndexes.push(operationIndex1);
       }
@@ -4455,7 +4456,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         newBaseAmount,
         newExtraAmount,
         payment.authorizationId,
-        PAYMENT_UPDATING_CORRELATION_ID_STUB
+        PAYMENT_UPDATING_CORRELATION_ID_STUB,
       );
       expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
@@ -4492,8 +4493,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_UPDATING_CORRELATION_ID_STUB
-          )
+            PAYMENT_UPDATING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
       });
 
@@ -4506,8 +4507,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_UPDATING_CORRELATION_ID_STUB
-          )
+            PAYMENT_UPDATING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, EXECUTOR_ROLE));
       });
     });
@@ -4529,7 +4530,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const operationIndex4 = cardPaymentProcessorShell.model.confirmPayment(payments[1].authorizationId);
       const tx = connect(cardPaymentProcessorShell.contract, executor).clearAndConfirmPayments([
         payments[0].authorizationId,
-        payments[1].authorizationId
+        payments[1].authorizationId,
       ]);
       expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
@@ -4537,7 +4538,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         operationIndex1,
         operationIndex2,
         operationIndex3,
-        operationIndex4
+        operationIndex4,
       ]);
       await context.checkCardPaymentProcessorState();
     });
@@ -4548,7 +4549,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await pauseContract(cardPaymentProcessorShell.contract);
 
       await expect(
-        connect(cardPaymentProcessorShell.contract, executor).clearAndConfirmPayments([payment.authorizationId])
+        connect(cardPaymentProcessorShell.contract, executor).clearAndConfirmPayments([payment.authorizationId]),
       ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
     });
 
@@ -4557,7 +4558,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
       await expect(
-        connect(cardPaymentProcessorShell.contract, deployer).clearAndConfirmPayments([payment.authorizationId])
+        connect(cardPaymentProcessorShell.contract, deployer).clearAndConfirmPayments([payment.authorizationId]),
       ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, EXECUTOR_ROLE));
     });
 
@@ -4576,19 +4577,19 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     enum RefundType {
       Zero = 0,
       Nonzero = 1,
-      Full = 2
+      Full = 2,
     }
 
     enum NewExtraAmountType {
       Same = 0,
       Less = 1,
-      Zero = 2
+      Zero = 2,
     }
 
     async function checkRefundingForNonSubsidizedPayment(
       refundType: RefundType,
       newExtraAmountType: NewExtraAmountType,
-      paymentStatus: PaymentStatus
+      paymentStatus: PaymentStatus,
     ) {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -4630,13 +4631,13 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         refundAmount,
         newExtraAmount,
         payment.authorizationId,
-        PAYMENT_REFUNDING_CORRELATION_ID_STUB
+        PAYMENT_REFUNDING_CORRELATION_ID_STUB,
       );
       const tx = connect(cardPaymentProcessorShell.contract, executor)[FUNCTION_REFUND_PAYMENT_FULL](
         refundAmount,
         newExtraAmount,
         payment.authorizationId,
-        PAYMENT_REFUNDING_CORRELATION_ID_STUB
+        PAYMENT_REFUNDING_CORRELATION_ID_STUB,
       );
       expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
@@ -4671,13 +4672,13 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         props.refundAmount,
         props.newExtraAmount,
         payment.authorizationId,
-        PAYMENT_REFUNDING_CORRELATION_ID_STUB
+        PAYMENT_REFUNDING_CORRELATION_ID_STUB,
       );
       const tx = connect(cardPaymentProcessorShell.contract, executor)[FUNCTION_REFUND_PAYMENT_FULL](
         props.refundAmount,
         props.newExtraAmount,
         payment.authorizationId,
-        PAYMENT_REFUNDING_CORRELATION_ID_STUB
+        PAYMENT_REFUNDING_CORRELATION_ID_STUB,
       );
       expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
@@ -4693,7 +4694,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Nonzero,
                 NewExtraAmountType.Same,
-                PaymentStatus.Uncleared
+                PaymentStatus.Uncleared,
               );
             });
           });
@@ -4703,7 +4704,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Nonzero,
                 NewExtraAmountType.Less,
-                PaymentStatus.Uncleared
+                PaymentStatus.Uncleared,
               );
             });
 
@@ -4711,7 +4712,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Nonzero,
                 NewExtraAmountType.Less,
-                PaymentStatus.Cleared
+                PaymentStatus.Cleared,
               );
             });
 
@@ -4719,7 +4720,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Nonzero,
                 NewExtraAmountType.Less,
-                PaymentStatus.Confirmed
+                PaymentStatus.Confirmed,
               );
             });
           });
@@ -4729,7 +4730,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Nonzero,
                 NewExtraAmountType.Zero,
-                PaymentStatus.Uncleared
+                PaymentStatus.Uncleared,
               );
             });
           });
@@ -4741,7 +4742,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Full,
                 NewExtraAmountType.Same,
-                PaymentStatus.Uncleared
+                PaymentStatus.Uncleared,
               );
             });
           });
@@ -4751,7 +4752,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Full,
                 NewExtraAmountType.Less,
-                PaymentStatus.Uncleared
+                PaymentStatus.Uncleared,
               );
             });
 
@@ -4759,7 +4760,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Full,
                 NewExtraAmountType.Less,
-                PaymentStatus.Cleared
+                PaymentStatus.Cleared,
               );
             });
 
@@ -4767,7 +4768,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Full,
                 NewExtraAmountType.Less,
-                PaymentStatus.Confirmed
+                PaymentStatus.Confirmed,
               );
             });
           });
@@ -4777,7 +4778,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Full,
                 NewExtraAmountType.Zero,
-                PaymentStatus.Uncleared
+                PaymentStatus.Uncleared,
               );
             });
           });
@@ -4789,7 +4790,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Zero,
                 NewExtraAmountType.Same,
-                PaymentStatus.Uncleared
+                PaymentStatus.Uncleared,
               );
             });
           });
@@ -4799,7 +4800,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Zero,
                 NewExtraAmountType.Less,
-                PaymentStatus.Uncleared
+                PaymentStatus.Uncleared,
               );
             });
 
@@ -4807,7 +4808,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Zero,
                 NewExtraAmountType.Less,
-                PaymentStatus.Cleared
+                PaymentStatus.Cleared,
               );
             });
 
@@ -4815,7 +4816,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Zero,
                 NewExtraAmountType.Less,
-                PaymentStatus.Confirmed
+                PaymentStatus.Confirmed,
               );
             });
           });
@@ -4825,7 +4826,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Zero,
                 NewExtraAmountType.Zero,
-                PaymentStatus.Uncleared
+                PaymentStatus.Uncleared,
               );
             });
           });
@@ -4841,7 +4842,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
                 subsidyLimit: 800 * DIGITS_COEF,
                 refundAmount: 500 * DIGITS_COEF,
                 newExtraAmount: 400 * DIGITS_COEF,
-                paymentStatus: PaymentStatus.Uncleared
+                paymentStatus: PaymentStatus.Uncleared,
               });
             });
 
@@ -4852,7 +4853,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
                 subsidyLimit: 800 * DIGITS_COEF,
                 refundAmount: 500 * DIGITS_COEF,
                 newExtraAmount: 400 * DIGITS_COEF,
-                paymentStatus: PaymentStatus.Confirmed
+                paymentStatus: PaymentStatus.Confirmed,
               });
             });
           });
@@ -4867,7 +4868,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
                 subsidyLimit: 1200 * DIGITS_COEF,
                 refundAmount: 500 * DIGITS_COEF,
                 newExtraAmount: 400 * DIGITS_COEF,
-                paymentStatus: PaymentStatus.Uncleared
+                paymentStatus: PaymentStatus.Uncleared,
               });
             });
 
@@ -4878,7 +4879,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
                 subsidyLimit: 1200 * DIGITS_COEF,
                 refundAmount: 500 * DIGITS_COEF,
                 newExtraAmount: 400 * DIGITS_COEF,
-                paymentStatus: PaymentStatus.Confirmed
+                paymentStatus: PaymentStatus.Confirmed,
               });
             });
           });
@@ -4891,7 +4892,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
                 subsidyLimit: 1200 * DIGITS_COEF,
                 refundAmount: 500 * DIGITS_COEF,
                 newExtraAmount: 100 * DIGITS_COEF,
-                paymentStatus: PaymentStatus.Uncleared
+                paymentStatus: PaymentStatus.Uncleared,
               });
             });
 
@@ -4902,7 +4903,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
                 subsidyLimit: 1200 * DIGITS_COEF,
                 refundAmount: 500 * DIGITS_COEF,
                 newExtraAmount: 100 * DIGITS_COEF,
-                paymentStatus: PaymentStatus.Confirmed
+                paymentStatus: PaymentStatus.Confirmed,
               });
             });
           });
@@ -4917,7 +4918,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
                 subsidyLimit: 2000 * DIGITS_COEF,
                 refundAmount: 500 * DIGITS_COEF,
                 newExtraAmount: 400 * DIGITS_COEF,
-                paymentStatus: PaymentStatus.Uncleared
+                paymentStatus: PaymentStatus.Uncleared,
               });
             });
 
@@ -4928,7 +4929,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
                 subsidyLimit: 2000 * DIGITS_COEF,
                 refundAmount: 500 * DIGITS_COEF,
                 newExtraAmount: 400 * DIGITS_COEF,
-                paymentStatus: PaymentStatus.Confirmed
+                paymentStatus: PaymentStatus.Confirmed,
               });
             });
           });
@@ -4947,8 +4948,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
-          )
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
       });
 
@@ -4961,8 +4962,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
-          )
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, EXECUTOR_ROLE));
       });
 
@@ -4975,8 +4976,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             ZERO_AUTHORIZATION_ID,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
-          )
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_ZERO_AUTHORIZATION_ID);
       });
 
@@ -4989,8 +4990,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
-          )
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_PAYMENT_NOT_EXIST);
       });
 
@@ -5005,8 +5006,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             refundAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
-          )
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_INAPPROPRIATE_REFUND_AMOUNT);
       });
 
@@ -5024,8 +5025,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
-          )
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_ZERO_CASH_OUT_ACCOUNT);
       });
 
@@ -5040,11 +5041,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
-          )
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS
+          ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS,
         ).withArgs(PaymentStatus.Revoked);
       });
 
@@ -5059,11 +5060,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
-          )
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS
+          ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS,
         ).withArgs(PaymentStatus.Reversed);
       });
 
@@ -5078,11 +5079,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             payment.baseAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
-          )
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWithCustomError(
           cardPaymentProcessorShell.contract,
-          ERROR_NAME_INAPPROPRIATE_NEW_EXTRA_PAYMENT_AMOUNT
+          ERROR_NAME_INAPPROPRIATE_NEW_EXTRA_PAYMENT_AMOUNT,
         );
       });
     });
@@ -5103,12 +5104,12 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             refundAmount,
             payment.extraAmount,
             payment.authorizationId,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
           );
           const tx = connect(cardPaymentProcessorShell.contract, executor)[FUNCTION_REFUND_PAYMENT_PRUNED](
             refundAmount,
             payment.authorizationId,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
           );
           expect(tx).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
@@ -5128,8 +5129,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, executor)[FUNCTION_REFUND_PAYMENT_PRUNED](
             payment.baseAmount,
             payment.authorizationId,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
-          )
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
       });
 
@@ -5141,8 +5142,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, deployer)[FUNCTION_REFUND_PAYMENT_PRUNED](
             payment.baseAmount,
             payment.authorizationId,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
-          )
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, EXECUTOR_ROLE));
       });
     });
@@ -5159,7 +5160,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const tx = await connect(cardPaymentProcessorShell.contract, executor).refundAccount(
         user1.address,
         tokenAmount,
-        PAYMENT_REFUNDING_CORRELATION_ID_STUB
+        PAYMENT_REFUNDING_CORRELATION_ID_STUB,
       );
 
       await expect(tx)
@@ -5169,7 +5170,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await expect(tx).to.changeTokenBalances(
         tokenMock,
         [user1, cashOutAccount, cardPaymentProcessorShell.contract],
-        [+tokenAmount, -tokenAmount, 0]
+        [+tokenAmount, -tokenAmount, 0],
       );
     }
 
@@ -5192,8 +5193,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, executor).refundAccount(
             user1.address,
             nonZeroTokenAmount,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
-          )
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
       });
 
@@ -5204,8 +5205,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, deployer).refundAccount(
             user1.address,
             nonZeroTokenAmount,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
-          )
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, EXECUTOR_ROLE));
       });
 
@@ -5216,8 +5217,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, executor).refundAccount(
             ZERO_ADDRESS,
             nonZeroTokenAmount,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
-          )
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_ZERO_ACCOUNT);
       });
 
@@ -5230,8 +5231,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           connect(cardPaymentProcessorShell.contract, executor).refundAccount(
             user1.address,
             tokenAmount,
-            PAYMENT_REFUNDING_CORRELATION_ID_STUB
-          )
+            PAYMENT_REFUNDING_CORRELATION_ID_STUB,
+          ),
         ).to.be.revertedWith(ERROR_MESSAGE_ERC20_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
       });
     });
@@ -5241,7 +5242,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     async function checkRevertingOfAllPaymentProcessingFunctionsExceptMaking(
       cardPaymentProcessor: Contract,
       payments: TestPayment[],
-      status: PaymentStatus
+      status: PaymentStatus,
     ) {
       const authorizationIds = payments.map(payment => payment.authorizationId);
       await expect(connect(cardPaymentProcessor, executor).clearPayment(authorizationIds[0]))
@@ -5264,22 +5265,22 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         connect(cardPaymentProcessor, executor).revokePayment(
           authorizationIds[0],
           PAYMENT_REVOKING_CORRELATION_ID_STUB,
-          payments[0].parentTxHash
-        )
+          payments[0].parentTxHash,
+        ),
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
-        ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS
+        ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS,
       ).withArgs(status);
 
       await expect(
         connect(cardPaymentProcessor, executor).reversePayment(
           authorizationIds[0],
           PAYMENT_REVERSING_CORRELATION_ID_STUB,
-          payments[0].parentTxHash
-        )
+          payments[0].parentTxHash,
+        ),
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
-        ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS
+        ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS,
       ).withArgs(status);
 
       await expect(connect(cardPaymentProcessor, executor).confirmPayment(authorizationIds[0]))
@@ -5295,11 +5296,11 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           payments[0].baseAmount,
           payments[0].extraAmount,
           authorizationIds[0],
-          PAYMENT_UPDATING_CORRELATION_ID_STUB
-        )
+          PAYMENT_UPDATING_CORRELATION_ID_STUB,
+        ),
       ).to.be.revertedWithCustomError(
         cardPaymentProcessor,
-        ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS
+        ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS,
       ).withArgs(status);
     }
 
@@ -5314,7 +5315,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await checkRevertingOfAllPaymentProcessingFunctionsExceptMaking(
         cardPaymentProcessorShell.contract,
         payments,
-        PaymentStatus.Revoked
+        PaymentStatus.Revoked,
       );
 
       cardPaymentProcessorShell.model.makePayment(payments[0], { sender: executor });
@@ -5326,7 +5327,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         payments[0].correlationId,
         ZERO_SPONSOR_ADDRESS,
         ZERO_SUBSIDY_LIMIT,
-        CASHBACK_RATE_AS_IN_CONTRACT
+        CASHBACK_RATE_AS_IN_CONTRACT,
       );
       await context.checkPaymentOperationsForTx(tx);
       await context.checkCardPaymentProcessorState();
@@ -5348,14 +5349,14 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           payments[0].correlationId,
           ZERO_SPONSOR_ADDRESS,
           ZERO_SUBSIDY_LIMIT,
-          CASHBACK_RATE_AS_IN_CONTRACT
-        )
+          CASHBACK_RATE_AS_IN_CONTRACT,
+        ),
       ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_PAYMENT_ALREADY_EXISTS);
 
       await checkRevertingOfAllPaymentProcessingFunctionsExceptMaking(
         cardPaymentProcessorShell.contract,
         payments,
-        PaymentStatus.Reversed
+        PaymentStatus.Reversed,
       );
       await context.checkCardPaymentProcessorState();
     });
@@ -5377,14 +5378,14 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           payments[0].correlationId,
           ZERO_SPONSOR_ADDRESS,
           ZERO_SUBSIDY_LIMIT,
-          CASHBACK_RATE_AS_IN_CONTRACT
-        )
+          CASHBACK_RATE_AS_IN_CONTRACT,
+        ),
       ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_PAYMENT_ALREADY_EXISTS);
 
       await checkRevertingOfAllPaymentProcessingFunctionsExceptMaking(
         cardPaymentProcessorShell.contract,
         payments,
-        PaymentStatus.Confirmed
+        PaymentStatus.Confirmed,
       );
       await context.checkCardPaymentProcessorState();
     });
@@ -5405,15 +5406,15 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           payments[0].correlationId,
           ZERO_SPONSOR_ADDRESS,
           ZERO_SUBSIDY_LIMIT,
-          CASHBACK_RATE_AS_IN_CONTRACT
-        )
+          CASHBACK_RATE_AS_IN_CONTRACT,
+        ),
       ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_PAYMENT_ALREADY_EXISTS);
     });
 
     it("Making payment function is reverted if the revocation counter has reached the limit", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments } = context;
-      const revocationCounterMax: number = 1;
+      const revocationCounterMax = 1;
 
       await proveTx(cardPaymentProcessorShell.contract.setRevocationLimit(revocationCounterMax));
       expect(await cardPaymentProcessorShell.contract.revocationLimit()).to.equal(revocationCounterMax);
@@ -5433,15 +5434,15 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           payments[0].correlationId,
           ZERO_SPONSOR_ADDRESS,
           ZERO_SUBSIDY_LIMIT,
-          CASHBACK_RATE_AS_IN_CONTRACT
-        )
+          CASHBACK_RATE_AS_IN_CONTRACT,
+        ),
       ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_REVOCATION_LIMIT_REACHED);
     });
 
     it("All payment processing functions execute successfully if both base and extra amounts are zero", async () => {
       const context = await beforeMakingPayments({ paymentNumber: 2 });
       const { cardPaymentProcessorShell, tokenMock, payments } = context;
-      payments.forEach(payment => {
+      payments.forEach((payment) => {
         payment.baseAmount = 0;
         payment.extraAmount = 0;
       });
@@ -5488,12 +5489,12 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await cardPaymentProcessorShell.updatePaymentAmount(
         payment,
         Math.floor(payment.baseAmount * 0.9),
-        Math.floor(payment.extraAmount * 1.1)
+        Math.floor(payment.extraAmount * 1.1),
       );
       await cardPaymentProcessorShell.refundPayment(
         payment,
         Math.floor(payment.baseAmount * 0.2),
-        Math.floor(payment.extraAmount * 0.1)
+        Math.floor(payment.extraAmount * 0.1),
       );
       await cardPaymentProcessorShell.updatePaymentAmount(payment, Math.floor(payment.baseAmount * 1.5));
       await context.checkCardPaymentProcessorState();
@@ -5537,7 +5538,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const {
         cardPaymentProcessorShell,
         cashbackDistributorMockShell,
-        payments: [payment]
+        payments: [payment],
       } = context;
       expect(payment).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
@@ -5554,7 +5555,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const {
         cardPaymentProcessorShell,
         cashbackDistributorMockShell,
-        payments: [payment]
+        payments: [payment],
       } = context;
       expect(payment).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
@@ -5571,7 +5572,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       const {
         cardPaymentProcessorShell,
         cashbackDistributorMockShell,
-        payments: [payment]
+        payments: [payment],
       } = context;
       expect(payment).to.be.not.undefined; // Silence TypeScript linter warning about assertion absence
 
@@ -5603,7 +5604,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         payment,
         undefined, // sponsor
         subsidyLimit,
-        cashbackRate2
+        cashbackRate2,
       );
 
       await context.checkPaymentOperationsForTx(operationResult.tx);
@@ -5629,7 +5630,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await cardPaymentProcessorShell.refundPayment(
         payment,
         Math.floor(payment.baseAmount * 0.2),
-        Math.floor(payment.extraAmount * 0.1)
+        Math.floor(payment.extraAmount * 0.1),
       );
       await context.checkCardPaymentProcessorState();
     });
@@ -5647,7 +5648,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     async function checkBalanceChanges(
       context: TestContext,
       operationResult: Promise<OperationResult>,
-      expectedBalanceChanges: ExpectedBalanceChanges
+      expectedBalanceChanges: ExpectedBalanceChanges,
     ) {
       const tx = (await operationResult).tx;
       await expect(tx).to.changeTokenBalances(
@@ -5657,15 +5658,15 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           sponsor,
           context.cardPaymentProcessorShell.contract,
           context.cashbackDistributorMockShell.contract,
-          context.cashOutAccount
+          context.cashOutAccount,
         ],
         [
           expectedBalanceChanges.user ?? 0,
           expectedBalanceChanges.sponsor ?? 0,
           expectedBalanceChanges.cardPaymentProcessor ?? 0,
           expectedBalanceChanges.cashbackDistributor ?? 0,
-          expectedBalanceChanges.cashOutAccount ?? 0
-        ]
+          expectedBalanceChanges.cashOutAccount ?? 0,
+        ],
       );
     }
 
@@ -5686,7 +5687,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         user: -600 * DIGITS_COEF + cashbackChange,
         sponsor: -800 * DIGITS_COEF,
         cardPaymentProcessor: 1400 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange
+        cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5708,7 +5709,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         user: -0 + cashbackChange,
         sponsor: -1400 * DIGITS_COEF,
         cardPaymentProcessor: 1400 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange
+        cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5730,7 +5731,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         user: -payment.baseAmount + cashbackChange,
         sponsor: -0,
         cardPaymentProcessor: payment.baseAmount,
-        cashbackDistributor: -cashbackChange
+        cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5752,7 +5753,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         user: -payment.baseAmount + cashbackChange,
         sponsor: -0,
         cardPaymentProcessor: payment.baseAmount,
-        cashbackDistributor: -cashbackChange
+        cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5780,7 +5781,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         user: -400 * DIGITS_COEF + cashbackChange,
         sponsor: 0,
         cardPaymentProcessor: +400 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange
+        cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5808,7 +5809,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         user: +1000 * DIGITS_COEF + cashbackChange,
         sponsor: +200 * DIGITS_COEF,
         cardPaymentProcessor: -1200 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange
+        cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5836,7 +5837,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         user: -1000 * DIGITS_COEF + cashbackChange,
         sponsor: -200 * DIGITS_COEF,
         cardPaymentProcessor: +1200 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange
+        cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5864,7 +5865,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         user: +80 * DIGITS_COEF + cashbackChange,
         sponsor: +320 * DIGITS_COEF,
         cardPaymentProcessor: -400 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange
+        cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5892,7 +5893,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         user: +480 * DIGITS_COEF + cashbackChange,
         sponsor: +320 * DIGITS_COEF,
         cardPaymentProcessor: -800 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange
+        cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5923,7 +5924,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         sponsor: +320 * DIGITS_COEF,
         cardPaymentProcessor: 0,
         cashbackDistributor: -cashbackChange,
-        cashOutAccount: -800 * DIGITS_COEF
+        cashOutAccount: -800 * DIGITS_COEF,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5949,7 +5950,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         user: +600 * DIGITS_COEF + cashbackChange,
         sponsor: +800 * DIGITS_COEF,
         cardPaymentProcessor: -1400 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange
+        cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5975,7 +5976,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         user: cashbackChange,
         sponsor: +1400 * DIGITS_COEF,
         cardPaymentProcessor: -1400 * DIGITS_COEF,
-        cashbackDistributor: -cashbackChange
+        cashbackDistributor: -cashbackChange,
       };
       await checkBalanceChanges(context, opResult, expectedBalanceChanges);
     });
@@ -5996,7 +5997,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
 
       const expectedBalanceChanges: ExpectedBalanceChanges = {
         cardPaymentProcessor: -1400 * DIGITS_COEF,
-        cashOutAccount: +1400 * DIGITS_COEF
+        cashOutAccount: +1400 * DIGITS_COEF,
       };
       await checkBalanceChanges(context, Promise.resolve(opResult), expectedBalanceChanges);
     });

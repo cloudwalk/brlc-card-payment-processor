@@ -39,7 +39,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
     let accessControlExtMock = await upgrades.deployProxy(
       accessControlExtMockFactory,
       [],
-      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+      { unsafeSkipProxyAdminCheck: true }, // This is necessary to run tests on other networks
     ) as Contract;
     await accessControlExtMock.waitForDeployment();
     accessControlExtMock = connect(accessControlExtMock, deployer);
