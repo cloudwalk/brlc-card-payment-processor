@@ -34,7 +34,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
     let pausableExtMock = await upgrades.deployProxy(
       pausableExtMockFactory,
       [],
-      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+      { unsafeSkipProxyAdminCheck: true }, // This is necessary to run tests on other networks
     ) as Contract;
     await pausableExtMock.waitForDeployment();
     pausableExtMock = connect(pausableExtMock, deployer);

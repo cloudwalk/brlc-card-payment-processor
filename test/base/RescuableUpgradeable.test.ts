@@ -35,7 +35,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
     let rescuableMock = await upgrades.deployProxy(
       rescuableMockFactory,
       [],
-      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+      { unsafeSkipProxyAdminCheck: true }, // This is necessary to run tests on other networks
     ) as Contract;
     await rescuableMock.waitForDeployment();
     rescuableMock = connect(rescuableMock, deployer); // Explicitly specifying the initial account
@@ -52,7 +52,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
     let tokenMock = await upgrades.deployProxy(
       tokenMockFactory,
       ["ERC20 Test", "TEST"],
-      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+      { unsafeSkipProxyAdminCheck: true }, // This is necessary to run tests on other networks
     ) as Contract;
     await tokenMock.waitForDeployment();
     tokenMock = connect(tokenMock, deployer); // Explicitly specifying the initial account
@@ -73,7 +73,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
 
     return {
       rescuableMock,
-      tokenMock
+      tokenMock,
     };
   }
 
@@ -119,7 +119,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
       await expect(tx).to.changeTokenBalances(
         tokenMock,
         [rescuableMock, deployer, rescuer],
-        [-TOKEN_AMOUNT, +TOKEN_AMOUNT, 0]
+        [-TOKEN_AMOUNT, +TOKEN_AMOUNT, 0],
       );
       await expect(tx)
         .to.emit(tokenMock, EVENT_NAME_TRANSFER)

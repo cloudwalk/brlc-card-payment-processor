@@ -4,7 +4,7 @@ function checkEventField<T>(fieldName: string, expectedValue: T): (value: T) => 
   const f = function (value: T): boolean {
     expect(value).to.equal(
       expectedValue,
-      `The "${fieldName}" field of the event is wrong`
+      `The "${fieldName}" field of the event is wrong`,
     );
     return true;
   };
@@ -16,7 +16,7 @@ function checkEventFieldNotEqual<T>(fieldName: string, notExpectedValue: T): (va
   const f = function (value: T): boolean {
     expect(value).not.to.equal(
       notExpectedValue,
-      `The "${fieldName}" field of the event is wrong because it is equal ${notExpectedValue} but should not`
+      `The "${fieldName}" field of the event is wrong because it is equal ${notExpectedValue} but should not`,
     );
     return true;
   };
@@ -26,14 +26,14 @@ function checkEventFieldNotEqual<T>(fieldName: string, notExpectedValue: T): (va
 
 function checkEquality<T extends Record<string, unknown>>(actualObject: T, expectedObject: T, index?: number) {
   const indexString = !index ? "" : ` with index: ${index}`;
-  Object.keys(expectedObject).forEach(property => {
+  Object.keys(expectedObject).forEach((property) => {
     const value = actualObject[property];
     if (typeof value === "undefined" || typeof value === "function" || typeof value === "object") {
       throw Error(`Property "${property}" is not found in the actual object` + indexString);
     }
     expect(value).to.eq(
       expectedObject[property],
-      `Mismatch in the "${property}" property between the actual object and expected one` + indexString
+      `Mismatch in the "${property}" property between the actual object and expected one` + indexString,
     );
   });
 }

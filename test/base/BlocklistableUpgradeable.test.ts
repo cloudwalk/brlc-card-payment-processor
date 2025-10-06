@@ -39,7 +39,7 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
     let blocklistableMock = await upgrades.deployProxy(
       blocklistableMockFactory,
       [],
-      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+      { unsafeSkipProxyAdminCheck: true }, // This is necessary to run tests on other networks
     ) as Contract;
     await blocklistableMock.waitForDeployment();
     blocklistableMock = connect(blocklistableMock, deployer); // Explicitly specifying the initial account
@@ -128,7 +128,7 @@ describe("Contract 'BlocklistableUpgradeable'", async () => {
     it("Is reverted if the caller does not have the blocklister role", async () => {
       const { blocklistableMock } = await setUpFixture(deployAndConfigureBlocklistableMock);
       await expect(
-        blocklistableMock.unBlocklist(user.address)
+        blocklistableMock.unBlocklist(user.address),
       ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, BLOCKLISTER_ROLE));
     });
   });

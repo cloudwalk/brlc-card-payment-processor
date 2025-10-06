@@ -4,7 +4,11 @@ pragma solidity ^0.8.9;
 
 import { IERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 
-import { ICashbackDistributor, ICashbackDistributorPrimary, ICashbackDistributorConfiguration } from "../interfaces/ICashbackDistributor.sol";
+import {
+    ICashbackDistributor,
+    ICashbackDistributorPrimary,
+    ICashbackDistributorConfiguration
+} from "../interfaces/ICashbackDistributor.sol";
 
 /**
  * @title CashbackDistributorMock contract
@@ -219,7 +223,7 @@ contract CashbackDistributorMock is ICashbackDistributor {
         cashbackPeriodStart = 0;
         overallCashbackForPeriod = 0;
     }
-        /**
+    /**
      * @inheritdoc ICashbackDistributorConfiguration
      *
      * @dev Just a stub for to comply with the interface.

@@ -11,7 +11,7 @@ const MAX_UINT256 = ethers.MaxUint256;
 const MAX_INT256 = ethers.MaxInt256;
 const ZERO_ADDRESS = ethers.ZeroAddress;
 const ZERO_HASH = ethers.ZeroHash;
-const BYTES32_LENGTH: number = 32;
+const BYTES32_LENGTH = 32;
 
 enum CashbackStatus {
   Nonexistent = 0,
@@ -21,7 +21,7 @@ enum CashbackStatus {
   Disabled = 4,
   Revoked = 5,
   Capped = 6,
-  Partial = 7
+  Partial = 7,
 }
 
 enum IncreaseStatus {
@@ -32,7 +32,7 @@ enum IncreaseStatus {
   Disabled = 4,
   Inapplicable = 5,
   Capped = 6,
-  Partial = 7
+  Partial = 7,
 }
 
 enum RevocationStatus {
@@ -41,12 +41,12 @@ enum RevocationStatus {
   Inapplicable = 2,
   OutOfFunds = 3,
   OutOfAllowance = 4,
-  OutOfBalance = 5
+  OutOfBalance = 5,
 }
 
 enum CashbackKind {
   Manual = 0,
-  CardPayment = 1
+  CardPayment = 1,
 }
 
 interface TestCashback {
@@ -85,87 +85,87 @@ interface Version {
 
 function checkNonexistentCashback(
   actualOnChainCashback: Record<string, unknown>,
-  cashbackNonce: number
+  cashbackNonce: number,
 ) {
   expect(actualOnChainCashback.token).to.equal(
     ZERO_ADDRESS,
-    `cashback[${cashbackNonce}].token is incorrect`
+    `cashback[${cashbackNonce}].token is incorrect`,
   );
   expect(actualOnChainCashback.kind).to.equal(
     CashbackKind.Manual,
-    `cashback[${cashbackNonce}].kind is incorrect`
+    `cashback[${cashbackNonce}].kind is incorrect`,
   );
   expect(actualOnChainCashback.status).to.equal(
     CashbackStatus.Nonexistent,
-    `cashback[${cashbackNonce}].status is incorrect`
+    `cashback[${cashbackNonce}].status is incorrect`,
   );
   expect(actualOnChainCashback.externalId).to.equal(
     ZERO_HASH,
-    `cashback[${cashbackNonce}].externalId is incorrect`
+    `cashback[${cashbackNonce}].externalId is incorrect`,
   );
   expect(actualOnChainCashback.recipient).to.equal(
     ZERO_ADDRESS,
-    `cashback[${cashbackNonce}].recipient is incorrect`
+    `cashback[${cashbackNonce}].recipient is incorrect`,
   );
   expect(actualOnChainCashback.amount).to.equal(
     0,
-    `cashback[${cashbackNonce}].amount is incorrect`
+    `cashback[${cashbackNonce}].amount is incorrect`,
   );
   expect(actualOnChainCashback.sender).to.equal(
     ZERO_ADDRESS,
-    `cashback[${cashbackNonce}].sender is incorrect`
+    `cashback[${cashbackNonce}].sender is incorrect`,
   );
   expect(actualOnChainCashback.revokedAmount).to.equal(
     0,
-    `cashback[${cashbackNonce}].revokedAmount is incorrect`
+    `cashback[${cashbackNonce}].revokedAmount is incorrect`,
   );
 }
 
 function checkEquality(
   actualOnChainCashback: Record<string, unknown>,
-  expectedCashback: TestCashback
+  expectedCashback: TestCashback,
 ) {
   if (expectedCashback.status == CashbackStatus.Nonexistent) {
     checkNonexistentCashback(actualOnChainCashback, expectedCashback.nonce);
   } else {
     expect(actualOnChainCashback.token).to.equal(
       getAddress(expectedCashback.token),
-      `cashback[${expectedCashback.nonce - 1}].token is incorrect`
+      `cashback[${expectedCashback.nonce - 1}].token is incorrect`,
     );
     expect(actualOnChainCashback.kind).to.equal(
       expectedCashback.kind,
-      `cashback[${expectedCashback.nonce - 1}].kind is incorrect`
+      `cashback[${expectedCashback.nonce - 1}].kind is incorrect`,
     );
     expect(actualOnChainCashback.status).to.equal(
       expectedCashback.status,
-      `cashback[${expectedCashback.nonce - 1}].status is incorrect`
+      `cashback[${expectedCashback.nonce - 1}].status is incorrect`,
     );
     expect(actualOnChainCashback.externalId).to.equal(
       expectedCashback.externalId,
-      `cashback[${expectedCashback.nonce - 1}].externalId is incorrect`
+      `cashback[${expectedCashback.nonce - 1}].externalId is incorrect`,
     );
     expect(actualOnChainCashback.recipient).to.equal(
       expectedCashback.recipient.address,
-      `cashback[${expectedCashback.nonce - 1}].recipient is incorrect`
+      `cashback[${expectedCashback.nonce - 1}].recipient is incorrect`,
     );
     if (actualOnChainCashback.status != CashbackStatus.Partial) {
       expect(actualOnChainCashback.amount).to.equal(
         expectedCashback.requestedAmount,
-        `cashback[${expectedCashback.nonce - 1}].amount is incorrect`
+        `cashback[${expectedCashback.nonce - 1}].amount is incorrect`,
       );
     } else {
       expect(actualOnChainCashback.amount).to.equal(
         expectedCashback.sentAmount,
-        `cashback[${expectedCashback.nonce - 1}].amount is incorrect`
+        `cashback[${expectedCashback.nonce - 1}].amount is incorrect`,
       );
     }
     expect(actualOnChainCashback.sender).to.equal(
       expectedCashback.sender.address,
-      `cashback[${expectedCashback.nonce - 1}].sender is incorrect`
+      `cashback[${expectedCashback.nonce - 1}].sender is incorrect`,
     );
     expect(actualOnChainCashback.revokedAmount).to.equal(
       expectedCashback.revokedAmount || 0,
-      `cashback[${expectedCashback.nonce - 1}].revokedAmount is incorrect`
+      `cashback[${expectedCashback.nonce - 1}].revokedAmount is incorrect`,
     );
   }
 }
@@ -179,7 +179,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   const EXPECTED_VERSION: Version = {
     major: 1,
     minor: 4,
-    patch: 1
+    patch: 1,
   };
 
   // Events of the contract under test
@@ -236,7 +236,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     let tokenMock = await upgrades.deployProxy(
       tokenMockFactory,
       [name, symbol],
-      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+      { unsafeSkipProxyAdminCheck: true }, // This is necessary to run tests on other networks
     ) as Contract;
     await tokenMock.waitForDeployment();
     tokenMock = connect(tokenMock, deployer); // Explicitly specifying the initial account
@@ -248,7 +248,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     let cashbackDistributor = await upgrades.deployProxy(
       cashbackDistributorFactory,
       [],
-      { unsafeSkipProxyAdminCheck: true } // This is necessary to run tests on other networks
+      { unsafeSkipProxyAdminCheck: true }, // This is necessary to run tests on other networks
     ) as Contract;
     await cashbackDistributor.waitForDeployment();
     cashbackDistributor = connect(cashbackDistributor, deployer);
@@ -276,16 +276,16 @@ describe("Contract 'CashbackDistributor'", async () => {
 
     return {
       cashbackDistributor,
-      tokenMocks: [tokenMock1, tokenMock2]
+      tokenMocks: [tokenMock1, tokenMock2],
     };
   }
 
   async function setUpContractsForSendingCashbacks(
     cashbackDistributorAddress: Contract,
-    cashbacks: TestCashback[]
+    cashbacks: TestCashback[],
   ): Promise<{ cashbackDistributorInitialBalanceByToken: Map<Contract, number> }> {
     const cashbackDistributorInitialBalanceByToken: Map<Contract, number> = new Map<Contract, number>();
-    cashbacks.forEach(cashback => {
+    cashbacks.forEach((cashback) => {
       let totalCashbackAmount: number = cashbackDistributorInitialBalanceByToken.get(cashback.token) || 0;
       totalCashbackAmount += cashback.requestedAmount;
       cashbackDistributorInitialBalanceByToken.set(cashback.token, totalCashbackAmount);
@@ -305,7 +305,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   async function sendCashbacks(
     cashbackDistributor: Contract,
     cashbacks: TestCashback[],
-    targetStatus: CashbackStatus
+    targetStatus: CashbackStatus,
   ): Promise<TransactionReceipt[]> {
     const transactionReceipts: TransactionReceipt[] = [];
     for (const cashback of cashbacks) {
@@ -315,15 +315,15 @@ describe("Contract 'CashbackDistributor'", async () => {
           cashback.kind,
           cashback.externalId,
           cashback.recipient.address,
-          cashback.requestedAmount
-        )
+          cashback.requestedAmount,
+        ),
       );
       transactionReceipts.push(transactionReceipt);
       expect(
-        (await cashbackDistributor.getCashback(cashback.nonce)).status
+        (await cashbackDistributor.getCashback(cashback.nonce)).status,
       ).to.equal(
         targetStatus,
-        `The sent cashback has unexpected status. The cashback nonce = ${cashback.nonce}`
+        `The sent cashback has unexpected status. The cashback nonce = ${cashback.nonce}`,
       );
       cashback.status = targetStatus;
       if (targetStatus == CashbackStatus.Success) {
@@ -348,7 +348,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         anyValue,
         cashback.sentAmount - (cashback.revokedAmount ?? 0), // totalAmount
         anyValue,
-        anyValue
+        anyValue,
       );
   }
 
@@ -368,7 +368,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         anyValue,
         cashback.sentAmount - (cashback.revokedAmount ?? 0), // totalAmount
         anyValue,
-        anyValue
+        anyValue,
       );
   }
 
@@ -387,7 +387,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     if (cashbacks.length > 0) {
       checkNonexistentCashback(
         await cashbackDistributor.getCashback(cashbacks[cashbacks.length - 1].nonce + 1),
-        cashbacks[cashbacks.length - 1].nonce + 1
+        cashbacks[cashbacks.length - 1].nonce + 1,
       );
     }
   }
@@ -396,7 +396,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     const { fixture: { cashbackDistributor }, cashbacks } = context;
     const expectedMap = new Map<string, bigint[]>();
 
-    cashbacks.forEach(cashback => {
+    cashbacks.forEach((cashback) => {
       const nonces: bigint[] = expectedMap.get(cashback.externalId) || [];
       nonces.push(BigInt(cashback.nonce));
       expectedMap.set(cashback.externalId, nonces);
@@ -405,7 +405,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     for (const [externalId, expectedNonces] of expectedMap) {
       expect(await cashbackDistributor.getCashbackNonces(externalId, 0, 50)).to.deep.equal(
         expectedNonces,
-        `Wrong array of nonces for the external ID ${externalId}`
+        `Wrong array of nonces for the external ID ${externalId}`,
       );
     }
   }
@@ -414,7 +414,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     const { fixture: { cashbackDistributor }, cashbacks } = context;
     const expectedMap = new Map<Contract, Map<string, number>>();
 
-    cashbacks.forEach(cashback => {
+    cashbacks.forEach((cashback) => {
       const totalCashbackMap: Map<string, number> = expectedMap.get(cashback.token) || new Map<string, number>();
       let totalCashback: number = totalCashbackMap.get(cashback.externalId) || 0;
       totalCashback += cashback.sentAmount - (cashback.revokedAmount || 0);
@@ -425,10 +425,10 @@ describe("Contract 'CashbackDistributor'", async () => {
     for (const [token, expectedTotalCashbackByExternalId] of expectedMap) {
       for (const [externalId, expectedTotalCashback] of expectedTotalCashbackByExternalId) {
         expect(
-          await cashbackDistributor.getTotalCashbackByTokenAndExternalId(getAddress(token), externalId)
+          await cashbackDistributor.getTotalCashbackByTokenAndExternalId(getAddress(token), externalId),
         ).to.equal(
           expectedTotalCashback,
-          `Wrong total cashback for the token with symbol ${await token.symbol()} and external ID ${externalId}`
+          `Wrong total cashback for the token with symbol ${await token.symbol()} and external ID ${externalId}`,
         );
       }
     }
@@ -438,7 +438,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     const { fixture: { cashbackDistributor }, cashbacks } = context;
     const expectedMap = new Map<Contract, Map<string, number>>();
 
-    cashbacks.forEach(cashback => {
+    cashbacks.forEach((cashback) => {
       const recipientAddress: string = cashback.recipient.address;
       const totalCashbackMap: Map<string, number> = expectedMap.get(cashback.token) || new Map<string, number>();
       let totalCashback: number = totalCashbackMap.get(recipientAddress) || 0;
@@ -451,10 +451,10 @@ describe("Contract 'CashbackDistributor'", async () => {
       const tokenSymbol: string = await token.symbol();
       for (const [recipientAddress, expectedTotalCashback] of expectedTotalCashbackByRecipient) {
         expect(
-          await cashbackDistributor.getTotalCashbackByTokenAndRecipient(getAddress(token), recipientAddress)
+          await cashbackDistributor.getTotalCashbackByTokenAndRecipient(getAddress(token), recipientAddress),
         ).to.equal(
           expectedTotalCashback,
-          `Wrong total cashback for the token with symbol "${tokenSymbol}" and recipient address ${recipientAddress}`
+          `Wrong total cashback for the token with symbol "${tokenSymbol}" and recipient address ${recipientAddress}`,
         );
       }
     }
@@ -464,11 +464,11 @@ describe("Contract 'CashbackDistributor'", async () => {
     const {
       fixture: { cashbackDistributor },
       cashbacks,
-      cashbackDistributorInitialBalanceByToken
+      cashbackDistributorInitialBalanceByToken,
     } = context;
     const expectedMap = new Map<Contract, number>();
 
-    cashbacks.forEach(cashback => {
+    cashbacks.forEach((cashback) => {
       let balance: number =
         expectedMap.get(cashback.token) ?? (cashbackDistributorInitialBalanceByToken.get(cashback.token) || 0);
       balance -= cashback.sentAmount - (cashback.revokedAmount || 0);
@@ -479,7 +479,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       const tokenSymbol: string = await token.symbol();
       expect(await token.balanceOf(getAddress(cashbackDistributor))).to.equal(
         expectedBalance,
-        `Wrong balance of the cashback distributor for token address with symbol "${tokenSymbol}"`
+        `Wrong balance of the cashback distributor for token address with symbol "${tokenSymbol}"`,
       );
     }
   }
@@ -493,7 +493,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   }
 
   async function prepareForSingleCashback(
-    cashbackRequestedAmount?: number
+    cashbackRequestedAmount?: number,
   ): Promise<{ fixture: Fixture; cashback: TestCashback }> {
     const fixture: Fixture = await setUpFixture(deployAndConfigureAllContracts);
     const cashback: TestCashback = {
@@ -506,7 +506,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       sentAmount: 0,
       revokedAmount: 0,
       sender: distributor,
-      nonce: 1
+      nonce: 1,
     };
     cashback.token = fixture.tokenMocks[0];
 
@@ -517,7 +517,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     const { fixture, cashback } = await prepareForSingleCashback(options?.cashbackRequestedAmount);
     const { cashbackDistributorInitialBalanceByToken } = await setUpContractsForSendingCashbacks(
       fixture.cashbackDistributor,
-      [cashback]
+      [cashback],
     );
 
     return { fixture, cashbacks: [cashback], cashbackDistributorInitialBalanceByToken };
@@ -537,11 +537,11 @@ describe("Contract 'CashbackDistributor'", async () => {
       const contracts = await setUpFixture(async function deploy2CVs() {
         const tokens = [
           await deployTokenMock("1"),
-          await deployTokenMock("2")
+          await deployTokenMock("2"),
         ];
         const cashbackVaults = [
           [await CVFactory.deploy(getAddress(tokens[0])), await CVFactory.deploy(getAddress(tokens[0]))],
-          [await CVFactory.deploy(getAddress(tokens[1])), await CVFactory.deploy(getAddress(tokens[1]))]
+          [await CVFactory.deploy(getAddress(tokens[1])), await CVFactory.deploy(getAddress(tokens[1]))],
         ];
         return { tokens, cashbackVaults };
       });
@@ -572,7 +572,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           expect(await cashbackDistributor.getCashbackVault(getAddress(tokens[0])))
             .to.equal(getAddress(cashbackVaults[0][0]));
         });
-      }
+      },
     );
     describe("Executes as expected when updating the cashback vault", async () => {
       let tx: TransactionResponse;
@@ -639,7 +639,7 @@ describe("Contract 'CashbackDistributor'", async () => {
 
     it("Is reverted if the caller does not have the owner role", async () => {
       await expect(
-        connect(cashbackDistributor, user).setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[1][0]))
+        connect(cashbackDistributor, user).setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[1][0])),
       ).to.be.revertedWith(createRevertMessageDueToMissingRole(user.address, OWNER_ROLE));
     });
 
@@ -805,7 +805,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             cashback.kind,
             cashback.externalId,
             cashback.recipient.address,
-            cashback.requestedAmount
+            cashback.requestedAmount,
           );
 
           const tx = connect(cashbackDistributor, cashback.sender).sendCashback(
@@ -813,19 +813,19 @@ describe("Contract 'CashbackDistributor'", async () => {
             cashback.kind,
             cashback.externalId,
             cashback.recipient.address,
-            cashback.requestedAmount
+            cashback.requestedAmount,
           );
           if (useCashbackVault) {
             await expect(tx).to.changeTokenBalances(
               cashback.token,
               [cashbackDistributor, cashback.recipient, cashback.sender, getAddress(cashbackVault)],
-              [-recipientBalanceChange, 0, 0, +recipientBalanceChange]
+              [-recipientBalanceChange, 0, 0, +recipientBalanceChange],
             );
           } else {
             await expect(tx).to.changeTokenBalances(
               cashback.token,
               [cashbackDistributor, cashback.recipient, cashback.sender],
-              [-recipientBalanceChange, +recipientBalanceChange, 0]
+              [-recipientBalanceChange, +recipientBalanceChange, 0],
             );
           }
           await expect(tx).to.emit(cashbackDistributor, EVENT_NAME_SEND_CASHBACK).withArgs(
@@ -836,11 +836,11 @@ describe("Contract 'CashbackDistributor'", async () => {
             cashback.recipient.address,
             cashback.status != CashbackStatus.Partial ? cashback.requestedAmount : cashback.sentAmount,
             cashback.sender.address,
-            cashback.nonce
+            cashback.nonce,
           );
 
           expect(returnValues[0]).to.equal(
-            cashback.status === CashbackStatus.Success || cashback.status === CashbackStatus.Partial
+            cashback.status === CashbackStatus.Success || cashback.status === CashbackStatus.Partial,
           );
           expect(returnValues[1]).to.equal(cashback.sentAmount);
           expect(returnValues[2]).to.equal(cashback.nonce);
@@ -908,7 +908,7 @@ describe("Contract 'CashbackDistributor'", async () => {
               cashback2.status = CashbackStatus.Capped;
               const { cashbackDistributorInitialBalanceByToken } = await setUpContractsForSendingCashbacks(
                 fixture.cashbackDistributor,
-                [cashback1, cashback2]
+                [cashback1, cashback2],
               );
               await proveTx(
                 connect(fixture.cashbackDistributor, cashback1.sender).sendCashback(
@@ -916,8 +916,8 @@ describe("Contract 'CashbackDistributor'", async () => {
                   cashback1.kind,
                   cashback1.externalId,
                   cashback1.recipient.address,
-                  cashback1.requestedAmount
-                )
+                  cashback1.requestedAmount,
+                ),
               );
               cashback1.sentAmount = cashback1.requestedAmount;
               cashback1.status = CashbackStatus.Success;
@@ -948,8 +948,8 @@ describe("Contract 'CashbackDistributor'", async () => {
                 cashback.kind,
                 cashback.externalId,
                 cashback.recipient.address,
-                cashback.requestedAmount
-              )
+                cashback.requestedAmount,
+              ),
             ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
           });
 
@@ -961,8 +961,8 @@ describe("Contract 'CashbackDistributor'", async () => {
                 cashback.kind,
                 cashback.externalId,
                 cashback.recipient.address,
-                cashback.requestedAmount
-              )
+                cashback.requestedAmount,
+              ),
             ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, DISTRIBUTOR_ROLE));
           });
 
@@ -974,8 +974,8 @@ describe("Contract 'CashbackDistributor'", async () => {
                 cashback.kind,
                 cashback.externalId,
                 cashback.recipient.address,
-                cashback.requestedAmount
-              )
+                cashback.requestedAmount,
+              ),
             ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_ZERO_TOKEN_ADDRESS);
           });
 
@@ -987,8 +987,8 @@ describe("Contract 'CashbackDistributor'", async () => {
                 cashback.kind,
                 cashback.externalId,
                 ZERO_ADDRESS,
-                cashback.requestedAmount
-              )
+                cashback.requestedAmount,
+              ),
             ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_ZERO_RECIPIENT_ADDRESS);
           });
 
@@ -1001,8 +1001,8 @@ describe("Contract 'CashbackDistributor'", async () => {
                 cashback.kind,
                 cashback.externalId,
                 cashback.recipient.address,
-                cashback.requestedAmount
-              )
+                cashback.requestedAmount,
+              ),
             ).to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_ZERO_EXTERNAL_ID);
           });
         });
@@ -1016,7 +1016,7 @@ describe("Contract 'CashbackDistributor'", async () => {
 
           const returnValue = await connect(cashbackDistributor, cashback.sender).revokeCashback.staticCall(
             cashback.nonce,
-            cashback.revokedAmount
+            cashback.revokedAmount,
           );
 
           const tx = connect(cashbackDistributor, distributor).revokeCashback(cashback.nonce, cashback.revokedAmount);
@@ -1024,13 +1024,13 @@ describe("Contract 'CashbackDistributor'", async () => {
             await expect(tx).to.changeTokenBalances(
               cashback.token,
               [cashbackDistributor, cashback.recipient, cashback.sender, getAddress(cashbackVault)],
-              [+contractBalanceChange, 0, 0, -contractBalanceChange]
+              [+contractBalanceChange, 0, 0, -contractBalanceChange],
             );
           } else {
             await expect(tx).to.changeTokenBalances(
               cashback.token,
               [cashbackDistributor, cashback.recipient, cashback.sender],
-              [+contractBalanceChange, -contractBalanceChange, 0]
+              [+contractBalanceChange, -contractBalanceChange, 0],
             );
           }
           await expect(tx).to.emit(cashbackDistributor, EVENT_NAME_REVOKE_CASHBACK).withArgs(
@@ -1043,7 +1043,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             cashback.revokedAmount,
             cashback.sentAmount - contractBalanceChange, // totalAmount
             distributor.address,
-            cashback.nonce
+            cashback.nonce,
           );
           if (targetRevocationStatus !== RevocationStatus.Success) {
             cashback.revokedAmount = 0;
@@ -1083,7 +1083,7 @@ describe("Contract 'CashbackDistributor'", async () => {
                 await prepareRevocation(context);
                 await proveTx(cashbackDistributor.disable());
                 await checkRevoking(RevocationStatus.Success, context);
-              }
+              },
             );
 
             it("The same as the initial cashback amount", async () => {
@@ -1109,7 +1109,7 @@ describe("Contract 'CashbackDistributor'", async () => {
                 cashback.revokedAmount = Math.floor(MAX_CASHBACK_FOR_PERIOD * 0.1);
                 await prepareRevocation(context);
                 await checkRevoking(RevocationStatus.Success, context);
-              }
+              },
             );
             if (useCashbackVault) {
               it("Greater than unclaimed cashback but user has enough tokens in the account", async () => {
@@ -1125,7 +1125,7 @@ describe("Contract 'CashbackDistributor'", async () => {
                 await expect(claimReceipt).to.changeTokenBalances(
                   cashback.token,
                   [cashback.recipient, getAddress(cashbackVault)],
-                  [+claimedAmount, -claimedAmount]
+                  [+claimedAmount, -claimedAmount],
                 );
 
                 const tx = connect(cashbackDistributor, distributor)
@@ -1133,7 +1133,7 @@ describe("Contract 'CashbackDistributor'", async () => {
                 await expect(tx).to.changeTokenBalances(
                   cashback.token,
                   [cashbackDistributor, cashback.recipient, cashback.sender, getAddress(cashbackVault)],
-                  [+cashback.revokedAmount, -claimedAmount, 0, -(cashback.revokedAmount - claimedAmount)]
+                  [+cashback.revokedAmount, -claimedAmount, 0, -(cashback.revokedAmount - claimedAmount)],
                 );
                 await expect(tx).to.emit(cashbackDistributor, EVENT_NAME_REVOKE_CASHBACK).withArgs(
                   getAddress(cashback.token),
@@ -1145,7 +1145,7 @@ describe("Contract 'CashbackDistributor'", async () => {
                   cashback.revokedAmount,
                   cashback.sentAmount - cashback.revokedAmount, // totalAmount
                   distributor.address,
-                  cashback.nonce
+                  cashback.nonce,
                 );
               });
             }
@@ -1164,7 +1164,7 @@ describe("Contract 'CashbackDistributor'", async () => {
               // recipient spends almost all his balance
               await proveTx(
                 connect(cashback.token, cashback.recipient)
-                  .transfer(distributor.address, Number(recipientBalance) - cashback.revokedAmount + 1)
+                  .transfer(distributor.address, Number(recipientBalance) - cashback.revokedAmount + 1),
               );
               await checkRevoking(RevocationStatus.OutOfFunds, context);
             });
@@ -1181,7 +1181,7 @@ describe("Contract 'CashbackDistributor'", async () => {
               const recipientBalance = await cashback.token.balanceOf(cashback.recipient);
               await proveTx(
                 connect(cashback.token, cashback.recipient)
-                  .transfer(distributor.address, Number(recipientBalance) - cashback.revokedAmount + 1)
+                  .transfer(distributor.address, Number(recipientBalance) - cashback.revokedAmount + 1),
               );
               await checkRevoking(RevocationStatus.OutOfFunds, context);
             });
@@ -1203,7 +1203,7 @@ describe("Contract 'CashbackDistributor'", async () => {
                 await sendCashbacks(cashbackDistributor, [cashback], CashbackStatus.Success);
                 cashback.revokedAmount = cashback.requestedAmount + 1;
                 await checkRevoking(RevocationStatus.OutOfBalance, context);
-              }
+              },
             );
 
             it("The initial cashback operations failed", async () => {
@@ -1227,14 +1227,14 @@ describe("Contract 'CashbackDistributor'", async () => {
                 await expect(claimReceipt).to.changeTokenBalances(
                   cashback.token,
                   [cashback.recipient, getAddress(cashbackVault)],
-                  [+claimedAmount, -claimedAmount]
+                  [+claimedAmount, -claimedAmount],
                 );
 
                 // user spends his balance
                 const recipientBalance = await cashback.token.balanceOf(cashback.recipient);
                 await proveTx(
                   connect(cashback.token, cashback.recipient)
-                    .transfer(deployer.address, Number(recipientBalance) - 1)
+                    .transfer(deployer.address, Number(recipientBalance) - 1),
                 );
                 cashback.revokedAmount = cashback.requestedAmount;
                 const tx = connect(cashbackDistributor, distributor)
@@ -1242,7 +1242,7 @@ describe("Contract 'CashbackDistributor'", async () => {
                 await expect(tx).not.to.changeTokenBalances(
                   cashback.token,
                   [cashbackDistributor, cashback.recipient, cashback.sender, getAddress(cashbackVault)],
-                  [+cashback.revokedAmount, -claimedAmount, 0, -(cashback.revokedAmount - claimedAmount)]
+                  [+cashback.revokedAmount, -claimedAmount, 0, -(cashback.revokedAmount - claimedAmount)],
                 );
                 await expect(tx).to.emit(cashbackDistributor, EVENT_NAME_REVOKE_CASHBACK).withArgs(
                   getAddress(cashback.token),
@@ -1254,7 +1254,7 @@ describe("Contract 'CashbackDistributor'", async () => {
                   cashback.revokedAmount,
                   cashback.sentAmount,
                   distributor.address,
-                  cashback.nonce
+                  cashback.nonce,
                 );
               });
             }
@@ -1266,7 +1266,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
             await pauseContract(cashbackDistributor);
             await expect(
-              connect(cashbackDistributor, distributor).revokeCashback(cashback.nonce, cashback.revokedAmount)
+              connect(cashbackDistributor, distributor).revokeCashback(cashback.nonce, cashback.revokedAmount),
             ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
           });
 
@@ -1287,7 +1287,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             await proveTx(cashback.token.mint(user.address, cashback.revokedAmount));
             await proveTx(connect(cashback.token, user).approve(
               getAddress(cashbackDistributor),
-              (cashback.revokedAmount ?? 0) - 1
+              (cashback.revokedAmount ?? 0) - 1,
             ));
 
             const tx = connect(cashbackDistributor, distributor)
@@ -1304,7 +1304,7 @@ describe("Contract 'CashbackDistributor'", async () => {
 
           const returnValues = await connect(cashbackDistributor, distributor).increaseCashback.staticCall(
             cashback.nonce,
-            cashback.increaseRequestedAmount
+            cashback.increaseRequestedAmount,
           );
 
           cashback.requestedAmount += recipientBalanceChange;
@@ -1312,19 +1312,19 @@ describe("Contract 'CashbackDistributor'", async () => {
 
           const tx = connect(cashbackDistributor, distributor).increaseCashback(
             cashback.nonce,
-            cashback.increaseRequestedAmount
+            cashback.increaseRequestedAmount,
           );
           if (useCashbackVault) {
             await expect(tx).to.changeTokenBalances(
               cashback.token,
               [cashbackDistributor, cashback.recipient, cashback.sender, getAddress(cashbackVault)],
-              [-recipientBalanceChange, 0, 0, +recipientBalanceChange]
+              [-recipientBalanceChange, 0, 0, +recipientBalanceChange],
             );
           } else {
             await expect(tx).to.changeTokenBalances(
               cashback.token,
               [cashbackDistributor, cashback.recipient, cashback.sender],
-              [-recipientBalanceChange, +recipientBalanceChange, 0]
+              [-recipientBalanceChange, +recipientBalanceChange, 0],
             );
           }
           await expect(tx).to.emit(cashbackDistributor, EVENT_NAME_INCREASE_CASHBACK).withArgs(
@@ -1339,11 +1339,11 @@ describe("Contract 'CashbackDistributor'", async () => {
               : cashback.increaseSentAmount,
             cashback.sentAmount - (cashback.revokedAmount ?? 0), // totalAmount
             distributor.address,
-            cashback.nonce
+            cashback.nonce,
           );
 
           expect(returnValues[0]).to.equal(
-            targetIncreaseStatus === IncreaseStatus.Success || targetIncreaseStatus === IncreaseStatus.Partial
+            targetIncreaseStatus === IncreaseStatus.Success || targetIncreaseStatus === IncreaseStatus.Partial,
           );
           expect(returnValues[1]).to.equal(cashback.increaseSentAmount);
           await checkCashbackDistributorState(context);
@@ -1355,7 +1355,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           await proveTx(cashback.token.mint(getAddress(cashbackDistributor), cashback.increaseRequestedAmount));
           context.cashbackDistributorInitialBalanceByToken.set(
             cashback.token,
-            cashback.requestedAmount + (cashback.increaseRequestedAmount || 0)
+            cashback.requestedAmount + (cashback.increaseRequestedAmount || 0),
           );
           cashback.increaseSentAmount = 0;
         }
@@ -1443,7 +1443,7 @@ describe("Contract 'CashbackDistributor'", async () => {
                 cashback.increaseRequestedAmount = 1;
                 await prepareIncrease(context);
                 await checkIncreasing(IncreaseStatus.Capped, context);
-              }
+              },
             );
 
             it("The period cap for the recipient is reached and the requested increase amount is zero", async () => {
@@ -1461,7 +1461,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
             await pauseContract(cashbackDistributor);
             await expect(
-              connect(cashbackDistributor, distributor).increaseCashback(cashback.nonce, cashback.revokedAmount)
+              connect(cashbackDistributor, distributor).increaseCashback(cashback.nonce, cashback.revokedAmount),
             ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
           });
 
@@ -1479,7 +1479,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     it("Execute as expected", async () => {
       const fixture: Fixture = await setUpFixture(deployAndConfigureAllContracts);
       const { cashbackDistributor, tokenMocks: [tokenMock] } = fixture;
-      const cashbacks: TestCashback[] = [1, 2, 3].map(nonceValue => {
+      const cashbacks: TestCashback[] = [1, 2, 3].map((nonceValue) => {
         return {
           token: tokenMock,
           kind: CashbackKind.CardPayment,
@@ -1489,7 +1489,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           requestedAmount: 100 + nonceValue,
           sentAmount: 0,
           sender: distributor,
-          nonce: nonceValue
+          nonce: nonceValue,
         };
       });
       const cashbackNonces: bigint[] = cashbacks.map(cashback => BigInt(cashback.nonce));
@@ -1499,7 +1499,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       // Check existing cashbacks
       let actualCashbacks: Record<string, unknown>[] = await cashbackDistributor.getCashbacks(cashbackNonces);
       expect(actualCashbacks.length).to.equal(cashbacks.length);
-      cashbacks.forEach(cashback => {
+      cashbacks.forEach((cashback) => {
         checkEquality(actualCashbacks[cashback.nonce - 1], cashback);
       });
 
@@ -1540,7 +1540,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     it("Execute as expected", async () => {
       const fixture: Fixture = await setUpFixture(deployAndConfigureAllContracts);
       const { cashbackDistributor, tokenMocks: [tokenMock1, tokenMock2] } = fixture;
-      const cashbacks: TestCashback[] = [1, 2, 3, 4].map(nonce => {
+      const cashbacks: TestCashback[] = [1, 2, 3, 4].map((nonce) => {
         return {
           token: [tokenMock2, tokenMock1][(nonce >> 0) & 1],
           kind: CashbackKind.CardPayment,
@@ -1550,12 +1550,12 @@ describe("Contract 'CashbackDistributor'", async () => {
           requestedAmount: 100 + nonce,
           sentAmount: 0,
           sender: distributor,
-          nonce: nonce
+          nonce: nonce,
         };
       });
       const { cashbackDistributorInitialBalanceByToken } = await setUpContractsForSendingCashbacks(
         cashbackDistributor,
-        cashbacks
+        cashbacks,
       );
       const context: TestContext = { fixture, cashbacks, cashbackDistributorInitialBalanceByToken };
       await proveTx(tokenMock1.mint(distributor.address, MAX_INT256));
@@ -1584,7 +1584,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       const fixture: Fixture = await setUpFixture(deployAndConfigureAllContracts);
       const { cashbackDistributor, tokenMocks: [tokenMock] } = fixture;
       const recipient: HardhatEthersSigner = user;
-      const cashbacks: TestCashback[] = [1, 2, 3, 4, 5].map(nonce => {
+      const cashbacks: TestCashback[] = [1, 2, 3, 4, 5].map((nonce) => {
         return {
           token: tokenMock,
           kind: CashbackKind.CardPayment,
@@ -1594,7 +1594,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           requestedAmount: 1,
           sentAmount: 0,
           sender: distributor,
-          nonce: nonce
+          nonce: nonce,
         };
       });
       cashbacks[0].requestedAmount = 123;
@@ -1602,7 +1602,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       cashbacks[2].requestedAmount = cashbacks[1].requestedAmount;
       const { cashbackDistributorInitialBalanceByToken } = await setUpContractsForSendingCashbacks(
         cashbackDistributor,
-        cashbacks
+        cashbacks,
       );
       const context: TestContext = { fixture, cashbacks, cashbackDistributorInitialBalanceByToken };
       await proveTx(tokenMock.mint(distributor.address, MAX_INT256));
@@ -1618,7 +1618,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           .to.equal(props.expectedCashbackSum);
 
         expect(
-          await cashbackDistributor.previewCashbackCap(getAddress(tokenMock), recipient.address)
+          await cashbackDistributor.previewCashbackCap(getAddress(tokenMock), recipient.address),
         ).to.deep.equal([props.expectedLastTimeReset, props.expectedCashbackSum]);
       }
 
@@ -1630,7 +1630,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       await checkCashbackDistributorState(context);
       await checkPeriodCapRelatedValues({
         expectedLastTimeReset: block1?.timestamp ?? 0,
-        expectedCashbackSum: cashbacks[0].requestedAmount
+        expectedCashbackSum: cashbacks[0].requestedAmount,
       });
 
       // Reach the cashback period cap and check the cap-related values.
@@ -1640,7 +1640,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       await checkCashbackDistributorState(context);
       await checkPeriodCapRelatedValues({
         expectedLastTimeReset: block1?.timestamp ?? 0,
-        expectedCashbackSum: MAX_CASHBACK_FOR_PERIOD
+        expectedCashbackSum: MAX_CASHBACK_FOR_PERIOD,
       });
 
       // Revoke the second (partial) cashback and check that the cap-related values are changed.
@@ -1648,7 +1648,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       await checkCashbackDistributorState(context);
       await checkPeriodCapRelatedValues({
         expectedLastTimeReset: block1?.timestamp ?? 0,
-        expectedCashbackSum: MAX_CASHBACK_FOR_PERIOD - cashbacks[1].sentAmount
+        expectedCashbackSum: MAX_CASHBACK_FOR_PERIOD - cashbacks[1].sentAmount,
       });
 
       // Reach the cashback period cap again and check the cap-related values.
@@ -1658,7 +1658,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       await checkCashbackDistributorState(context);
       await checkPeriodCapRelatedValues({
         expectedLastTimeReset: block1?.timestamp ?? 0,
-        expectedCashbackSum: MAX_CASHBACK_FOR_PERIOD
+        expectedCashbackSum: MAX_CASHBACK_FOR_PERIOD,
       });
 
       // Check that next cashback sending to the same recipient failed because of the period cap.
@@ -1667,7 +1667,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       await checkCashbackDistributorState(context);
       await checkPeriodCapRelatedValues({
         expectedLastTimeReset: block1?.timestamp ?? 0,
-        expectedCashbackSum: MAX_CASHBACK_FOR_PERIOD
+        expectedCashbackSum: MAX_CASHBACK_FOR_PERIOD,
       });
 
       // The following part of the test is executed only for some networks because we need to shift block time.
@@ -1683,8 +1683,10 @@ describe("Contract 'CashbackDistributor'", async () => {
       const actualPreview = await cashbackDistributor.previewCashbackCap(
         getAddress(tokenMock),
         recipient.address,
-        { blockTag: blockAfterTimeShift!.number }
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        { blockTag: blockAfterTimeShift!.number },
       );
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       expect(actualPreview[0]).to.equal(blockAfterTimeShift!.timestamp);
       expect(actualPreview[1]).to.equal(0);
 
@@ -1696,7 +1698,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       await checkCashbackDistributorState(context);
       await checkPeriodCapRelatedValues({
         expectedLastTimeReset: block4?.timestamp ?? 0,
-        expectedCashbackSum: cashbacks[4].requestedAmount
+        expectedCashbackSum: cashbacks[4].requestedAmount,
       });
 
       // Revoke the first cashback and check that the cap-related values are changed properly.
@@ -1704,7 +1706,7 @@ describe("Contract 'CashbackDistributor'", async () => {
       await checkCashbackDistributorState(context);
       await checkPeriodCapRelatedValues({
         expectedLastTimeReset: block4?.timestamp ?? 0,
-        expectedCashbackSum: 0
+        expectedCashbackSum: 0,
       });
     });
   });
