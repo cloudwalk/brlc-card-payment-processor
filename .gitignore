@@ -22,4 +22,7 @@ node_modules
 # Environment variables
 .env
 
+# Other files and direcories
 .DS_Store
+/tmp
+/flattened
