@@ -719,12 +719,14 @@ contract CardPaymentProcessor is
      *
      * @dev Requirements:
      *
+     * - The contract must not be paused.
      * - The caller must have the {EXECUTOR_ROLE} role.
      * - The cashback operations must be enabled.
      * - The address of the current cashback distributor must not be zero.
+     * - The provided cashback rate must not be zero.
      * - The cashback rate must not exceed the allowable maximum specified in the {MAX_CASHBACK_RATE_IN_PERMIL} constant.
      * - The payment must have the "uncleared", "cleared", or "confirmed" status.
-     * - The cashback amount must be greater than zero.
+     * - The payment must have the current cashback rate equal to zero.
      */
     function resendCashback(
         bytes16 authorizationId,
