@@ -714,6 +714,54 @@ contract CardPaymentProcessor is
         emit DisableCashback();
     }
 
+    /**
+     * @inheritdoc ICardPaymentCashbackPrimary
+     *
+     * @dev Requirements:
+     *
+     * - The caller must have the {EXECUTOR_ROLE} role.
+     * - The cashback operations must be enabled.
+     * - The address of the current cashback distributor must not be zero.
+     * - The cashback rate must not exceed the allowable maximum specified in the {MAX_CASHBACK_RATE_IN_PERMIL} constant.
+     * - The payment must have the "uncleared", "cleared", or "confirmed" status.
+     * - The cashback amount must be greater than zero.
+     */
+    function resendCashback(
+        bytes16 authorizationId,
+        int256 cashbackRateInPermil
+    ) external whenNotPaused onlyRole(EXECUTOR_ROLE) {
+        address distributor = _cashbackDistributor;
+        if (!_cashbackEnabled || distributor == address(0)) {
+            revert CashbackSendingNotConfigured();
+        }
+        if (cashbackRateInPermil == 0) {
+            revert CashbackRateZero();
+        }
+        if (cashbackRateInPermil > 0 && uint256(cashbackRateInPermil) > uint256(MAX_CASHBACK_RATE_IN_PERMIL)) {
+            revert CashbackRateExcess();
+        }
+        Payment storage payment = _payments[authorizationId];
+        PaymentStatus status = payment.status;
+        if (status != PaymentStatus.Uncleared && status != PaymentStatus.Cleared && status != PaymentStatus.Confirmed) {
+            revert InappropriatePaymentStatus(status);
+        }
+        if (payment.cashbackRate != 0) {
+            revert CashbackResendingUnnecessary();
+        }
+        uint256 accountBaseAmount = _defineAccountBaseAmount(payment.baseAmount, payment.subsidyLimit);
+        uint256 sentAmount;
+        (sentAmount, payment.cashbackRate) = _sendCashback(
+            payment.account,
+            accountBaseAmount,
+            authorizationId,
+            int16(cashbackRateInPermil)
+        );
+        if (payment.cashbackRate == 0) {
+            revert CashbackResendingFailed();
+        }
+        payment.compensationAmount += sentAmount;
+    }
+
     // ------------------ View functions -------------------------- //
 
     /**

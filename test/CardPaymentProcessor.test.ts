@@ -387,6 +387,10 @@ class CardPaymentProcessorModel {
     return payment;
   }
 
+  removePaymentByAuthorizationId(authorizationId: string): void {
+    this.#paymentPerAuthorizationId.delete(authorizationId);
+  }
+
   getCashbackByAuthorizationId(authorizationId: string): CashbackModel | undefined {
     return this.#cashbackPerAuthorizationId.get(authorizationId);
   }
@@ -1929,6 +1933,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const ERROR_NAME_CASHBACK_DISTRIBUTOR_ZERO_ADDRESS = "CashbackDistributorZeroAddress";
   const ERROR_NAME_CASHBACK_RATE_EXCESS = "CashbackRateExcess";
   const ERROR_NAME_CASHBACK_RATE_UNCHANGED = "CashbackRateUnchanged";
+  const ERROR_NAME_CASHBACK_RATE_ZERO = "CashbackRateZero";
+  const ERROR_NAME_CASHBACK_RESENDING_FAILED = "CashbackResendingFailed";
+  const ERROR_NAME_CASHBACK_RESENDING_UNNECESSARY = "CashbackResendingUnnecessary";
+  const ERROR_NAME_CASHBACK_SENDING_NOT_CONFIGURED = "CashbackSendingNotConfigured";
   const ERROR_NAME_EMPTY_AUTHORIZATION_IDS_ARRAY = "EmptyAuthorizationIdsArray";
   const ERROR_NAME_INAPPROPRIATE_NEW_BASE_PAYMENT_AMOUNT = "InappropriateNewBasePaymentAmount";
   const ERROR_NAME_INAPPROPRIATE_NEW_EXTRA_PAYMENT_AMOUNT = "InappropriateNewExtraPaymentAmount";
@@ -5234,6 +5242,310 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             PAYMENT_REFUNDING_CORRELATION_ID_STUB,
           ),
         ).to.be.revertedWith(ERROR_MESSAGE_ERC20_TRANSFER_AMOUNT_EXCEEDS_BALANCE);
+      });
+    });
+  });
+
+  describe("Function 'resendCashback()'", async () => {
+    describe("Executes as expected if", async () => {
+      async function executeAndCheck(context: TestContext, newCashbackRate: number) {
+        const authorizationId = context.payments[0].authorizationId;
+        const payment = context.cardPaymentProcessorShell.model.getPaymentByAuthorizationId(authorizationId);
+
+        const tx = connect(context.cardPaymentProcessorShell.contract, executor).resendCashback(
+          authorizationId,
+          newCashbackRate,
+        );
+        await proveTx(tx);
+
+        // TODO: add checking that the cashback nonce is changed
+
+        const newCashbackAmount = payment.compensationAmount - payment.refundAmount;
+        await context.checkCardPaymentProcessorState();
+        await expect(tx)
+          .to.emit(context.cardPaymentProcessorShell.contract, EVENT_NAME_SEND_CASHBACK_SUCCESS)
+          .withArgs(
+            checkEventField("cashbackDistributor", getAddress(context.cashbackDistributorMockShell.contract)),
+            checkEventField("amount", newCashbackAmount),
+            checkEventField("nonce", CASHBACK_NONCE),
+          );
+        await expect(tx)
+          .to.emit(context.cashbackDistributorMockShell.contract, EVENT_NAME_SEND_CASHBACK_MOCK)
+          .withArgs(
+            checkEventField("sender", getAddress(context.cardPaymentProcessorShell.contract)),
+            checkEventField("token", getAddress(context.tokenMock)),
+            checkEventField("kind", CashbackKind.CardPayment),
+            checkEventField("externalId", payment.authorizationId.padEnd(BYTES32_LENGTH * 2 + 2, "0")),
+            checkEventField("recipient", payment.account.address),
+            checkEventField("amount", newCashbackAmount),
+          );
+      }
+
+      it("The payment has 'Uncleared' status and not subsidized", async () => {
+        const context = await beforeMakingPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+        const sponsor = undefined;
+        const subsidyLimit = Math.floor(payment.baseAmount / 2);
+        const newCashbackRate = 50; // 5%
+        await cardPaymentProcessorShell.enableCashback();
+        await cardPaymentProcessorShell.makePaymentFor(
+          payment,
+          sponsor,
+          subsidyLimit,
+          0, // No cashback initially
+        );
+        // Simulate the new cashback rate on the model only
+        cardPaymentProcessorShell.model.reversePayment(payment.authorizationId, "", "");
+        cardPaymentProcessorShell.model.removePaymentByAuthorizationId(payment.authorizationId);
+        cardPaymentProcessorShell.model.makePayment(
+          payment,
+          {
+            sponsor,
+            subsidyLimit,
+            cashbackRateInPermil: newCashbackRate,
+          },
+        );
+        await executeAndCheck(context, newCashbackRate);
+      });
+
+      it("The payment has the 'Cleared' status and subsidized", async () => {
+        const context = await beforeMakingPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+        const sponsor = undefined;
+        const subsidyLimit = Math.floor(payment.baseAmount / 2);
+        const newCashbackRate = 50; // 5%
+        await cardPaymentProcessorShell.enableCashback();
+        await cardPaymentProcessorShell.makePaymentFor(
+          payment,
+          sponsor,
+          subsidyLimit,
+          0, // No cashback initially
+        );
+        // Simulate the new cashback rate on the model only
+        cardPaymentProcessorShell.model.reversePayment(payment.authorizationId, "", "");
+        cardPaymentProcessorShell.model.removePaymentByAuthorizationId(payment.authorizationId);
+        cardPaymentProcessorShell.model.makePayment(
+          payment,
+          {
+            sponsor,
+            subsidyLimit,
+            cashbackRateInPermil: newCashbackRate,
+          },
+        );
+        await context.cardPaymentProcessorShell.clearPayments([payment]);
+        await executeAndCheck(context, newCashbackRate);
+      });
+
+      it("The payment has the 'Confirmed' status and not subsidized with the max new rate", async () => {
+        const context = await beforeMakingPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+        const sponsor = undefined;
+        const subsidyLimit = Math.floor(payment.baseAmount / 2);
+        const newCashbackRate = MAX_CASHBACK_RATE_IN_PERMIL; // 5%
+        await cardPaymentProcessorShell.enableCashback();
+        await cardPaymentProcessorShell.makePaymentFor(
+          payment,
+          sponsor,
+          subsidyLimit,
+          0, // No cashback initially
+        );
+        // Simulate the new cashback rate on the model only
+        cardPaymentProcessorShell.model.reversePayment(payment.authorizationId, "", "");
+        cardPaymentProcessorShell.model.removePaymentByAuthorizationId(payment.authorizationId);
+        cardPaymentProcessorShell.model.makePayment(
+          payment,
+          {
+            sponsor,
+            subsidyLimit,
+            cashbackRateInPermil: newCashbackRate,
+          },
+        );
+        await context.cardPaymentProcessorShell.clearPayments([payment]);
+        await context.cardPaymentProcessorShell.confirmPayments([payment]);
+        await executeAndCheck(context, newCashbackRate);
+      });
+
+      it("The the new cashback rate is negative (uses contract default rate)", async () => {
+        const context = await beforeMakingPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+        const sponsor = undefined;
+        const subsidyLimit = 0;
+        const newCashbackRate = CASHBACK_RATE_AS_IN_CONTRACT;
+        await cardPaymentProcessorShell.enableCashback();
+        await cardPaymentProcessorShell.makePaymentFor(
+          payment,
+          sponsor,
+          subsidyLimit,
+          0, // No cashback initially
+        );
+        // Simulate the new cashback rate on the model only
+        cardPaymentProcessorShell.model.reversePayment(payment.authorizationId, "", "");
+        cardPaymentProcessorShell.model.removePaymentByAuthorizationId(payment.authorizationId);
+        cardPaymentProcessorShell.model.makePayment(
+          payment,
+          {
+            sponsor,
+            subsidyLimit,
+            cashbackRateInPermil: newCashbackRate,
+          },
+        );
+        await executeAndCheck(context, newCashbackRate);
+      });
+    });
+
+    describe("Is reverted if", async () => {
+      it("The contract is paused", async () => {
+        const { cardPaymentProcessorShell, payments: [payment] } = await prepareForPayments();
+        await pauseContract(cardPaymentProcessorShell.contract);
+
+        await expect(
+          connect(cardPaymentProcessorShell.contract, executor).resendCashback(
+            payment.authorizationId,
+            CASHBACK_RATE_AS_IN_CONTRACT,
+          ),
+        ).to.be.revertedWith(ERROR_MESSAGE_PAUSABLE_PAUSED);
+      });
+
+      it("The caller does not have the executor role", async () => {
+        const { cardPaymentProcessorShell, payments: [payment] } = await prepareForPayments();
+
+        await expect(
+          connect(cardPaymentProcessorShell.contract, deployer).resendCashback(
+            payment.authorizationId,
+            CASHBACK_RATE_AS_IN_CONTRACT,
+          ),
+        ).to.be.revertedWith(createRevertMessageDueToMissingRole(deployer.address, EXECUTOR_ROLE));
+      });
+
+      it("Cashback is not enabled", async () => {
+        const { cardPaymentProcessorShell, payments: [payment] } = await prepareForPayments();
+
+        await expect(
+          connect(cardPaymentProcessorShell.contract, executor).resendCashback(
+            payment.authorizationId,
+            CASHBACK_RATE_AS_IN_CONTRACT,
+          ),
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_CASHBACK_SENDING_NOT_CONFIGURED);
+      });
+
+      it("The provided cashback rate is zero", async () => {
+        const { cardPaymentProcessorShell, payments: [payment] } = await prepareForPayments();
+        await cardPaymentProcessorShell.enableCashback();
+        const zeroCashbackRate = 0;
+
+        await expect(
+          connect(cardPaymentProcessorShell.contract, executor).resendCashback(
+            payment.authorizationId,
+            zeroCashbackRate,
+          ),
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_CASHBACK_RATE_ZERO);
+      });
+
+      it("The provided cashback rate exceeds the maximum value", async () => {
+        const { cardPaymentProcessorShell, payments: [payment] } = await prepareForPayments();
+        await cardPaymentProcessorShell.enableCashback();
+
+        await expect(
+          connect(cardPaymentProcessorShell.contract, executor).resendCashback(
+            payment.authorizationId,
+            MAX_CASHBACK_RATE_IN_PERMIL + 1,
+          ),
+        ).to.be.revertedWithCustomError(cardPaymentProcessorShell.contract, ERROR_NAME_CASHBACK_RATE_EXCESS);
+      });
+
+      it("Payment does not exist", async () => {
+        const { cardPaymentProcessorShell, payments: [payment] } = await prepareForPayments();
+        await cardPaymentProcessorShell.enableCashback();
+
+        await expect(
+          connect(cardPaymentProcessorShell.contract, executor).resendCashback(
+            payment.authorizationId,
+            CASHBACK_RATE_AS_IN_CONTRACT,
+          ),
+        ).to.be.revertedWithCustomError(
+          cardPaymentProcessorShell.contract,
+          ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS,
+        ).withArgs(PaymentStatus.Nonexistent);
+      });
+
+      it("Payment has 'Revoked' status", async () => {
+        const context = await beforeMakingPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+        await cardPaymentProcessorShell.enableCashback();
+        await cardPaymentProcessorShell.makePaymentFor(payment);
+        await cardPaymentProcessorShell.revokePayment(payment);
+
+        await expect(
+          connect(context.cardPaymentProcessorShell.contract, executor).resendCashback(
+            payment.authorizationId,
+            CASHBACK_RATE_AS_IN_CONTRACT,
+          ),
+        ).to.be.revertedWithCustomError(
+          context.cardPaymentProcessorShell.contract,
+          ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS,
+        ).withArgs(PaymentStatus.Revoked);
+      });
+
+      it("Payment has 'Reversed' status", async () => {
+        const context = await beforeMakingPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+        await cardPaymentProcessorShell.enableCashback();
+        await cardPaymentProcessorShell.makePaymentFor(payment);
+        await cardPaymentProcessorShell.reversePayment(payment);
+
+        await expect(
+          connect(context.cardPaymentProcessorShell.contract, executor).resendCashback(
+            payment.authorizationId,
+            CASHBACK_RATE_AS_IN_CONTRACT,
+          ),
+        ).to.be.revertedWithCustomError(
+          context.cardPaymentProcessorShell.contract,
+          ERROR_NAME_INAPPROPRIATE_PAYMENT_STATUS,
+        ).withArgs(PaymentStatus.Reversed);
+      });
+
+      it("The current cashback rate of the payment is not zero", async () => {
+        const context = await beforeMakingPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+        await cardPaymentProcessorShell.enableCashback();
+        await cardPaymentProcessorShell.makePaymentFor(payment);
+
+        await expect(
+          connect(context.cardPaymentProcessorShell.contract, executor).resendCashback(
+            payment.authorizationId,
+            CASHBACK_RATE_AS_IN_CONTRACT,
+          ),
+        ).to.be.revertedWithCustomError(
+          context.cardPaymentProcessorShell.contract,
+          ERROR_NAME_CASHBACK_RESENDING_UNNECESSARY,
+        );
+      });
+
+      it("The cashback sending fails on the distributor smart-contract", async () => {
+        const context = await beforeMakingPayments();
+        const { cardPaymentProcessorShell, payments: [payment] } = context;
+        const sponsor = undefined;
+        const subsidyLimit = 0;
+        const newCashbackRate = CASHBACK_RATE_AS_IN_CONTRACT;
+        await cardPaymentProcessorShell.enableCashback();
+        await cardPaymentProcessorShell.makePaymentFor(
+          payment,
+          sponsor,
+          subsidyLimit,
+          0, // No cashback initially
+        );
+
+        await context.cashbackDistributorMockShell.setSendCashbackSuccessResult(false);
+
+        await expect(
+          connect(context.cardPaymentProcessorShell.contract, executor).resendCashback(
+            payment.authorizationId,
+            newCashbackRate,
+          ),
+        ).to.be.revertedWithCustomError(
+          context.cardPaymentProcessorShell.contract,
+          ERROR_NAME_CASHBACK_RESENDING_FAILED,
+        );
       });
     });
   });
