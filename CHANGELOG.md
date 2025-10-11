@@ -1,4 +1,4 @@
-# Current version
+# Current version (1.5.0)
 
 ## Main changes
 
