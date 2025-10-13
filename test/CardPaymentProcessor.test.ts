@@ -1914,8 +1914,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
   const CASHBACK_NONCE = 111222333;
   const EXPECTED_VERSION: Version = {
     major: 1,
-    minor: 4,
-    patch: 1,
+    minor: 5,
+    patch: 0,
   };
 
   // Error messages of the library contracts
