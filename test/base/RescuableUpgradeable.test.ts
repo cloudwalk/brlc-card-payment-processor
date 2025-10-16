@@ -5,7 +5,7 @@ import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { connect, getAddress, proveTx } from "../../test-utils/eth";
 import { createRevertMessageDueToMissingRole, setUpFixture } from "../../test-utils/common";
 
-describe("Contract 'RescuableUpgradeable'", async () => {
+describe("Contract 'RescuableUpgradeable'", () => {
   // Events of the library contracts
   const EVENT_NAME_TRANSFER = "Transfer";
 
@@ -77,7 +77,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
     };
   }
 
-  describe("Function 'initialize()' and internal initializers", async () => {
+  describe("Function 'initialize()' and internal initializers", () => {
     it("The external initializer configures the contract as expected", async () => {
       const { rescuableMock } = await setUpFixture(deployRescuableMock);
 
@@ -110,7 +110,7 @@ describe("Contract 'RescuableUpgradeable'", async () => {
     });
   });
 
-  describe("Function 'rescueERC20()'", async () => {
+  describe("Function 'rescueERC20()'", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { rescuableMock, tokenMock } = await setUpFixture(deployAndConfigureAllContracts);
 
