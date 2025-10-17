@@ -5,7 +5,7 @@ import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { connect, proveTx } from "../../test-utils/eth";
 import { createRevertMessageDueToMissingRole, setUpFixture } from "../../test-utils/common";
 
-describe("Contract 'AccessControlExtUpgradeable'", async () => {
+describe("Contract 'AccessControlExtUpgradeable'", () => {
   // Events of the library contracts
   const EVENT_NAME_ROLE_ADMIN_CHANGED = "RoleAdminChanged";
   const EVENT_NAME_ROLE_GRANTED = "RoleGranted";
@@ -54,7 +54,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
     return { accessControlExtMock };
   }
 
-  describe("Function 'initialize()' and internal initializers", async () => {
+  describe("Function 'initialize()' and internal initializers", () => {
     it("The external initializer configures the contract as expected", async () => {
       const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
 
@@ -87,7 +87,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
     });
   });
 
-  describe("Function 'grantRoleBatch()'", async () => {
+  describe("Function 'grantRoleBatch()'", () => {
     describe("Executes as expected if the input account array contains", async () => {
       it("A single account without the previously granted role", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAndConfigureAccessControlExtMock);
@@ -133,7 +133,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The caller does not have the expected admin role", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAndConfigureAccessControlExtMock);
 
@@ -144,7 +144,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
     });
   });
 
-  describe("Function 'revokeRoleBatch()'", async () => {
+  describe("Function 'revokeRoleBatch()'", () => {
     describe("Executes as expected if the input account array contains", async () => {
       it("A single account with the previously granted role", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAndConfigureAccessControlExtMock);
@@ -191,7 +191,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The caller does not have the expected admin role", async () => {
         const { accessControlExtMock } = await setUpFixture(deployAndConfigureAccessControlExtMock);
 
@@ -202,7 +202,7 @@ describe("Contract 'AccessControlExtUpgradeable'", async () => {
     });
   });
 
-  describe("Function 'setRoleAdmin()'", async () => {
+  describe("Function 'setRoleAdmin()'", () => {
     it("Executes as expected for a non-existing role", async () => {
       const { accessControlExtMock } = await setUpFixture(deployAccessControlExtMock);
       const role = ethers.id("SOME_ROLE");

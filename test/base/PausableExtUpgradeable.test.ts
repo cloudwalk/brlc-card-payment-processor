@@ -5,7 +5,7 @@ import { HardhatEthersSigner } from "@nomicfoundation/hardhat-ethers/signers";
 import { connect, proveTx } from "../../test-utils/eth";
 import { createRevertMessageDueToMissingRole, setUpFixture } from "../../test-utils/common";
 
-describe("Contract 'PausableExtUpgradeable'", async () => {
+describe("Contract 'PausableExtUpgradeable'", () => {
   // Events of the library contracts
   const EVENT_NAME_PAUSED = "Paused";
   const EVENT_NAME_UNPAUSED = "Unpaused";
@@ -50,7 +50,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
     return { pausableExtMock };
   }
 
-  describe("Function 'initialize()' and internal initializers", async () => {
+  describe("Function 'initialize()' and internal initializers", () => {
     it("The external initializer configures the contract as expected", async () => {
       const { pausableExtMock } = await setUpFixture(deployPausableExtMock);
 
@@ -86,7 +86,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
     });
   });
 
-  describe("Function 'pause()'", async () => {
+  describe("Function 'pause()'", () => {
     it("Executes successfully and emits the correct event", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
 
@@ -105,7 +105,7 @@ describe("Contract 'PausableExtUpgradeable'", async () => {
     });
   });
 
-  describe("Function 'unpause()'", async () => {
+  describe("Function 'unpause()'", () => {
     it("Executes successfully and emits the correct event", async () => {
       const { pausableExtMock } = await setUpFixture(deployAndConfigurePausableExtMock);
       await proveTx(connect(pausableExtMock, pauser).pause());

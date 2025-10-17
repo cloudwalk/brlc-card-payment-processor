@@ -170,7 +170,7 @@ function checkEquality(
   }
 }
 
-describe("Contract 'CashbackDistributor'", async () => {
+describe("Contract 'CashbackDistributor'", () => {
   const CASHBACK_EXTERNAL_ID_STUB1 = ethers.toBeHex(1, BYTES32_LENGTH);
   const CASHBACK_EXTERNAL_ID_STUB2 = ethers.toBeHex(2, BYTES32_LENGTH);
   const TOKEN_ADDRESS_STUB = "0x0000000000000000000000000000000000000001";
@@ -523,7 +523,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     return { fixture, cashbacks: [cashback], cashbackDistributorInitialBalanceByToken };
   };
 
-  describe("Function 'setCashbackVault()'", async () => {
+  describe("Function 'setCashbackVault()'", () => {
     let tokens: Contract[];
 
     // [token][cv]
@@ -549,32 +549,30 @@ describe("Contract 'CashbackDistributor'", async () => {
       cashbackVaults = contracts.cashbackVaults;
     });
 
-    describe(
-      "Executes as expected when initially setting the cashback vault (enabling the claimable mode)",
-      async () => {
-        let tx: TransactionResponse;
-        beforeEach(async () => {
-          tx = await cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
-        });
+    describe("Executes as expected when initially setting the cashback vault (enabling the claimable mode)", () => {
+      let tx: TransactionResponse;
+      beforeEach(async () => {
+        tx = await cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
+      });
 
-        it("Sets maximum allowance for the new CV contract", async () => {
-          expect(await tokens[0].allowance(getAddress(cashbackDistributor), getAddress(cashbackVaults[0][0])))
-            .to.equal(MAX_UINT256);
-        });
+      it("Sets maximum allowance for the new CV contract", async () => {
+        expect(await tokens[0].allowance(getAddress(cashbackDistributor), getAddress(cashbackVaults[0][0])))
+          .to.equal(MAX_UINT256);
+      });
 
-        it("Emits the required event", async () => {
-          await expect(tx)
-            .to.emit(cashbackDistributor, EVENT_NAME_CASHBACK_VAULT_UPDATED)
-            .withArgs(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
-        });
+      it("Emits the required event", async () => {
+        await expect(tx)
+          .to.emit(cashbackDistributor, EVENT_NAME_CASHBACK_VAULT_UPDATED)
+          .withArgs(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
+      });
 
-        it("Updates the cashback vault", async () => {
-          expect(await cashbackDistributor.getCashbackVault(getAddress(tokens[0])))
-            .to.equal(getAddress(cashbackVaults[0][0]));
-        });
-      },
-    );
-    describe("Executes as expected when updating the cashback vault", async () => {
+      it("Updates the cashback vault", async () => {
+        expect(await cashbackDistributor.getCashbackVault(getAddress(tokens[0])))
+          .to.equal(getAddress(cashbackVaults[0][0]));
+      });
+    });
+
+    describe("Executes as expected when updating the cashback vault", () => {
       let tx: TransactionResponse;
       beforeEach(async () => {
         await cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
@@ -603,7 +601,8 @@ describe("Contract 'CashbackDistributor'", async () => {
           .to.equal(getAddress(cashbackVaults[0][1]));
       });
     });
-    describe("Executes as expected when setting the cashback vault to zero (disabling claimable mode)", async () => {
+
+    describe("Executes as expected when setting the cashback vault to zero (disabling claimable mode)", () => {
       let tx: TransactionResponse;
       beforeEach(async () => {
         await cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(cashbackVaults[0][0]));
@@ -627,6 +626,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           .to.equal(ZERO_ADDRESS);
       });
     });
+
     it("Is reverted if it is called with an invalid CV contract", async () => {
       await expect(cashbackDistributor.setCashbackVault(getAddress(tokens[0]), getAddress(tokens[1])))
         .to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_CASHBACK_VAULT_INVALID);
@@ -655,7 +655,8 @@ describe("Contract 'CashbackDistributor'", async () => {
         .to.be.revertedWithCustomError(cashbackDistributor, ERROR_NAME_ZERO_TOKEN_ADDRESS);
     });
   });
-  describe("Function 'initialize()'", async () => {
+
+  describe("Function 'initialize()'", () => {
     it("Configures the contract as expected", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
 
@@ -711,7 +712,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     });
   });
 
-  describe("Function '$__VERSION()'", async () => {
+  describe("Function '$__VERSION()'", () => {
     it("Returns expected values", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
       const cashbackDistributorVersion = await cashbackDistributor.$__VERSION();
@@ -719,7 +720,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     });
   });
 
-  describe("Function 'enable()'", async () => {
+  describe("Function 'enable()'", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
 
@@ -743,7 +744,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     });
   });
 
-  describe("Function 'disable()'", async () => {
+  describe("Function 'disable()'", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { cashbackDistributor } = await setUpFixture(deployCashbackDistributor);
       await proveTx(cashbackDistributor.enable());
@@ -769,7 +770,7 @@ describe("Contract 'CashbackDistributor'", async () => {
   });
 
   for (const useCashbackVault of [false, true]) {
-    describe(`The cashback vault is ${useCashbackVault ? "set" : "not set"}`, async () => {
+    describe(`The cashback vault is ${useCashbackVault ? "set" : "not set"}`, () => {
       let cashbackVault: Contract;
       if (useCashbackVault) {
         let originalBeforeSendingCashback: typeof beforeSendingCashback;
@@ -794,7 +795,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         });
       }
 
-      describe("Function 'sendCashback()'", async () => {
+      describe("Function 'sendCashback()'", () => {
         async function checkSending(context: TestContext) {
           const { fixture: { cashbackDistributor }, cashbacks } = context;
           const cashback: TestCashback = cashbacks[cashbacks.length - 1];
@@ -847,8 +848,8 @@ describe("Contract 'CashbackDistributor'", async () => {
           await checkCashbackDistributorState(context);
         }
 
-        describe("Executes as expected and emits the correct event if the sending", async () => {
-          describe("Succeeds and the cashback amount is", async () => {
+        describe("Executes as expected and emits the correct event if the sending", () => {
+          describe("Succeeds and the cashback amount is", () => {
             it("Nonzero and less than the period cap", async () => {
               const context = await beforeSendingCashback({ cashbackRequestedAmount: MAX_CASHBACK_FOR_PERIOD - 1 });
               context.cashbacks[0].sentAmount = context.cashbacks[0].requestedAmount;
@@ -877,7 +878,7 @@ describe("Contract 'CashbackDistributor'", async () => {
               await checkSending(context);
             });
           });
-          describe("Fails because", async () => {
+          describe("Fails because", () => {
             it("Cashback operations are disabled", async () => {
               const context = await beforeSendingCashback();
               await proveTx(context.fixture.cashbackDistributor.disable());
@@ -938,7 +939,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           });
         });
 
-        describe("Is reverted if", async () => {
+        describe("Is reverted if", () => {
           it("The contract is paused", async () => {
             const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
             await pauseContract(cashbackDistributor);
@@ -1008,7 +1009,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         });
       });
 
-      describe("Function 'revokeCashback()'", async () => {
+      describe("Function 'revokeCashback()'", () => {
         async function checkRevoking(targetRevocationStatus: RevocationStatus, context: TestContext) {
           const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
           const contractBalanceChange =
@@ -1064,8 +1065,8 @@ describe("Contract 'CashbackDistributor'", async () => {
           await proveTx(connect(cashback.token, distributor).approve(getAddress(cashbackDistributor), MAX_UINT256));
         }
 
-        describe("Executes as expected and emits the correct event if the revocation", async () => {
-          describe("Succeeds and the revocation amount is", async () => {
+        describe("Executes as expected and emits the correct event if the revocation", () => {
+          describe("Succeeds and the revocation amount is", () => {
             it("Less than the initial cashback amount", async () => {
               const context = await beforeSendingCashback();
               const { cashbacks: [cashback] } = context;
@@ -1151,7 +1152,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             }
           });
 
-          describe("Fails because", async () => {
+          describe("Fails because", () => {
             it("The recipient has not enough tokens", async () => {
               const context = await beforeSendingCashback();
               const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
@@ -1261,7 +1262,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           });
         });
 
-        describe("Is reverted if", async () => {
+        describe("Is reverted if", () => {
           it("The contract is paused", async () => {
             const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
             await pauseContract(cashbackDistributor);
@@ -1297,7 +1298,7 @@ describe("Contract 'CashbackDistributor'", async () => {
         });
       });
 
-      describe("Function 'increaseCashback()'", async () => {
+      describe("Function 'increaseCashback()'", () => {
         async function checkIncreasing(targetIncreaseStatus: IncreaseStatus, context: TestContext) {
           const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
           const recipientBalanceChange = cashback.increaseSentAmount || 0;
@@ -1360,8 +1361,8 @@ describe("Contract 'CashbackDistributor'", async () => {
           cashback.increaseSentAmount = 0;
         }
 
-        describe("Executes as expected and emits the correct event if the increase", async () => {
-          describe("Succeeds and the increase amount is", async () => {
+        describe("Executes as expected and emits the correct event if the increase", () => {
+          describe("Succeeds and the increase amount is", () => {
             it("Nonzero and less than the value that is needed to reach the period cap", async () => {
               const context = await beforeSendingCashback();
               const { cashbacks: [cashback] } = context;
@@ -1397,7 +1398,7 @@ describe("Contract 'CashbackDistributor'", async () => {
             });
           });
 
-          describe("Fails because", async () => {
+          describe("Fails because", () => {
             it("Cashback operations are disabled", async () => {
               const context = await beforeSendingCashback();
               const { fixture: { cashbackDistributor }, cashbacks: [cashback] } = context;
@@ -1456,7 +1457,7 @@ describe("Contract 'CashbackDistributor'", async () => {
           });
         });
 
-        describe("Is reverted if", async () => {
+        describe("Is reverted if", () => {
           it("The contract is paused", async () => {
             const { fixture: { cashbackDistributor }, cashback } = await prepareForSingleCashback();
             await pauseContract(cashbackDistributor);
@@ -1475,7 +1476,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     });
   }
 
-  describe("Getter functions 'getCashbackNonces()' and 'getCashbacks()'", async () => {
+  describe("Getter functions 'getCashbackNonces()' and 'getCashbacks()'", () => {
     it("Execute as expected", async () => {
       const fixture: Fixture = await setUpFixture(deployAndConfigureAllContracts);
       const { cashbackDistributor, tokenMocks: [tokenMock] } = fixture;
@@ -1536,7 +1537,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     });
   });
 
-  describe("Complex scenario", async () => {
+  describe("Complex scenario", () => {
     it("Execute as expected", async () => {
       const fixture: Fixture = await setUpFixture(deployAndConfigureAllContracts);
       const { cashbackDistributor, tokenMocks: [tokenMock1, tokenMock2] } = fixture;
@@ -1579,7 +1580,7 @@ describe("Contract 'CashbackDistributor'", async () => {
     });
   });
 
-  describe("Scenario with cashback period cap", async () => {
+  describe("Scenario with cashback period cap", () => {
     it("Executes as expected", async () => {
       const fixture: Fixture = await setUpFixture(deployAndConfigureAllContracts);
       const { cashbackDistributor, tokenMocks: [tokenMock] } = fixture;

@@ -1899,7 +1899,7 @@ function increaseBytesString(bytesString: string, targetLength: number) {
   );
 }
 
-describe("Contract 'CardPaymentProcessor'", async () => {
+describe("Contract 'CardPaymentProcessor'", () => {
   const REVOCATION_LIMIT = 123;
   const REVOCATION_LIMIT_DEFAULT_VALUE = 255;
   const ZERO_AUTHORIZATION_ID: string = ethers.toBeHex(0, BYTES16_LENGTH);
@@ -2115,7 +2115,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     return context;
   }
 
-  describe("Function 'initialize()'", async () => {
+  describe("Function 'initialize()'", () => {
     it("Configures the contract as expected", async () => {
       const { cardPaymentProcessor, tokenMock } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
 
@@ -2192,7 +2192,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function '$__VERSION()'", async () => {
+  describe("Function '$__VERSION()'", () => {
     it("Returns expected values", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       const cardPaymentProcessorVersion = await cardPaymentProcessor.$__VERSION();
@@ -2200,7 +2200,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'setRevocationLimit()'", async () => {
+  describe("Function 'setRevocationLimit()'", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       expect(await cardPaymentProcessor.revocationLimit()).to.equal(REVOCATION_LIMIT_DEFAULT_VALUE);
@@ -2223,7 +2223,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'setCashbackDistributor()'", async () => {
+  describe("Function 'setCashbackDistributor()'", () => {
     it("Executes as expected and emits the correct event", async () => {
       const {
         cardPaymentProcessor,
@@ -2262,7 +2262,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'setCashbackRate()'", async () => {
+  describe("Function 'setCashbackRate()'", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
 
@@ -2294,7 +2294,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'enableCashback()'", async () => {
+  describe("Function 'enableCashback()'", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await proveTx(cardPaymentProcessor.setCashbackDistributor(CASHBACK_DISTRIBUTOR_ADDRESS_STUB1));
@@ -2327,7 +2327,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'disableCashback()'", async () => {
+  describe("Function 'disableCashback()'", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
       await proveTx(cardPaymentProcessor.setCashbackDistributor(CASHBACK_DISTRIBUTOR_ADDRESS_STUB1));
@@ -2352,7 +2352,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'setCashOutAccount()'", async () => {
+  describe("Function 'setCashOutAccount()'", () => {
     it("Executes as expected and emits the correct event", async () => {
       const { cardPaymentProcessor } = await setUpFixture(deployTokenMockAndCardPaymentProcessor);
 
@@ -2388,12 +2388,12 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'makePayment()' with the extra amount parameter", async () => {
+  describe("Function 'makePayment()' with the extra amount parameter", () => {
     /* Since all payment making functions use the same common internal function to execute,
      * the complete set of checks are provided in the test section for the 'makePaymentFor()' function.
      * In this section, only specific checks are provided.
      */
-    describe("Executes as expected if the cashback is enabled and the base and extra payment amounts are", async () => {
+    describe("Executes as expected if the cashback is enabled and the base and extra payment amounts are", () => {
       it("Both nonzero", async () => {
         const context = await beforeMakingPayments();
         const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -2413,7 +2413,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const context = await prepareForPayments();
         const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -2449,7 +2449,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'makePaymentFor()'", async () => {
+  describe("Function 'makePaymentFor()'", () => {
     async function checkPaymentMakingFor(
       context: TestContext,
       props: {
@@ -2486,10 +2486,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await context.checkCardPaymentProcessorState();
     }
 
-    describe("Executes as expected if the payment is", async () => {
-      describe("Not Sponsored. And if cashback is enabled and its rate is", async () => {
-        describe("Determined by the contract settings. And if cashback is", async () => {
-          describe("Enabled without restrictions. And if the base and extra payment amounts are", async () => {
+    describe("Executes as expected if the payment is", () => {
+      describe("Not Sponsored. And if cashback is enabled and its rate is", () => {
+        describe("Determined by the contract settings. And if cashback is", () => {
+          describe("Enabled without restrictions. And if the base and extra payment amounts are", () => {
             it("Both nonzero", async () => {
               const context = await beforeMakingPayments();
               await checkPaymentMakingFor(context);
@@ -2540,13 +2540,14 @@ describe("Contract 'CardPaymentProcessor'", async () => {
               await checkPaymentMakingFor(context);
             });
           });
-          describe("Disabled. And if the base and extra payment amounts are", async () => {
+          describe("Disabled. And if the base and extra payment amounts are", () => {
             it("Both nonzero", async () => {
               const context = await beforeMakingPayments();
               await checkPaymentMakingFor(context, { cashbackEnabled: false });
             });
           });
-          describe("Enabled but cashback sending fails. And if the base and extra payment amounts are", async () => {
+
+          describe("Enabled but cashback sending fails. And if the base and extra payment amounts are", () => {
             it("Both nonzero", async () => {
               const context = await beforeMakingPayments();
               await context.cashbackDistributorMockShell.setSendCashbackSuccessResult(false);
@@ -2555,9 +2556,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           });
         });
       });
-      describe("Sponsored. And if the cashback rate is", async () => {
-        describe("Determined by the contract settings. And if the base and extra payment amounts are", async () => {
-          describe("Both nonzero. And if cashback is enabled and the subsidy limit is ", async () => {
+
+      describe("Sponsored. And if the cashback rate is", () => {
+        describe("Determined by the contract settings. And if the base and extra payment amounts are", () => {
+          describe("Both nonzero. And if cashback is enabled and the subsidy limit is ", () => {
             it("The same as the payment sum amount", async () => {
               const context = await beforeMakingPayments();
               const subsidyLimit = context.payments[0].baseAmount + context.payments[0].extraAmount;
@@ -2582,7 +2584,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Both zero. And the subsidy limit is", async () => {
+          describe("Both zero. And the subsidy limit is", () => {
             it("Non-zero", async () => {
               const context = await beforeMakingPayments();
               context.payments[0].baseAmount = 0;
@@ -2598,7 +2600,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Different: base amount is zero, extra amount is nonzero. And the subsidy limit is", async () => {
+          describe("Different: base amount is zero, extra amount is nonzero. And the subsidy limit is", () => {
             it("The same as the payment sum amount", async () => {
               const context = await beforeMakingPayments();
               context.payments[0].baseAmount = 0;
@@ -2619,7 +2621,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Different: base amount is nonzero, extra amount is zero. And the subsidy limit is", async () => {
+          describe("Different: base amount is nonzero, extra amount is zero. And the subsidy limit is", () => {
             it("The same as the payment sum amount", async () => {
               const context = await beforeMakingPayments();
               context.payments[0].extraAmount = 0;
@@ -2641,8 +2643,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           });
         });
 
-        describe("Requested to be zero. And if the base and extra payment amounts are", async () => {
-          describe("Both nonzero. And the subsidy limit is ", async () => {
+        describe("Requested to be zero. And if the base and extra payment amounts are", () => {
+          describe("Both nonzero. And the subsidy limit is ", () => {
             const cashbackRateInPermil = 0;
 
             it("Less than the base amount", async () => {
@@ -2658,8 +2660,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           });
         });
 
-        describe("Requested to be a special value. And if the base and extra payment amounts are", async () => {
-          describe("Both nonzero. And the subsidy limit is ", async () => {
+        describe("Requested to be a special value. And if the base and extra payment amounts are", () => {
+          describe("Both nonzero. And the subsidy limit is ", () => {
             const cashbackRateInPermil = CASHBACK_RATE_IN_PERMIL + 100;
 
             it("Less than the base amount", async () => {
@@ -2677,7 +2679,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       const subsidyLimit = INITIAL_SPONSOR_BALANCE;
 
       it("The contract is paused", async () => {
@@ -2836,7 +2838,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'updatePaymentAmount()' with the extra amount parameter", async () => {
+  describe("Function 'updatePaymentAmount()' with the extra amount parameter", () => {
     enum NewBasePaymentAmountType {
       Same = 0,
       Less = 1,
@@ -2976,10 +2978,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await context.checkCardPaymentProcessorState();
     }
 
-    describe("Executes as expected and emits the correct events if the payment is", async () => {
-      describe("Not subsidized. And if the new base amount is", async () => {
-        describe("Less than the initial one. And if the extra amount is", async () => {
-          describe("The same as the initial one. And if cashback sending is", async () => {
+    describe("Executes as expected and emits the correct events if the payment is", () => {
+      describe("Not subsidized. And if the new base amount is", () => {
+        describe("Less than the initial one. And if the extra amount is", () => {
+          describe("The same as the initial one. And if cashback sending is", () => {
             it("Enabled and cashback revoking is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Less,
@@ -3013,7 +3015,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Far less than the initial one. And cashback sending is", async () => {
+          describe("Far less than the initial one. And cashback sending is", () => {
             it("Enabled and cashback revoking is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Less,
@@ -3023,7 +3025,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Far more than the initial one. And cashback sending is", async () => {
+          describe("Far more than the initial one. And cashback sending is", () => {
             it("Enabled and cashback revoking is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Less,
@@ -3033,7 +3035,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Slightly more than the initial one. And cashback sending is", async () => {
+          describe("Slightly more than the initial one. And cashback sending is", () => {
             it("Enabled and cashback revoking is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Less,
@@ -3043,7 +3045,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Zero. And cashback sending is", async () => {
+          describe("Zero. And cashback sending is", () => {
             it("Enabled and cashback revoking is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Less,
@@ -3054,8 +3056,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           });
         });
 
-        describe("The same as the initial one. And the extra amount is", async () => {
-          describe("The same as the initial one. And cashback sending is", async () => {
+        describe("The same as the initial one. And the extra amount is", () => {
+          describe("The same as the initial one. And cashback sending is", () => {
             it("Enabled and cashback revoking is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Same,
@@ -3065,7 +3067,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Far less than the initial one. And cashback sending is", async () => {
+          describe("Far less than the initial one. And cashback sending is", () => {
             it("Enabled and cashback revoking is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Same,
@@ -3075,7 +3077,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Far more than the initial one. And cashback sending is", async () => {
+          describe("Far more than the initial one. And cashback sending is", () => {
             it("Enabled and cashback revoking is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Same,
@@ -3085,7 +3087,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Zero. And cashback sending is", async () => {
+          describe("Zero. And cashback sending is", () => {
             it("Enabled and cashback revoking is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.Same,
@@ -3096,8 +3098,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           });
         });
 
-        describe("More than the initial one. And the extra amount is", async () => {
-          describe("The same as the initial one. And cashback sending is", async () => {
+        describe("More than the initial one. And the extra amount is", () => {
+          describe("The same as the initial one. And cashback sending is", () => {
             it("Enabled and cashback increasing is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.More,
@@ -3139,7 +3141,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Far less than the initial one. And cashback sending is", async () => {
+          describe("Far less than the initial one. And cashback sending is", () => {
             it("Enabled and cashback increasing is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.More,
@@ -3149,7 +3151,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Slightly less than the initial one. And cashback sending is", async () => {
+          describe("Slightly less than the initial one. And cashback sending is", () => {
             it("Enabled and cashback increasing is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.More,
@@ -3159,7 +3161,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Far more than the initial one. And cashback sending is", async () => {
+          describe("Far more than the initial one. And cashback sending is", () => {
             it("Enabled and cashback increasing is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.More,
@@ -3169,7 +3171,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Zero. And cashback sending is", async () => {
+          describe("Zero. And cashback sending is", () => {
             it("Enabled and cashback increasing is executed successfully", async () => {
               await checkUpdatingForNonSubsidizedPayment(
                 NewBasePaymentAmountType.More,
@@ -3181,8 +3183,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         });
       });
 
-      describe("Subsidized. And if the initial subsidy limit (SL) is ", async () => {
-        describe("Less than the payment base amount. And if the payment changes are:", async () => {
+      describe("Subsidized. And if the initial subsidy limit (SL) is ", () => {
+        describe("Less than the payment base amount. And if the payment changes are:", () => {
           it("The base amount decreases but it is still above SL", async () => {
             await checkUpdatingForSubsidizedPayment({
               initBaseAmount: 1000 * DIGITS_COEF,
@@ -3214,7 +3216,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           });
         });
 
-        describe("Between the payment base amount and the sum amount. And if the payment changes are:", async () => {
+        describe("Between the payment base amount and the sum amount. And if the payment changes are:", () => {
           it("The base amount decreases but the sum amount is still above SL", async () => {
             await checkUpdatingForSubsidizedPayment({
               initBaseAmount: 1000 * DIGITS_COEF,
@@ -3246,7 +3248,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           });
         });
 
-        describe("Above the payment sum amount. And if the payment changes are:", async () => {
+        describe("Above the payment sum amount. And if the payment changes are:", () => {
           it("The payment sum amount decreases", async () => {
             await checkUpdatingForSubsidizedPayment({
               initBaseAmount: 1000 * DIGITS_COEF,
@@ -3290,7 +3292,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const context = await prepareForPayments();
         const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -3413,7 +3415,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'clearPayment()'", async () => {
+  describe("Function 'clearPayment()'", () => {
     it("Executes as expected and emits the correct event if there was no refunding", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -3509,7 +3511,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'clearPayments()'", async () => {
+  describe("Function 'clearPayments()'", () => {
     it("Executes as expected and emits the correct events", async () => {
       const context = await beforeMakingPayments({ paymentNumber: 2 });
       const { cardPaymentProcessorShell, payments } = context;
@@ -3596,7 +3598,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'unclearPayment()'", async () => {
+  describe("Function 'unclearPayment()'", () => {
     it("Executes as expected and emits the correct event if there was no refunding", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -3704,7 +3706,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'unclearPayments()'", async () => {
+  describe("Function 'unclearPayments()'", () => {
     it("Executes as expected and emits the correct events", async () => {
       const context = await beforeMakingPayments({ paymentNumber: 2 });
       const { cardPaymentProcessorShell, payments } = context;
@@ -3795,7 +3797,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'revokePayment()'", async () => {
+  describe("Function 'revokePayment()'", () => {
     async function revokeSinglePaymentAndCheck(context: TestContext) {
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
@@ -3819,8 +3821,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await context.checkCardPaymentProcessorState();
     }
 
-    describe("Executes as expected and emits the correct events if the payment is ", async () => {
-      describe("Not subsidized. And if", async () => {
+    describe("Executes as expected and emits the correct events if the payment is ", () => {
+      describe("Not subsidized. And if", () => {
         it("Cashback operations are enabled and the payment status is 'Uncleared'", async () => {
           const context = await beforeMakingPayments();
           const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -3870,8 +3872,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         });
       });
 
-      describe("Subsidized. And if cashback operations are enabled and the payment status is", async () => {
-        describe("'Uncleared'. And if the initial subsidy limit (SL) is", async () => {
+      describe("Subsidized. And if cashback operations are enabled and the payment status is", () => {
+        describe("'Uncleared'. And if the initial subsidy limit (SL) is", () => {
           it("Less than the payment base amount", async () => {
             const context = await beforeMakingPayments();
             const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -3905,7 +3907,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const context = await prepareForPayments();
         const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -3989,7 +3991,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'reversePayment()'", async () => {
+  describe("Function 'reversePayment()'", () => {
     async function reverseSinglePaymentAndCheck(context: TestContext) {
       const { cardPaymentProcessorShell, payments: [payment] } = context;
 
@@ -4013,8 +4015,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await context.checkCardPaymentProcessorState();
     }
 
-    describe("Executes as expected and emits the correct events if the payment is", async () => {
-      describe("Not Subsidized. And if", async () => {
+    describe("Executes as expected and emits the correct events if the payment is", () => {
+      describe("Not Subsidized. And if", () => {
         it("Cashback operations are enabled and the payment status is 'Uncleared'", async () => {
           const context = await beforeMakingPayments();
           const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -4064,8 +4066,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
         });
       });
 
-      describe("Subsidized. And if cashback operations are enabled and the payment status is", async () => {
-        describe("'Uncleared'. And if the initial subsidy limit (SL) is", async () => {
+      describe("Subsidized. And if cashback operations are enabled and the payment status is", () => {
+        describe("'Uncleared'. And if the initial subsidy limit (SL) is", () => {
           it("Less than the payment base amount", async () => {
             const context = await beforeMakingPayments();
             const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -4081,7 +4083,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const context = await prepareForPayments();
         const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -4150,7 +4152,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'confirmPayment()'", async () => {
+  describe("Function 'confirmPayment()'", () => {
     it("Executes as expected and emits the correct event if there was no refunding", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -4260,7 +4262,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'confirmPayments()'", async () => {
+  describe("Function 'confirmPayments()'", () => {
     it("Executes as expected and emits the correct events", async () => {
       const context = await beforeMakingPayments({ paymentNumber: 2 });
       const { cardPaymentProcessorShell, payments } = context;
@@ -4370,7 +4372,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'clearAndConfirmPayment()'", async () => {
+  describe("Function 'clearAndConfirmPayment()'", () => {
     it("Executes as expected and emits the correct event if the payment is subsidized", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -4410,7 +4412,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     // Other conditions are checked during testing the clearing and confirming functions
   });
 
-  describe("Function 'updateLazyClearConfirmPayment()'", async () => {
+  describe("Function 'updateLazyClearConfirmPayment()'", () => {
     enum NewBasePaymentAmountType {
       Same = 0,
       More = 1,
@@ -4476,7 +4478,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       }
     }
 
-    describe("Executes as expected and emits the correct event if the payment is subsidized and", async () => {
+    describe("Executes as expected and emits the correct event if the payment is subsidized and", () => {
       it("The new base amount differs from the current one and the extra amount is the same", async () => {
         await checkContractFunction(NewBasePaymentAmountType.More, NewExtraPaymentAmountType.Same);
       });
@@ -4490,7 +4492,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       });
     });
 
-    describe("Is reverted if ", async () => {
+    describe("Is reverted if ", () => {
       it("The contract is paused", async () => {
         const context = await prepareForPayments();
         const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -4694,10 +4696,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       await context.checkCardPaymentProcessorState();
     }
 
-    describe("Executes as expected and emits the correct events if the payment is", async () => {
-      describe("Not subsidized. And if the refund amount is", async () => {
-        describe("Nonzero. And if the new extra amount of the payment is", async () => {
-          describe("The same as the initial one. And if the payment status is", async () => {
+    describe("Executes as expected and emits the correct events if the payment is", () => {
+      describe("Not subsidized. And if the refund amount is", () => {
+        describe("Nonzero. And if the new extra amount of the payment is", () => {
+          describe("The same as the initial one. And if the payment status is", () => {
             it("Uncleared", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Nonzero,
@@ -4707,7 +4709,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Less than the initial one. And if the payment status is", async () => {
+          describe("Less than the initial one. And if the payment status is", () => {
             it("Uncleared", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Nonzero,
@@ -4733,7 +4735,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Zero. And if the payment status is", async () => {
+          describe("Zero. And if the payment status is", () => {
             it("Uncleared", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Nonzero,
@@ -4744,8 +4746,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           });
         });
 
-        describe("Equals the base payment amount. And if the new extra amount of the payment is", async () => {
-          describe("The same as the initial one. And if the payment status is", async () => {
+        describe("Equals the base payment amount. And if the new extra amount of the payment is", () => {
+          describe("The same as the initial one. And if the payment status is", () => {
             it("Uncleared", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Full,
@@ -4755,7 +4757,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Less than the initial one. And if the payment status is", async () => {
+          describe("Less than the initial one. And if the payment status is", () => {
             it("Uncleared", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Full,
@@ -4781,7 +4783,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Zero. And if the payment status is", async () => {
+          describe("Zero. And if the payment status is", () => {
             it("Uncleared", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Full,
@@ -4792,8 +4794,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           });
         });
 
-        describe("Zero. And if the new extra amount of the payment is", async () => {
-          describe("The same as the initial one. And if the payment status is", async () => {
+        describe("Zero. And if the new extra amount of the payment is", () => {
+          describe("The same as the initial one. And if the payment status is", () => {
             it("Uncleared", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Zero,
@@ -4803,7 +4805,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Less than the initial one. And if the payment status is", async () => {
+          describe("Less than the initial one. And if the payment status is", () => {
             it("Uncleared", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Zero,
@@ -4829,7 +4831,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Zero. And if the payment status is", async () => {
+          describe("Zero. And if the payment status is", () => {
             it("Uncleared", async () => {
               await checkRefundingForNonSubsidizedPayment(
                 RefundType.Zero,
@@ -4840,9 +4842,10 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           });
         });
       });
-      describe("Subsidized. And if the refund amount is nonzero. And if the init subsidy limit (SL) is", async () => {
-        describe("Less than the payment base amount. And if the new extra amount is", async () => {
-          describe("Less than the initial one.  And if the payment status is", async () => {
+
+      describe("Subsidized. And if the refund amount is nonzero. And if the init subsidy limit (SL) is", () => {
+        describe("Less than the payment base amount. And if the new extra amount is", () => {
+          describe("Less than the initial one.  And if the payment status is", () => {
             it("Uncleared", async () => {
               await checkRefundingForSubsidizedPayment({
                 initBaseAmount: 1000 * DIGITS_COEF,
@@ -4867,8 +4870,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           });
         });
 
-        describe("Between the payment base amount and the sum amount. And if the new extra amount is", async () => {
-          describe("Less than the init one but the sum amount is above SL.  And if the payment status is", async () => {
+        describe("Between the payment base amount and the sum amount. And if the new extra amount is", () => {
+          describe("Less than the init one but the sum amount is above SL.  And if the payment status is", () => {
             it("Uncleared", async () => {
               await checkRefundingForSubsidizedPayment({
                 initBaseAmount: 1000 * DIGITS_COEF,
@@ -4892,7 +4895,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
             });
           });
 
-          describe("Less than the init one and the sum amount is below SL.  And if the payment status is", async () => {
+          describe("Less than the init one and the sum amount is below SL.  And if the payment status is", () => {
             it("Uncleared", async () => {
               await checkRefundingForSubsidizedPayment({
                 initBaseAmount: 1000 * DIGITS_COEF,
@@ -4917,8 +4920,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
           });
         });
 
-        describe("Above the payment sum amount. And if the new extra amount is", async () => {
-          describe("Less than the init one.  And if the payment status is", async () => {
+        describe("Above the payment sum amount. And if the new extra amount is", () => {
+          describe("Less than the init one.  And if the payment status is", () => {
             it("Uncleared", async () => {
               await checkRefundingForSubsidizedPayment({
                 initBaseAmount: 1000 * DIGITS_COEF,
@@ -4945,7 +4948,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const context = await prepareForPayments();
         const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -5097,9 +5100,9 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'refundPayment()' with no extra amount parameter", async () => {
-    describe("Executes as expected and emits the correct events if the refund amount is", async () => {
-      describe("Nonzero and the payment status is", async () => {
+  describe("Function 'refundPayment()' with no extra amount parameter", () => {
+    describe("Executes as expected and emits the correct events if the refund amount is", () => {
+      describe("Nonzero and the payment status is", () => {
         it("Uncleared", async () => {
           const context = await beforeMakingPayments();
           const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -5127,7 +5130,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const context = await prepareForPayments();
         const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -5157,7 +5160,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'refundAccount()'", async () => {
+  describe("Function 'refundAccount()'", () => {
     const nonZeroTokenAmount = 123;
     const zeroTokenAmount = 0;
 
@@ -5182,7 +5185,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       );
     }
 
-    describe("Executes as expected and emits the correct events if the refund amount is", async () => {
+    describe("Executes as expected and emits the correct events if the refund amount is", () => {
       it("Nonzero", async () => {
         await checkRefundingAccount(nonZeroTokenAmount);
       });
@@ -5192,7 +5195,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const { cardPaymentProcessorShell } = await prepareForPayments();
         await pauseContract(cardPaymentProcessorShell.contract);
@@ -5246,8 +5249,8 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Function 'resendCashback()'", async () => {
-    describe("Executes as expected if", async () => {
+  describe("Function 'resendCashback()'", () => {
+    describe("Executes as expected if", () => {
       async function executeAndCheck(context: TestContext, newCashbackRate: number) {
         const authorizationId = context.payments[0].authorizationId;
         const payment = context.cardPaymentProcessorShell.model.getPaymentByAuthorizationId(authorizationId);
@@ -5393,7 +5396,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
       });
     });
 
-    describe("Is reverted if", async () => {
+    describe("Is reverted if", () => {
       it("The contract is paused", async () => {
         const { cardPaymentProcessorShell, payments: [payment] } = await prepareForPayments();
         await pauseContract(cardPaymentProcessorShell.contract);
@@ -5550,7 +5553,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Complex scenarios without cashback", async () => {
+  describe("Complex scenarios without cashback", () => {
     async function checkRevertingOfAllPaymentProcessingFunctionsExceptMaking(
       cardPaymentProcessor: Contract,
       payments: TestPayment[],
@@ -5785,7 +5788,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Complex scenarios with cashback", async () => {
+  describe("Complex scenarios with cashback", () => {
     it("Several refund and payment updating operations execute as expected if cashback is enabled", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -5897,7 +5900,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Complex scenarios with subsidized payments and cashback rate control", async () => {
+  describe("Complex scenarios with subsidized payments and cashback rate control", () => {
     it("Revoke a subsidized payment and make it again as not subsidized", async () => {
       const context = await beforeMakingPayments();
       const { cardPaymentProcessorShell, payments: [payment] } = context;
@@ -5948,7 +5951,7 @@ describe("Contract 'CardPaymentProcessor'", async () => {
     });
   });
 
-  describe("Token transfer demonstration scenarios", async () => {
+  describe("Token transfer demonstration scenarios", () => {
     interface ExpectedBalanceChanges {
       user?: number;
       sponsor?: number;
